@@ -61,9 +61,12 @@
   - bokjimoa 섹션: `search` · `recent` · `popular` · `upload-cta`
 - `label` 을 바꾸면 사이트의 탭 이름표가 그 문구로 바뀝니다.
 
-## 사이트에 연결하는 방법 (아직 적용 전)
+## 사이트에 연결하는 방법
 
-두 사이트 모두 **아직 이 파일을 읽지 않습니다.** 어드민이 커밋한 값이 화면에 나타나게 하려면 각 저장소에 아래 두 줄만 넣으면 됩니다.
+- **회사복지모아**: `public/config/site-config.json` 을 이미 넣어 두었습니다(v0.12.1, 배너·팝업 모두 `enabled:false`). 사이트 화면이 이 값을 읽게 하는 것은 아직 연결하지 않았습니다.
+- **포켓몬카드모아**: 파일을 아직 넣지 않았습니다. 어드민에서 처음 저장할 때 `assets/config/site-config.json` 이 새로 만들어집니다.
+
+어드민이 커밋한 값이 화면에 나타나게 하려면 각 저장소에 아래 두 줄만 넣으면 됩니다.
 
 1. 저장소에 `assets/js/site-config-loader.js` 를 복사합니다(이 저장소의 같은 파일이 참고 부품입니다).
 2. 사이트 HTML 의 `</body>` 앞에 붙입니다.
@@ -102,7 +105,7 @@
 | GET | `https://bokjimoa.onrender.com/api/admin/inquiries?limit=100&status=` | `x-sync-key` | 문의 목록 + `byStatus` |
 | DELETE | `https://bokjimoa.onrender.com/api/admin/inquiries/:id` | `x-sync-key` | 문의 삭제 |
 
-브라우저에서 부르려면 서버가 `https://moa-kr.github.io` 출처를 허용해야 합니다. 서버는 `/api/admin/*` 에서만 아래를 허용합니다.
+브라우저에서 부르려면 서버가 `https://moa-kr.github.io` 출처를 허용해야 합니다. 2026-11-18 배포(v0.12.1)부터 서버가 `/api/admin/*` 에서만 아래를 허용합니다(그 밖의 경로는 그대로 막힘).
 
 - `Access-Control-Allow-Origin: https://moa-kr.github.io` (환경변수 `ADMIN_CONSOLE_ORIGINS` 로 추가 가능)
 - `Access-Control-Allow-Headers: Content-Type, x-sync-key, x-admin-key`
