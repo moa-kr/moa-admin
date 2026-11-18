@@ -1248,6 +1248,15 @@
       if (rawLog) state.log = JSON.parse(rawLog).slice(0, 20);
     } catch (err) { state.log = []; }
 
+    // ?reset=1 로 들어오면 편집 초안과 마지막 화면 기억을 지운다(처음 상태로 확인할 때).
+    try {
+      if (new URLSearchParams(location.search).get("reset") === "1") {
+        Object.keys(SITES).forEach(clearDraft);
+        sessionStorage.removeItem(LS.ui);
+        history.replaceState(null, "", location.pathname);
+      }
+    } catch (err) { /* 무시 */ }
+
     bindGate();
     restoreUi();
 
