@@ -281,9 +281,8 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 /* 미리보기 내부(사이트 흉내) */
 .pv { font-size: 13px; color: #101f3c; min-height: 100%; display: flex; flex-direction: column; }
 .pv * { box-sizing: border-box; }
-.pv-banner { padding: 9px 12px; font-size: 11.5px; font-weight: 700; line-height: 1.35; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.pv-banner > span:first-child { flex: 1 1 60%; min-width: 0; word-break: keep-all;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pv-banner { padding: 9px 12px; font-size: 11.5px; font-weight: 700; line-height: 1.35; display: flex; align-items: center; gap: 6px; }
+.pv-banner > span:first-child { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pv-banner.info { background: #eaf0ff; color: #1b3a8f; }
 .pv-banner.warn { background: #fff4e0; color: #8a5300; }
 .pv-banner.urgent { background: #fdecec; color: #a01c22; }
