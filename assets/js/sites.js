@@ -5,7 +5,15 @@
    copyGroups 는 ③ 문구 화면에 그릴 입력칸 목록입니다.
    key 는 사이트 HTML 의 data-copy / data-copy-html 값과 같아야 합니다.
    kind: text(한 줄) · html(한 줄, <b>·<br> 등 일부 태그 허용) ·
-         area(여러 줄) · areaHtml(여러 줄, 일부 태그 허용) */
+         area(여러 줄) · areaHtml(여러 줄, 일부 태그 허용)
+
+   sections 는 ② ‘탭 안 섹션’ 화면의 정보입니다.
+   - tab    : 그 섹션이 들어 있는 탭 id (navigation.tabs 의 id)
+   - titleKey: 화면 제목을 copy 의 어느 키로 그리는 섹션. 없으면 navigation 의 label 이
+               [data-section-title] 에 들어갑니다.
+   - fields : 그 섹션 안에서 고칠 수 있는 copy 키 목록(라벨·형식은 copyGroups 에서 가져옵니다).
+   - body   : 섹션 맨 아래 ‘본문 문단’을 쓸 수 있는지(기본 true).
+   이 목록이 곧 site-config.json 의 navigation.sections 기본값이 됩니다. */
 (function () {
   "use strict";
 
@@ -14,7 +22,7 @@
       "siteTitle": "포켓몬카드모아",
       "subtitle": "POKEMON CARD MOA",
       "heroTitle": "30th CELEBRATION,<br><em>정가</em>로 만나는 방법",
-      "heroDescription": "포켓몬 카드 정가 구매처와 추첨 일정, 입고 기록, 편의점 4사 재고와 취급 카드까지 한 화면에 모았습니다. 리셀가에 흔들리지 않도록 기준 가격부터 확인하세요.",
+      "heroDescription": "포켓몬 카드 구매처와 입고 기록, 편의점 재고와 취급 카드까지 한 화면에 모았습니다. 리셀가에 흔들리지 않도록 기준 가격부터 확인하세요.",
       "ctaLabel": "정가 구매처 보기",
       "footerText": "포켓몬 카드의 정가 구매처, 추첨·입고 일정, 주변 매장 재고, 수록 카드 정보를 한 곳에 모은 비공식 정보 사이트입니다. 데이터 기준일 2026-11-17.",
       "headerDate": "데이터 기준 11-17",
@@ -28,7 +36,7 @@
       "scheduleLead": "먼저 <b>카드 뉴스·소식</b>에서 공식 공지와 신규팩 발매 소식을 확인하고, <b>발매·재입고 일정</b>에서 추첨 회차별 예정·종료 일정을 보세요. 포켓몬스토어 추첨은 회차마다 응모·발표·결제·배송 날짜가 따로 있습니다.",
       "guideEyebrow": "도감 · 시세",
       "guideTitle": "세트별 정가와 리셀 시세 검색",
-      "guideLead": "세트·박스 이름으로 검색하면 그 세트의 <b>공식 정가(팩·박스)</b>와 <b>리셀 시세 검색 바로가기(KREAM · 번개장터 · PriceCharting)</b>가 함께 나옵니다. 아래 세트 칩으로 골라 수록 카드 도감과 정가·리셀 비교표를 볼 수도 있습니다.",
+      "guideLead": "세트·박스 이름으로 검색하면 그 세트의 <b>공식 정가(팩·박스)</b>와 <b>리셀 시세 검색 바로가기(KREAM · 번개장터 · PriceCharting)</b>가 함께 나옵니다. 위의 <b>시세·거래가 조회</b>에서는 PSA 경매 낙찰가·eBay 즉구가·스니커덩크까지 한 번에 열 수 있습니다. 아래 세트 칩으로 골라 수록 카드 도감과 정가·리셀 비교표를 볼 수도 있습니다.",
       "trendsEyebrow": "팝수 조회",
       "trendsTitle": "등급 회사를 고르고 인증서·카드 번호로 조회",
       "trendsLead": "<b>PSA · CGC · BRG · BGS</b> 가운데 회사를 먼저 고른 뒤 등급카드 넘버(인증서 번호 또는 카드 번호)를 넣으면, 번호를 복사해 그 회사의 팝 리포트·인증서 조회 페이지로 바로 넘겨 줍니다. 팝수는 회사별로 따로 집계되므로 보고 싶은 회사를 먼저 골라야 합니다.",
@@ -46,6 +54,9 @@
       "trendLink": "수록 카드 도감 →",
       "tipsEyebrow": "오늘의 체크 포인트",
       "faqEyebrow": "자주 묻는 질문",
+      "mapChannelsTitle": "실제 재고를 확인하는 공식 채널",
+      "fxTitle": "오늘의 환율",
+      "marketTitle": "PSA 거래 내역 조회 (경매가·즉구가)",
       "issuesEyebrow": "최근 이슈되는 카드 이슈",
       "issuesTitle": "2026년 11월 카드 게임 소식",
       "issuesDesc": "공식 공지와 보도로 확인한 6건입니다. 날짜는 공지·보도 기준이고, 링크는 원문으로 바로 갑니다.",
@@ -123,6 +134,9 @@
         { key: "offlineEyebrow", label: "오프라인 · 표제", kind: "text", max: 40 },
         { key: "offlineDesc", label: "오프라인 · 설명", kind: "areaHtml", max: 300 },
         { key: "offlineLink", label: "오프라인 · 링크", kind: "text", max: 40 },
+        { key: "mapChannelsTitle", label: "지도 · 공식 채널 제목", kind: "text", max: 40 },
+        { key: "fxTitle", label: "환율 위젯 · 제목", kind: "text", max: 30 },
+        { key: "marketTitle", label: "PSA 거래가 조회 · 제목", kind: "text", max: 40 },
         { key: "trendEyebrow", label: "인기 카드팩 · 표제", kind: "text", max: 40 },
         { key: "trendDesc", label: "인기 카드팩 · 설명", kind: "areaHtml", max: 300 },
         { key: "trendLink", label: "인기 카드팩 · 링크", kind: "text", max: 40 },
@@ -295,6 +309,72 @@
     }
   ];
 
+  /* ───────────── 탭 안 섹션 정의 (② 화면) ─────────────
+     tab       : 그 섹션이 들어 있는 탭 id
+     titleKey  : 화면 제목을 copy 키로 그리는 섹션(없으면 navigation 의 label 이 [data-section-title] 로 들어감)
+     fields    : 이 섹션 안에서 바로 고칠 수 있는 copy 키 (라벨·형식·길이는 copyGroups 에서 가져온다)
+     label     : 어드민 목록에 보일 이름이자, titleKey 가 없을 때의 화면 제목 */
+  const POKEMOA_SECTION_META = [
+    {
+      id: "map-status", tab: "map", label: "상태 안내 (5개)",
+      fields: ["status1Title", "status1Desc", "status2Title", "status2Desc", "status3Title", "status3Desc", "status4Title", "status4Desc", "status5Title", "status5Desc"],
+      note: "지도 아래 재고 상태 안내 5개입니다. 제목과 설명을 여기서 고칩니다."
+    },
+    { id: "map-channels", tab: "map", label: "공식 채널 바로가기", titleKey: "mapChannelsTitle" },
+    {
+      id: "hero", tab: "home", label: "첫 화면 히어로", titleKey: "heroTitle",
+      fields: ["heroTag", "heroDescription", "ctaLabel", "ctaLabel2"],
+      note: "첫 화면 제목은 이 섹션의 제목칸(히어로 제목)에서 고칩니다."
+    },
+    { id: "pricing", tab: "home", label: "70,000원에 살 수 있는 곳, 채널별 조건까지", fields: ["pricingEyebrow", "pricingDesc", "pricingLink"] },
+    { id: "boxes", tab: "home", label: "30th 말고 다른 박스, 정가로 사는 곳", fields: ["boxesEyebrow", "boxesDesc", "boxesLink"] },
+    { id: "offline", tab: "home", label: "마트·아트박스·자판기·카드샵에서 정가로 사는 곳", fields: ["offlineEyebrow", "offlineDesc", "offlineLink"] },
+    { id: "trend", tab: "home", label: "지금 가장 많이 찾는 4개 세트", fields: ["trendEyebrow", "trendDesc", "trendLink"] },
+    { id: "tips", tab: "home", label: "헛걸음을 줄이는 세 가지 순서", fields: ["tipsEyebrow"] },
+    {
+      id: "issues", tab: "schedule", label: "카드 뉴스·소식", titleKey: "issuesTitle",
+      fields: ["issuesEyebrow", "issuesDesc", "issuesLink"]
+    },
+    {
+      id: "releases", tab: "schedule", label: "발매·재입고 일정", titleKey: "releasesTitle",
+      fields: ["releasesEyebrow", "releasesDesc", "releasesLink"]
+    },
+    { id: "rates", tab: "guide", label: "환율 위젯", titleKey: "fxTitle" },
+    { id: "market", tab: "guide", label: "PSA·eBay 거래가 조회", titleKey: "marketTitle" },
+    { id: "cards", tab: "guide", label: "수록 카드와 레어도", fields: [] },
+    { id: "faq", tab: "guide", label: "구매 전에 가장 많이 묻는 것들", fields: ["faqEyebrow"] },
+    { id: "pop", tab: "trends", label: "팝수 조회", titleKey: "trendsTitle", fields: ["trendsEyebrow", "trendsLead"] }
+  ];
+
+  const BOKJIMOA_SECTION_META = [
+    {
+      id: "hero", tab: "home", label: "첫 화면 소개", titleKey: "heroTitle",
+      fields: ["heroEyebrow", "heroDescription", "heroCta1", "heroCta2"],
+      note: "첫 화면 제목은 이 섹션의 제목칸(히어로 제목)에서 고칩니다."
+    },
+    { id: "search", tab: "home", label: "회사 찾기", fields: ["searchDescA", "searchDescB"] },
+    { id: "recent", tab: "home", label: "최근 업로드된 회사", fields: ["recentDesc"] },
+    { id: "popular", tab: "home", label: "인기 · 등록 많은 회사", fields: ["popularDesc", "popularLink"] },
+    { id: "upload-cta", tab: "home", label: "내 회사 복지를 알려주세요", fields: ["uploadDesc", "uploadCta1", "uploadCta2"] },
+    { id: "ranking-head", tab: "ranking", label: "주제별 TOP 머리글", titleKey: "rankingTitle", fields: ["rankingDesc"] },
+    { id: "ranking-list", tab: "ranking", label: "테마별 순위 목록", fields: [] },
+    { id: "calc-head", tab: "calculator", label: "계산기 머리글", titleKey: "calcTitle", fields: ["calcDesc"] },
+    { id: "calc-body", tab: "calculator", label: "계산기 입력·결과", fields: [] },
+    { id: "compare-head", tab: "compare", label: "비교 회사 선택", titleKey: "compareTitle", fields: [] },
+    { id: "compare-table", tab: "compare", label: "비교표", fields: [] }
+  ];
+
+  /* 섹션 정의에서 site-config.json 기본값을 만든다(order 는 탭 안에서 1부터). */
+  function sectionDefaults(meta) {
+    const counter = {};
+    return meta.map((section) => {
+      counter[section.tab] = (counter[section.tab] || 0) + 1;
+      return { id: section.id, label: section.label, visible: true, order: counter[section.tab], tab: section.tab };
+    });
+  }
+  const POKEMOA_SECTION_DEFAULTS = sectionDefaults(POKEMOA_SECTION_META);
+  const BOKJIMOA_SECTION_DEFAULTS = sectionDefaults(BOKJIMOA_SECTION_META);
+
   const POKEMOA = {
     schemaVersion: 1,
     site: "pokemoa",
@@ -326,20 +406,10 @@
         { id: "map", label: "동네에서 찾기", visible: true, order: 1 },
         { id: "home", label: "정가 구매처", visible: true, order: 2 },
         { id: "schedule", label: "일정·소식", visible: true, order: 3 },
-        { id: "guide", label: "도감·시세", visible: true, order: 4 },
+        { id: "guide", label: "시세·도감", visible: true, order: 4 },
         { id: "trends", label: "팝수 조회", visible: true, order: 5 }
       ],
-      sections: [
-        { id: "hero", label: "첫 화면 소개", visible: true, order: 1 },
-        { id: "pricing", label: "70,000원에 살 수 있는 곳, 채널별 조건까지", visible: true, order: 2 },
-        { id: "boxes", label: "30th 말고 다른 박스, 정가로 사는 곳", visible: true, order: 3 },
-        { id: "offline", label: "마트·아트박스·자판기·카드샵에서 정가로 사는 곳", visible: true, order: 4 },
-        { id: "trend", label: "지금 가장 많이 찾는 4개 세트", visible: true, order: 5 },
-        { id: "tips", label: "헛걸음을 줄이는 세 가지 순서", visible: true, order: 6 },
-        { id: "cards", label: "수록 카드와 레어도", visible: true, order: 7 },
-        { id: "faq", label: "구매 전에 가장 많이 묻는 것들", visible: true, order: 8 },
-        { id: "pop", label: "팝수 조회", visible: true, order: 9 }
-      ]
+      sections: POKEMOA_SECTION_DEFAULTS
     },
     cards: [
       { id: "stock", title: "실시간 재고", description: "내 주변 편의점 재고를 지도에서 확인", visible: true, order: 1 },
@@ -382,13 +452,7 @@
         { id: "calculator", label: "복지 계산기", visible: true, order: 3 },
         { id: "compare", label: "비교하기", visible: true, order: 4 }
       ],
-      sections: [
-        { id: "hero", label: "첫 화면 소개", visible: true, order: 1 },
-        { id: "search", label: "회사 찾기", visible: true, order: 2 },
-        { id: "recent", label: "최근 업로드된 회사", visible: true, order: 3 },
-        { id: "popular", label: "인기 · 등록 많은 회사", visible: true, order: 4 },
-        { id: "upload-cta", label: "내 회사 복지를 알려주세요", visible: true, order: 5 }
-      ]
+      sections: BOKJIMOA_SECTION_DEFAULTS
     },
     cards: [
       { id: "companies", title: "등록 기업", description: "복지 정보가 올라온 기업 수", visible: true, order: 1 },
@@ -410,7 +474,8 @@
       deployKind: "GitHub Pages",
       deployEta: "30초 ~ 1분",
       defaults: POKEMOA,
-      copyGroups: POKEMOA_COPY_GROUPS
+      copyGroups: POKEMOA_COPY_GROUPS,
+      sections: POKEMOA_SECTION_META
     },
     bokjimoa: {
       id: "bokjimoa",
@@ -423,7 +488,8 @@
       deployKind: "Render (자동 배포)",
       deployEta: "1 ~ 2분",
       defaults: BOKJIMOA,
-      copyGroups: BOKJIMOA_COPY_GROUPS
+      copyGroups: BOKJIMOA_COPY_GROUPS,
+      sections: BOKJIMOA_SECTION_META
     }
   };
 

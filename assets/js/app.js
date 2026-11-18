@@ -41,16 +41,38 @@
 
   /* 탭·섹션 이름은 사이트의 내비게이션 글자/섹션 머리글이 된다. 스키마와 같은 길이 제한을 쓴다. */
   const LABEL_LIMIT = { tabs: 20, sections: 30 };
-  /* 이름을 바꿔도 화면에 제목이 없는 섹션은 무엇이 바뀌는지 알려 준다(두 사이트의 실제 마크업 기준). */
-  const SECTION_LABEL_NOTE = {
-    pokemoa: {
-      hero: "화면 제목은 ③ 문구의 ‘첫 화면 제목’을 씁니다",
-      pop: "이 섹션에는 화면 제목이 없습니다"
-    },
-    bokjimoa: {
-      hero: "화면 제목은 ③ 문구의 ‘첫 화면 제목’을 씁니다"
+  /* 탭 안 섹션 정의(sites.js)를 id 로 찾아 쓴다. */
+  function sectionMetas(siteId) {
+    const site = SITES[siteId || state.site] || SITES[state.site];
+    return (site && site.sections) || [];
+  }
+  function metaOf(id, siteId) {
+    return sectionMetas(siteId).find((section) => section.id === id) || null;
+  }
+  /* 이 섹션이 들어 있는 탭 id — 설정값 → 사이트 기본값 → 첫 탭 순으로 정한다. */
+  function sectionTabOf(section, siteId) {
+    if (section && section.tab) return section.tab;
+    const meta = section && metaOf(section.id, siteId);
+    if (meta && meta.tab) return meta.tab;
+    const tabs = sortedByOrder(config().navigation.tabs);
+    return tabs.length ? tabs[0].id : "";
+  }
+  /* 섹션 제목이 어디서 오는지 — copy 키(titleKey) 또는 navigation 의 label. */
+  function sectionTitleInfo(section) {
+    const meta = metaOf(section.id);
+    if (meta && meta.titleKey) {
+      return { kind: "copy", key: meta.titleKey, value: String(getPath(config(), `copy.${meta.titleKey}`) == null ? "" : getPath(config(), `copy.${meta.titleKey}`)) };
     }
-  };
+    return { kind: "label", key: "", value: section.label || "" };
+  }
+  /* 문구 정의(라벨·형식·길이) — ② 섹션 편집과 미리보기가 함께 쓴다. */
+  function copyFieldOf(key) {
+    let found = null;
+    (current().copyGroups || []).forEach((group) => {
+      group.fields.forEach((field) => { if (field.key === key) found = field; });
+    });
+    return found || { key, label: key, kind: "text", max: 120 };
+  }
   function safeHtml(value) {
     const holder = document.createElement("div");
     holder.innerHTML = String(value == null ? "" : value);
@@ -146,6 +168,9 @@
     configs: { pokemoa: clone(SITES.pokemoa.defaults), bokjimoa: clone(SITES.bokjimoa.defaults) },
     dirty: { pokemoa: false, bokjimoa: false },
     source: { pokemoa: "기본값", bokjimoa: "기본값" },
+    // ② ‘탭 안 섹션’에서 지금 고치고 있는 탭과, 펼쳐 둔 섹션 편집기
+    sectionTab: { pokemoa: "home", bokjimoa: "home" },
+    openSections: {},
     previewPopup: true,
     inquiries: { loading: false, error: "", list: [], byStatus: null, total: 0, operatorEmail: "", loadedAt: "" },
     log: []
@@ -204,7 +229,7 @@
   /* 마지막으로 보던 사이트·탭을 기억한다(새로고침해도 그 자리로). */
   function saveUi() {
     try {
-      sessionStorage.setItem(LS.ui, JSON.stringify({ site: state.site, tab: state.tab }));
+      sessionStorage.setItem(LS.ui, JSON.stringify({ site: state.site, tab: state.tab, sectionTab: state.sectionTab }));
     } catch (err) { /* 저장소를 못 쓰면 무시 */ }
   }
   function restoreUi() {
@@ -214,6 +239,11 @@
       const parsed = JSON.parse(raw);
       if (parsed && SITES[parsed.site]) state.site = parsed.site;
       if (parsed && parsed.tab) state.tab = parsed.tab;
+      if (parsed && parsed.sectionTab && typeof parsed.sectionTab === "object") {
+        Object.keys(state.sectionTab).forEach((id) => {
+          if (typeof parsed.sectionTab[id] === "string") state.sectionTab[id] = parsed.sectionTab[id];
+        });
+      }
     } catch (err) { /* 무시 */ }
   }
 
@@ -632,6 +662,16 @@
       bindReorder(box, listName);
     });
 
+    // ② 탭 안 섹션 — 편집할 탭 고르기
+    const sectionTabs = $("#section-tabs");
+    if (sectionTabs) {
+      sectionTabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-stab]");
+        if (!btn) return;
+        setSectionTab(btn.dataset.stab);
+      });
+    }
+
     // 카드 편집
     $("#list-cards").addEventListener("input", (event) => {
       const el = event.target;
@@ -702,6 +742,53 @@
   /* ───────────── 순서 목록 ───────────── */
   let drag = { el: null, listName: "" };
 
+  /* 지금 화면에 그릴 항목 — 섹션은 고른 탭 안의 것만, 탭은 전체. */
+  function listItems(listName) {
+    const all = (config().navigation[listName] || []);
+    if (listName !== "sections") return sortedByOrder(all);
+    const tab = state.sectionTab[state.site];
+    return sortedByOrder(all.filter((section) => sectionTabOf(section) === tab));
+  }
+
+  /* ② 화면의 탭 고르기(탭 안 섹션 편집기 머리). */
+  function renderSectionTabs() {
+    const box = $("#section-tabs");
+    if (!box) return;
+    const tabs = sortedByOrder(config().navigation.tabs);
+    const active = state.sectionTab[state.site];
+    if (tabs.length && !tabs.some((tab) => tab.id === active)) state.sectionTab[state.site] = tabs[0].id;
+    const now = state.sectionTab[state.site];
+    if (!tabs.length) {
+      box.innerHTML = '<p class="note">탭이 없습니다.</p>';
+      return;
+    }
+    box.innerHTML = tabs.map((tab) => {
+      const count = config().navigation.sections.filter((section) => sectionTabOf(section) === tab.id).length;
+      const on = tab.id === now;
+      const hidden = tab.visible === false;
+      return `<button type="button" class="stab${on ? " is-active" : ""}${hidden ? " is-off" : ""}" data-stab="${esc(tab.id)}" role="tab" aria-selected="${on ? "true" : "false"}">
+        <span class="stab-label">${esc(tab.label)}</span>
+        <span class="stab-count">${count}</span>
+        ${hidden ? '<span class="stab-off">숨김</span>' : ""}
+      </button>`;
+    }).join("");
+
+    const note = $("#section-tab-note");
+    if (note) {
+      const tab = tabs.find((x) => x.id === now) || tabs[0];
+      const count = config().navigation.sections.filter((section) => sectionTabOf(section) === tab.id).length;
+      note.textContent = `‘${tab.label}’ 탭 안의 섹션 ${count}개입니다. 순서·노출을 바꾸고, ✎ 를 누르면 제목·부제·설명·본문을 그 자리에서 고칩니다.`;
+    }
+  }
+
+  function setSectionTab(tabId) {
+    state.sectionTab[state.site] = tabId;
+    saveUi();
+    renderSectionTabs();
+    renderOrderList("sections");
+    schedulePreview();
+  }
+
   function bindReorder(box, listName) {
     if (!box) return;
     box.addEventListener("click", (event) => {
@@ -713,6 +800,37 @@
       const action = btn.dataset.act;
       if (action === "up") moveItem(listName, id, -1);
       if (action === "down") moveItem(listName, id, 1);
+      if (action === "edit") {
+        // 목록을 다시 그리지 않고 그 자리에서 내용 편집기를 열고 닫는다.
+        const key = `${state.site}:${id}`;
+        const open = !state.openSections[key];
+        state.openSections[key] = open;
+        const editor = row.querySelector("[data-seditor]");
+        if (editor) editor.hidden = !open;
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.textContent = open ? "▾" : "✎";
+        row.classList.toggle("is-open", open);
+      }
+    });
+
+    // 섹션 안쪽 문구(copy)와 본문 문단(sections[].body) 편집
+    box.addEventListener("input", (event) => {
+      const field = event.target.closest("[data-sfield]");
+      if (field) {
+        const keyName = field.dataset.sfield;
+        setPath(config(), `copy.${keyName}`, field.value);
+        markDirty(true);
+        syncCopyInput(keyName);
+        schedulePreview();
+        return;
+      }
+      const bodyEl = event.target.closest("[data-sbody]");
+      if (!bodyEl) return;
+      const section = config().navigation.sections.find((x) => x.id === bodyEl.dataset.sbody);
+      if (!section) return;
+      section.body = bodyEl.value;
+      markDirty(true);
+      schedulePreview();
     });
 
     // 이름 편집 — 입력하는 즉시 설정·미리보기·‘저장 안 된 변경’에 반영한다.
@@ -799,15 +917,21 @@
   }
 
   function moveItem(listName, id, delta) {
-    const list = renumber(sortedByOrder(config().navigation[listName]));
+    const list = listItems(listName);
     const index = list.findIndex((x) => x.id === id);
     const target = index + delta;
     if (index < 0 || target < 0 || target >= list.length) return;
     const [item] = list.splice(index, 1);
     list.splice(target, 0, item);
-    config().navigation[listName] = renumber(list);
+    if (listName === "sections") {
+      // 섹션 순서는 ‘그 탭 안에서’ 1부터 — 다른 탭의 섹션은 건드리지 않는다.
+      list.forEach((section, i) => { section.order = i + 1; });
+    } else {
+      config().navigation[listName] = renumber(list);
+    }
     markDirty(true);
     renderOrderList(listName);
+    renderSectionTabs();
     schedulePreview();
   }
 
@@ -816,34 +940,82 @@
     const ids = $$(".rrow", box).map((row) => row.dataset.id);
     const list = config().navigation[listName];
     const byId = new Map(list.map((item) => [item.id, item]));
-    const next = ids.map((id) => byId.get(id)).filter(Boolean);
-    list.forEach((item) => { if (!next.includes(item)) next.push(item); });
-    config().navigation[listName] = renumber(next);
+    if (listName === "sections") {
+      // 화면에 있는 섹션(그 탭)만 1부터 다시 매긴다.
+      ids.forEach((id, i) => { const item = byId.get(id); if (item) item.order = i + 1; });
+    } else {
+      const next = ids.map((id) => byId.get(id)).filter(Boolean);
+      list.forEach((item) => { if (!next.includes(item)) next.push(item); });
+      config().navigation[listName] = renumber(next);
+    }
     markDirty(true);
     renderOrderList(listName);
+    renderSectionTabs();
     schedulePreview();
+  }
+
+  /* ② 섹션 편집기의 입력칸 하나 — ③ 문구와 같은 정의(kind·max)를 쓴다. */
+  function sectionFieldHtml(key) {
+    const field = copyFieldOf(key);
+    const id = `s-${state.site}-${key}`;
+    const raw = getPath(config(), `copy.${key}`);
+    const value = raw == null ? "" : String(raw);
+    const rich = field.kind === "html" || field.kind === "areaHtml";
+    const hint = rich ? ' <em>&lt;b&gt;·&lt;br&gt; 등 일부 태그 사용 가능</em>' : "";
+    const max = Number(field.max) || 80;
+    if (field.kind === "area" || field.kind === "areaHtml") {
+      return `<label class="field sfield" for="${esc(id)}">
+        <span class="field-label">${esc(field.label)}${hint}</span>
+        <textarea id="${esc(id)}" data-sfield="${esc(key)}" rows="2" maxlength="${max}">${esc(value)}</textarea>
+      </label>`;
+    }
+    return `<label class="field sfield" for="${esc(id)}">
+      <span class="field-label">${esc(field.label)}${hint}</span>
+      <input type="text" id="${esc(id)}" data-sfield="${esc(key)}" value="${esc(value)}" maxlength="${max}">
+    </label>`;
   }
 
   function renderOrderList(listName) {
     const box = $(`#list-${listName}`);
     if (!box) return;
-    const list = sortedByOrder(config().navigation[listName]);
+    const isSection = listName === "sections";
+    const list = listItems(listName);
+    if (isSection && !list.length) {
+      box.innerHTML = '<p class="note">이 탭에는 편집할 섹션이 없습니다. 위에서 다른 탭을 골라 주세요.</p>';
+      return;
+    }
     const limit = LABEL_LIMIT[listName] || 20;
-    const notes = SECTION_LABEL_NOTE[state.site] || {};
     box.innerHTML = list.map((item, index) => {
-      const kind = listName === "tabs" ? "탭" : "섹션";
-      const note = listName === "sections" ? notes[item.id] : "";
+      const kind = isSection ? "섹션" : "탭";
+      const meta = isSection ? metaOf(item.id) : null;
+      const title = isSection ? sectionTitleInfo(item) : { kind: "label", value: item.label, key: "" };
+      const titleMax = title.kind === "copy" ? (Number(copyFieldOf(title.key).max) || 80) : limit;
+      const noteParts = [];
+      if (isSection && title.kind === "copy") noteParts.push(`화면 제목: 문구 ${title.key}`);
+      if (isSection && meta && meta.note) noteParts.push(meta.note);
+      const note = noteParts.join(" · ");
+      const open = Boolean(state.openSections[`${state.site}:${item.id}`]);
+      const titleInput = title.kind === "copy"
+        ? `<input type="text" class="rlabel-input" data-sfield="${esc(title.key)}" value="${esc(title.value)}"
+                 maxlength="${titleMax}" placeholder="화면에 보일 제목" spellcheck="false"
+                 aria-label="${esc(item.id)} 섹션 제목" title="이 칸이 화면의 섹션 제목이 됩니다">`
+        : `<input type="text" class="rlabel-input" data-label-field="1" value="${esc(item.label)}"
+                 maxlength="${limit}" placeholder="화면에 보일 이름" spellcheck="false"
+                 aria-label="${esc(item.id)} ${kind} 이름" title="이름을 눌러 고치면 미리보기와 사이트에 반영됩니다">`;
+      const editBtn = isSection
+        ? `<button type="button" class="icon-btn" data-act="edit" aria-expanded="${open ? "true" : "false"}" aria-controls="sedit-${esc(item.id)}" title="제목·부제·설명·본문 고치기" aria-label="${esc(item.label)} 내용 고치기">${open ? "▾" : "✎"}</button>`
+        : "";
+      const editor = isSection ? sectionEditorHtml(item, meta, open) : "";
       return `
-      <div class="rrow ${item.visible ? "" : "is-hidden-item"}" draggable="true" data-id="${esc(item.id)}">
+      <div class="rrow ${item.visible ? "" : "is-hidden-item"}${open ? " is-open" : ""}" draggable="true" data-id="${esc(item.id)}">
         <span class="rdrag" title="끌어서 순서 바꾸기" aria-hidden="true">⠿</span>
         <span class="rnum">${index + 1}</span>
         <div class="rmain">
-          <input type="text" class="rlabel-input" data-label-field="1" value="${esc(item.label)}"
-                 maxlength="${limit}" placeholder="화면에 보일 이름" spellcheck="false"
-                 aria-label="${esc(item.id)} ${kind} 이름" title="이름을 눌러 고치면 미리보기와 사이트에 반영됩니다">
+          ${titleInput}
           <div class="rid">${esc(item.id)}${note ? ` · <span class="rhint">${esc(note)}</span>` : ""}</div>
         </div>
         <div class="rmove">
+          ${editBtn}
           <button type="button" class="icon-btn" data-act="up" aria-label="${esc(item.label)} 위로" ${index === 0 ? "disabled" : ""}>▲</button>
           <button type="button" class="icon-btn" data-act="down" aria-label="${esc(item.label)} 아래로" ${index === list.length - 1 ? "disabled" : ""}>▼</button>
           <label class="switch" title="${item.visible ? "노출 중" : "숨김"}">
@@ -851,8 +1023,23 @@
             <span class="switch-track"><span class="switch-thumb"></span></span>
           </label>
         </div>
+        ${editor}
       </div>`;
     }).join("");
+  }
+
+  /* 섹션 안쪽 내용 편집기 — 표제·설명·링크는 copy 키, 본문은 sections[].body. */
+  function sectionEditorHtml(section, meta, open) {
+    const fields = (meta && meta.fields) || [];
+    const body = section.body == null ? "" : String(section.body);
+    return `<div class="seditor" id="sedit-${esc(section.id)}" data-seditor="${esc(section.id)}" ${open ? "" : "hidden"}>
+      ${fields.length ? `<div class="sedit-grid">${fields.map(sectionFieldHtml).join("")}</div>`
+        : '<p class="note sfield-empty">이 섹션에는 따로 고칠 문구가 없습니다. 아래 본문 문단을 쓸 수 있어요.</p>'}
+      <label class="field sfield">
+        <span class="field-label">본문 문단 <em>섹션 아래에 덧붙는 안내 글 · &lt;b&gt;·&lt;br&gt; 등 일부 태그 사용</em></span>
+        <textarea data-sbody="${esc(section.id)}" rows="2" maxlength="600" placeholder="비우면 본문이 표시되지 않습니다">${esc(body)}</textarea>
+      </label>
+    </div>`;
   }
 
   /* 이름을 고치는 동안에는 목록을 다시 그리지 않는다(입력 중 커서가 튀지 않도록).
@@ -864,6 +1051,14 @@
     });
     const sw = $('input[data-act="vis"]', row);
     if (sw) sw.setAttribute("aria-label", `${label} 노출`);
+  }
+
+  /* ② 에서 고친 문구를 ③ 문구 화면의 같은 칸에도 바로 반영한다. */
+  function syncCopyInput(key) {
+    const el = document.getElementById(`copy-${key}`);
+    if (!el) return;
+    const value = getPath(config(), `copy.${key}`);
+    el.value = value == null ? "" : String(value);
   }
 
   /* 이름을 비우면 사이트에는 반영되지 않으므로 기본 이름으로 되돌린다. */
@@ -978,6 +1173,7 @@
     syncInputs();
     updateDerived();
     renderOrderList("tabs");
+    renderSectionTabs();
     renderOrderList("sections");
     renderCards();
     renderDeployTarget();
@@ -1012,8 +1208,12 @@
     const inkBg = dark ? "#101f3c" : "#ffffff";
     const inkColor = dark ? "#ffffff" : "#101f3c";
 
-    const tabs = sortedByOrder(cfg.navigation.tabs).filter((t) => t.visible);
-    const sections = sortedByOrder(cfg.navigation.sections).filter((s) => s.visible);
+    const allTabs = sortedByOrder(cfg.navigation.tabs);
+    const tabs = allTabs.filter((t) => t.visible);
+    // 미리보기는 ② 에서 고른 탭 안쪽만 그린다(탭 안 섹션 편집과 같은 화면).
+    const activeTab = state.sectionTab[state.site];
+    const sections = sortedByOrder(cfg.navigation.sections)
+      .filter((s) => s.visible && sectionTabOf(s) === activeTab);
     const cards = sortedByOrder(cfg.cards).filter((c) => c.visible);
 
     const banner = cfg.banner.enabled && String(cfg.banner.text || "").trim()
@@ -1024,7 +1224,10 @@
       : "";
 
     const nav = tabs.length
-      ? `<div class="pv-nav">${tabs.map((t, i) => `<span style="background:${i === 0 ? accent : (dark ? "rgba(255,255,255,.08)" : "#f0f3fa")};color:${i === 0 ? (dark ? "#101f3c" : "#fff") : (dark ? "#c9d2e6" : "#4a5875")}">${esc(t.label)}</span>`).join("")}</div>`
+      ? `<div class="pv-nav">${tabs.map((t) => {
+        const on = t.id === activeTab;
+        return `<span style="background:${on ? accent : (dark ? "rgba(255,255,255,.08)" : "#f0f3fa")};color:${on ? (dark ? "#101f3c" : "#fff") : (dark ? "#c9d2e6" : "#4a5875")}">${esc(t.label)}</span>`;
+      }).join("")}</div>`
       : '<div class="pv-nav"><span class="pv-empty">노출 중인 탭이 없습니다</span></div>';
 
     const statusCard = cards.length
@@ -1037,6 +1240,8 @@
     // 현황 카드(cards)는 두 사이트 화면에 자리가 없어 미리보기에 따로 그리지 않는다.
     const cardBlock = "";
 
+    const sectionBody = (section) => (section.body && String(section.body).trim()
+      ? `<p class="pv-sect-body">${safeHtml(section.body)}</p>` : "");
     const sectionHtml = sections.map((section) => {
       if (section.id === "status") {
         return `<div class="pv-sect"><h2 style="color:${inkColor};--bar:${accent}">${esc(section.label)}</h2>${statusCard || '<div class="pv-empty">표시할 카드가 없습니다</div>'}</div>`;
@@ -1046,12 +1251,16 @@
           <h1>${safeHtml(cfg.copy.heroTitle)}</h1>
           <p>${esc(cfg.copy.heroDescription)}</p>
           ${cfg.copy.ctaLabel ? `<span class="pv-cta" style="background:${accent};color:${dark ? "#101f3c" : "#fff"}">${esc(cfg.copy.ctaLabel)}</span>` : ""}
+          ${sectionBody(section)}
         </div>`;
       }
-      return `<div class="pv-sect"><h2 style="color:${inkColor};--bar:${accent}">${esc(section.label)}</h2>
+      const title = sectionTitleInfo(section);
+      const heading = title.kind === "copy" ? safeHtml(title.value) : esc(title.value);
+      return `<div class="pv-sect"><h2 style="color:${inkColor};--bar:${accent}">${heading}</h2>
         <div class="pv-row" style="background:${dark ? "rgba(255,255,255,.10)" : "#e8ecf5"};width:92%"></div>
         <div class="pv-row" style="background:${dark ? "rgba(255,255,255,.08)" : "#eef1f7"};width:78%"></div>
         <div class="pv-row" style="background:${dark ? "rgba(255,255,255,.06)" : "#f2f5fa"};width:85%"></div>
+        ${sectionBody(section)}
       </div>`;
     }).join("");
 
@@ -1079,12 +1288,14 @@
         </div>
       </div>
       ${nav}
-      <div class="pv-body">${cardBlock}${sectionHtml || (cardBlock ? "" : '<div class="pv-empty">노출 중인 섹션이 없습니다</div>')}</div>
+      <div class="pv-body">${cardBlock}${sectionHtml || (cardBlock ? "" : '<div class="pv-empty">이 탭에 노출 중인 섹션이 없습니다</div>')}</div>
       <div class="pv-footer" style="border-top:1px solid ${dark ? "rgba(255,255,255,.1)" : "#eef1f7"};color:${dark ? "#8d9ab8" : "#8490a8"}">${esc(cfg.copy.footerText)}</div>
       ${popup}
     </div>`;
 
     $("#phone-screen").innerHTML = html;
+    const nowTab = allTabs.find((t) => t.id === activeTab);
+    $("#preview-site").textContent = nowTab && nowTab.label ? `${current().name} · ${nowTab.label}` : current().name;
 
     // 팝업 기간 안내
     const note = $("#preview-note");
@@ -1107,9 +1318,18 @@
     cfg.meta.updatedAt = new Date().toISOString();
     cfg.banner.updatedAt = cfg.banner.enabled ? cfg.meta.updatedAt : cfg.banner.updatedAt || null;
     cfg.popup.updatedAt = cfg.popup.enabled ? cfg.meta.updatedAt : cfg.popup.updatedAt || null;
-    // 순서 필드를 항상 1부터 정리해 둔다.
+    // 순서 필드를 항상 1부터 정리해 둔다. 섹션은 ‘탭 순서 → 탭 안 순서’로 늘어놓아
+    // 각 탭의 섹션이 연속된 order 를 갖게 한다(사이트는 같은 탭 안에서만 정렬한다).
     cfg.navigation.tabs = renumber(sortedByOrder(cfg.navigation.tabs));
-    cfg.navigation.sections = renumber(sortedByOrder(cfg.navigation.sections));
+    const tabRank = new Map(cfg.navigation.tabs.map((tab, i) => [tab.id, i]));
+    const rankOf = (section) => (tabRank.has(sectionTabOf(section)) ? tabRank.get(sectionTabOf(section)) : 999);
+    cfg.navigation.sections = cfg.navigation.sections.slice()
+      .sort((a, b) => rankOf(a) - rankOf(b) || (a.order || 0) - (b.order || 0))
+      .map((section, i) => {
+        const out = Object.assign({}, section, { order: i + 1, tab: sectionTabOf(section) });
+        if (!out.body) delete out.body;
+        return out;
+      });
     cfg.cards = renumber(sortedByOrder(cfg.cards));
     if (cfg.popup.enabled && !cfg.popup.id) cfg.popup.id = `popup-${Date.now()}`;
     return cfg;

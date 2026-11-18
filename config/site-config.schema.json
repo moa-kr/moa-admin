@@ -67,7 +67,7 @@
     },
     "navigation": {
       "type": "object",
-      "description": "탭·섹션의 순서(order, 1부터)와 노출(visible). 사이트는 order 오름차순으로 그립니다.",
+      "description": "탭·섹션의 순서(order, 1부터)와 노출(visible). 사이트는 같은 탭(패널) 안에서 order 오름차순으로 그립니다.",
       "required": ["tabs", "sections"],
       "properties": {
         "tabs": {
@@ -86,14 +86,17 @@
         },
         "sections": {
           "type": "array",
+          "description": "탭 안쪽 블록(섹션). tab 으로 어느 탭의 섹션인지 적고, order 는 그 탭 안에서 1부터 매깁니다.",
           "items": {
             "type": "object",
             "required": ["id", "label", "visible", "order"],
             "properties": {
-              "id": { "type": "string", "description": "페이지 안쪽 섹션 식별자(예: hero, pricing, boxes, offline, trend, tips, cards, faq, pop / 복지모아 search, recent, popular, upload-cta)." },
-              "label": { "type": "string", "maxLength": 30 },
+              "id": { "type": "string", "description": "사이트 HTML 의 data-section 값(예: map-status, hero, pricing, issues, rates, cards, faq, pop)." },
+              "label": { "type": "string", "maxLength": 60, "description": "섹션 제목([data-section-title]). 화면 제목을 copy 키로 그리는 섹션에서는 목록에 보일 이름으로만 쓰입니다." },
               "visible": { "type": "boolean" },
-              "order": { "type": "integer", "minimum": 1 }
+              "order": { "type": "integer", "minimum": 1, "description": "같은 탭 안에서의 순서." },
+              "tab": { "type": "string", "description": "이 섹션이 들어 있는 탭 id(navigation.tabs 의 id). 어드민이 탭별로 묶어 보여 줍니다. 비면 사이트의 기본 탭을 씁니다." },
+              "body": { "type": "string", "maxLength": 600, "description": "섹션 맨 아래에 덧붙는 본문 문단(<b>·<br> 등 일부 태그 허용). 비우면 그리지 않습니다." }
             },
             "additionalProperties": true
           }

@@ -11,9 +11,64 @@
     "siteTitle": "포켓몬카드모아",
     "subtitle": "POKEMON CARD MOA",
     "heroTitle": "30th CELEBRATION,<br><em>정가</em>로 만나는 방법",
-    "heroDescription": "포켓몬 카드 정가 구매처와 추첨 일정, 입고 기록, 편의점 4사 재고와 취급 카드까지 한 화면에 모았습니다. 리셀가에 흔들리지 않도록 기준 가격부터 확인하세요.",
+    "heroDescription": "포켓몬 카드 구매처와 입고 기록, 편의점 재고와 취급 카드까지 한 화면에 모았습니다. 리셀가에 흔들리지 않도록 기준 가격부터 확인하세요.",
     "ctaLabel": "정가 구매처 보기",
-    "footerText": "포켓몬 카드의 정가 구매처, 추첨·입고 일정, 주변 매장 재고, 수록 카드 정보를 한 곳에 모은 비공식 정보 사이트입니다. 데이터 기준일 2026-11-17."
+    "footerText": "포켓몬 카드의 정가 구매처, 추첨·입고 일정, 주변 매장 재고, 수록 카드 정보를 한 곳에 모은 비공식 정보 사이트입니다. 데이터 기준일 2026-11-17.",
+    "headerDate": "데이터 기준 11-17",
+    "heroTag": "<b>30th</b> 2026 MEGA 확장팩 · 30주년 기념",
+    "ctaLabel2": "지도에서 재고 찾기",
+    "mapEyebrow": "동네에서 찾기 · 첫 화면",
+    "mapTitle": "내 주변 편의점과 오프라인 판매처, 어떤 카드가 있는지 한눈에",
+    "mapLead": "카카오맵 실제 지도 위에 주변 <b>편의점 4사(GS25·CU·세븐일레븐·이마트24)</b>와 <b>오프라인 판매처(대형마트·아트박스·공식 자판기·공인 카드샵)</b>를 함께 표시합니다. 마트·아트박스는 카카오 장소 검색으로 실시간 조회하고, 공식 자판기(전국 176곳)와 공인 카드샵(전국 16곳)은 포켓몬코리아 공식 목록에서 가져와 반경 안에 들어오면 지도에 올립니다. 지도 말풍선과 매장 카드는 편의점 앱에서 실시간으로 <b>확인한 재고 상품·수량</b>만 표시하고, 재고가 0으로 확인되면 <b>「없음」</b>, 확인되지 않은 매장은 <b>「미조회」</b>로 둡니다. <b>전국 17개 시·도</b>에서 시·군·구를 고르거나 동네 이름으로 검색하고, <b>'내 위치로 찾기'</b>를 누르면 그 반경의 매장을 새로 조회합니다.",
+    "scheduleEyebrow": "일정 · 소식",
+    "scheduleTitle": "카드 소식과 발매·재입고 일정",
+    "scheduleLead": "먼저 <b>카드 뉴스·소식</b>에서 공식 공지와 신규팩 발매 소식을 확인하고, <b>발매·재입고 일정</b>에서 추첨 회차별 예정·종료 일정을 보세요. 포켓몬스토어 추첨은 회차마다 응모·발표·결제·배송 날짜가 따로 있습니다.",
+    "guideEyebrow": "도감 · 시세",
+    "guideTitle": "세트별 정가와 리셀 시세 검색",
+    "guideLead": "세트·박스 이름으로 검색하면 그 세트의 <b>공식 정가(팩·박스)</b>와 <b>리셀 시세 검색 바로가기(KREAM · 번개장터 · PriceCharting)</b>가 함께 나옵니다. 위의 <b>시세·거래가 조회</b>에서는 PSA 경매 낙찰가·eBay 즉구가·스니커덩크까지 한 번에 열 수 있습니다. 아래 세트 칩으로 골라 수록 카드 도감과 정가·리셀 비교표를 볼 수도 있습니다.",
+    "trendsEyebrow": "팝수 조회",
+    "trendsTitle": "등급 회사를 고르고 인증서·카드 번호로 조회",
+    "trendsLead": "<b>PSA · CGC · BRG · BGS</b> 가운데 회사를 먼저 고른 뒤 등급카드 넘버(인증서 번호 또는 카드 번호)를 넣으면, 번호를 복사해 그 회사의 팝 리포트·인증서 조회 페이지로 바로 넘겨 줍니다. 팝수는 회사별로 따로 집계되므로 보고 싶은 회사를 먼저 골라야 합니다.",
+    "pricingEyebrow": "정가 구매처 현황",
+    "pricingDesc": "정가는 모든 채널이 같지만 배송비·판매 단위·추첨 여부가 다릅니다. 결제 전에 총액과 팩당 단가를 확인하세요. 가격은 2026-11-17 확인 기준입니다.",
+    "pricingLink": "다른 박스 정가 구매처 →",
+    "boxesEyebrow": "다른 확장팩 · 박스 정가 구매처",
+    "boxesDesc": "30th CELEBRATION을 뺀 8개 박스의 <b>공식 정가·구성</b>과 <b>KREAM 참고 시세</b>를 박스별로 모았습니다. 위 칩에서 박스를 고르면 아래 구매처 목록이 그 박스 기준으로 바뀝니다. 금액은 공식 정가와 2026-11-17 KREAM 시세이고, 실제 재고·결제 금액은 판매처 페이지에서 확인하세요.",
+    "boxesLink": "30th CELEBRATION 구매처 →",
+    "offlineEyebrow": "오프라인 · 자판기",
+    "offlineDesc": "온라인 재고가 없어도 오프라인에서 정가로 살 수 있는 채널입니다. 매장·자판기의 <b>재고는 어떤 채널도 공개하지 않아</b> 표시하지 않으니, 방문 전 매장 문의로 확인하세요.",
+    "offlineLink": "지도에서 오프라인 위치 보기 →",
+    "trendEyebrow": "인기 카드팩 트렌드",
+    "trendDesc": "정가와 구성, 주목 카드만 짧게 정리했습니다. 세트마다 팩 수와 카드 매수가 달라 팩당 단가로 비교해야 합니다.",
+    "trendLink": "수록 카드 도감 →",
+    "tipsEyebrow": "오늘의 체크 포인트",
+    "faqEyebrow": "자주 묻는 질문",
+    "mapChannelsTitle": "실제 재고를 확인하는 공식 채널",
+    "fxTitle": "오늘의 환율",
+    "marketTitle": "PSA 거래 내역 조회 (경매가·즉구가)",
+    "issuesEyebrow": "최근 이슈되는 카드 이슈",
+    "issuesTitle": "2026년 11월 카드 게임 소식",
+    "issuesDesc": "공식 공지와 보도로 확인한 6건입니다. 날짜는 공지·보도 기준이고, 링크는 원문으로 바로 갑니다.",
+    "issuesLink": "포켓몬코리아 소식 ↗",
+    "releasesEyebrow": "신규 팩 발매 소식",
+    "releasesTitle": "공식 사이트에서 확인한 발매·발매 예정",
+    "releasesDesc": "포켓몬 카드 게임 공식 제품 정보(pokemoncard.co.kr)의 발매일·정가·구성입니다. 한국판 일정이 없는 상품은 '해외'로 표시했습니다.",
+    "releasesLink": "공식 제품 목록 ↗",
+    "status1Title": "재고 있음",
+    "status1Desc": "실시간 조회에서 수량 1개 이상을 확인한 매장입니다. 조회 시점 기준이니 방문 전 매장에 확인하세요.",
+    "status2Title": "미조회",
+    "status2Desc": "아직 실시간 조회 대상이 아니거나 수량을 받지 못한 매장입니다. 수량을 지어내지 않고 위치만 표시합니다.",
+    "status3Title": "없음",
+    "status3Desc": "실시간 조회에서 재고 0으로 확인된 매장입니다. 아직 입고 전일 수도 있습니다.",
+    "status4Title": "보유 카드 표시",
+    "status4Desc": "태그는 실시간 조회에서 확인한 상품명과 수량(예: 닌자스피너 · 3개)만 붙습니다. 확인되지 않은 매장에는 상품 태그가 없습니다.",
+    "status5Title": "오프라인 판매처",
+    "status5Desc": "대형마트·아트박스는 카카오 장소 검색으로 위치만 표시하고, 공식 자판기(포켓몬코리아 자판기 안내, 176곳)·공인 카드샵(16곳)은 공식 목록의 설치 장소를 옮겨 온 것입니다.",
+    "footerNote1": "포켓몬카드모아는 포켓몬·포켓몬코리아와 무관한 비공식 정보 사이트입니다. ‘포켓몬’, ‘포켓몬 카드 게임’ 및 관련 명칭·이미지의 권리는 각 권리자에게 있습니다. 본 사이트는 공식 로고와 카드 이미지를 사용하지 않으며, 카드 정보는 공개된 상품 정보를 정리한 것입니다.",
+    "footerNote2": "지도에 표시된 매장 위치·이름은 카카오맵 실제 장소 데이터이며, 매장별 재고는 편의점 앱에서 실시간으로 조회한 실제 수량만 표시하고, 확인되지 않은 매장은 「미조회」로 둡니다. 구매 판단과 그 결과는 이용자 본인에게 있습니다.",
+    "footerNote3": "광고·제휴 고지: 본 사이트는 Google AdSense 광고와 쿠팡 파트너스 활동을 통해 수수료를 받을 수 있습니다. 제휴 링크를 통한 구매 시 사이트에 일정액의 수수료가 지급될 수 있으며, 이용자 가격에는 영향이 없습니다.",
+    "footerCopyright": "© 2026 포켓몬카드모아. 비공식 팬 정보 사이트.",
+    "footerDataDate": "데이터 기준 2026-11-17"
   },
   "banner": {
     "enabled": false,
@@ -57,7 +112,7 @@
       },
       {
         "id": "guide",
-        "label": "도감·시세",
+        "label": "시세·도감",
         "visible": true,
         "order": 4
       },
@@ -70,58 +125,109 @@
     ],
     "sections": [
       {
-        "id": "hero",
-        "label": "첫 화면 소개",
+        "id": "map-status",
+        "label": "상태 안내 (5개)",
         "visible": true,
-        "order": 1
+        "order": 1,
+        "tab": "map"
+      },
+      {
+        "id": "map-channels",
+        "label": "공식 채널 바로가기",
+        "visible": true,
+        "order": 2,
+        "tab": "map"
+      },
+      {
+        "id": "hero",
+        "label": "첫 화면 히어로",
+        "visible": true,
+        "order": 1,
+        "tab": "home"
       },
       {
         "id": "pricing",
         "label": "70,000원에 살 수 있는 곳, 채널별 조건까지",
         "visible": true,
-        "order": 2
+        "order": 2,
+        "tab": "home"
       },
       {
         "id": "boxes",
         "label": "30th 말고 다른 박스, 정가로 사는 곳",
         "visible": true,
-        "order": 3
+        "order": 3,
+        "tab": "home"
       },
       {
         "id": "offline",
         "label": "마트·아트박스·자판기·카드샵에서 정가로 사는 곳",
         "visible": true,
-        "order": 4
+        "order": 4,
+        "tab": "home"
       },
       {
         "id": "trend",
         "label": "지금 가장 많이 찾는 4개 세트",
         "visible": true,
-        "order": 5
+        "order": 5,
+        "tab": "home"
       },
       {
         "id": "tips",
         "label": "헛걸음을 줄이는 세 가지 순서",
         "visible": true,
-        "order": 6
+        "order": 6,
+        "tab": "home"
+      },
+      {
+        "id": "issues",
+        "label": "카드 뉴스·소식",
+        "visible": true,
+        "order": 1,
+        "tab": "schedule"
+      },
+      {
+        "id": "releases",
+        "label": "발매·재입고 일정",
+        "visible": true,
+        "order": 2,
+        "tab": "schedule"
+      },
+      {
+        "id": "rates",
+        "label": "환율 위젯",
+        "visible": true,
+        "order": 1,
+        "tab": "guide"
+      },
+      {
+        "id": "market",
+        "label": "PSA·eBay 거래가 조회",
+        "visible": true,
+        "order": 2,
+        "tab": "guide"
       },
       {
         "id": "cards",
         "label": "수록 카드와 레어도",
         "visible": true,
-        "order": 7
+        "order": 3,
+        "tab": "guide"
       },
       {
         "id": "faq",
         "label": "구매 전에 가장 많이 묻는 것들",
         "visible": true,
-        "order": 8
+        "order": 4,
+        "tab": "guide"
       },
       {
         "id": "pop",
         "label": "팝수 조회",
         "visible": true,
-        "order": 9
+        "order": 1,
+        "tab": "trends"
       }
     ]
   },
@@ -129,7 +235,7 @@
     {
       "id": "stock",
       "title": "실시간 재고",
-      "description": "내 주변 편의점 4사 재고를 지도에서 확인",
+      "description": "내 주변 편의점 재고를 지도에서 확인",
       "visible": true,
       "order": 1
     },
@@ -150,7 +256,7 @@
   ],
   "meta": {
     "updatedBy": "moa-admin",
-    "updatedAt": "2026-11-18T00:00:00.000Z",
-    "note": "기본값 예시입니다. moa-kr/pokemoa 의 실제 설정을 그대로 옮겨 적었습니다."
+    "updatedAt": null,
+    "note": "기본값 예시입니다. 실제 파일은 각 사이트 저장소의 경로에 있고, 모아 어드민이 커밋합니다."
   }
 }

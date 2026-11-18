@@ -51,18 +51,30 @@
 
 ```json
 { "id": "map", "label": "동네에서 찾기", "visible": true, "order": 1 }
+{ "id": "pricing", "label": "70,000원에 살 수 있는 곳, 채널별 조건까지", "visible": true, "order": 2, "tab": "home", "body": "추가 안내 문단(선택)" }
 ```
 
-- `order` 는 1부터. 사이트는 **오름차순**으로 그리고, `visible: false` 인 항목은 숨깁니다.
+- `order` 는 1부터. 사이트는 **같은 탭(패널) 안에서** 오름차순으로 그리고, `visible: false` 인 항목은 숨깁니다.
+- `tab`(섹션 전용, 선택)은 그 섹션이 들어 있는 탭 id 입니다. 어드민 ② 화면이 탭별로 묶어 보여 주고, 저장할 때 탭 순서대로 order 를 다시 매깁니다. 비어 있으면 사이트의 기본 탭을 씁니다.
+- `body`(섹션 전용, 선택)는 섹션 맨 아래에 덧붙는 **본문 문단**입니다(`<b>`·`<br>` 등 일부 태그만 허용, 최대 600자). 어드민 ② 에서 섹션을 펼쳐 씁니다. 비우면 아무것도 그리지 않습니다.
 - `id` 는 각 사이트 코드가 이미 쓰는 값이어야 합니다(사이트 HTML 의 `data-tab`/`data-nav`/`data-section` 값).
-  - pokemoa 탭: `map`(동네에서 찾기) · `home`(정가 구매처) · `schedule`(일정·소식) · `guide`(도감·시세) · `trends`(팝수 조회)
-  - pokemoa 섹션(9곳, v4.11 화면 기준): `hero`(첫 화면 소개) · `pricing`(30th 정가 구매처) · `boxes`(다른 박스 정가 구매처) · `offline`(마트·아트박스·자판기·카드샵) · `trend`(인기 카드팩) · `tips`(오늘의 체크) · `cards`(수록 카드 도감) · `faq`(자주 묻는 질문) · `pop`(팝수 조회)
+  - pokemoa 탭: `map`(동네에서 찾기) · `home`(정가 구매처) · `schedule`(일정·소식) · `guide`(시세·도감) · `trends`(팝수 조회)
+  - pokemoa 섹션(15곳, v4.18 화면 기준) — 탭별
+    - `map`: `map-status`(지도 상태 안내 5개) · `map-channels`(공식 채널 바로가기)
+    - `home`: `hero`(첫 화면) · `pricing`(정가 구매처) · `boxes`(다른 박스) · `offline`(오프라인·자판기) · `trend`(인기 카드팩) · `tips`(오늘의 체크)
+    - `schedule`: `issues`(카드 뉴스·소식) · `releases`(발매·재입고 일정)
+    - `guide`: `rates`(환율 위젯) · `market`(PSA·eBay 거래가 조회) · `cards`(수록 카드 도감) · `faq`(자주 묻는 질문)
+    - `trends`: `pop`(팝수 조회)
   - bokjimoa 탭: `home` · `ranking` · `calculator` · `compare`
-  - bokjimoa 섹션(5곳, v0.12.2 화면 기준): `hero`(첫 화면 소개) · `search`(회사 찾기) · `recent`(최근 업로드된 회사) · `popular`(인기 · 등록 많은 회사) · `upload-cta`(내 회사 복지를 알려주세요)
+  - bokjimoa 섹션(11곳, v0.13.2 화면 기준) — 탭별
+    - `home`: `hero` · `search` · `recent` · `popular` · `upload-cta`
+    - `ranking`: `ranking-head`(주제별 TOP 머리글) · `ranking-list`(테마별 순위 목록)
+    - `calculator`: `calc-head`(계산기 머리글) · `calc-body`(계산기 입력·결과)
+    - `compare`: `compare-head`(비교 회사 선택) · `compare-table`(비교표)
   - 옛 이름 `status`·`restock`(현황 카드·최근 입고 기록)은 포케모아 v76 에서 화면에서 빠졌으므로 목록에 두지 않습니다. 설정에 남아 있어도 화면에는 아무 영향이 없습니다.
-- `label` 은 그 항목의 **화면 문구**입니다. 탭은 내비게이션 이름표, 섹션은 섹션 머리글(`[data-section-title]`)이 이 값으로 바뀝니다. 지금 값은 두 사이트의 실제 화면 문구와 같아서, 저장만으로 달라지는 곳은 없습니다.
-- 섹션 순서는 **같은 패널 안에서만** 바뀝니다(탭이 다른 섹션끼리 자리를 맞바꾸지는 않음). `visible:false` 는 `display:none` 으로 숨깁니다.
-- 사이트 HTML 에는 `data-section` 이 있는데 설정에 그 id 가 없으면, 그 섹션은 손대지 않고 그 패널의 **맨 뒤**에 놓입니다. 사이트에 섹션을 새로 넣을 때는 이 파일의 id 목록과 사이트의 `site-config.json` 에도 같은 id 를 추가해야 합니다.
+- `label` 은 그 항목의 **화면 문구**입니다. 탭은 내비게이션 이름표, 섹션은 섹션 머리글(`[data-section-title]`)이 이 값으로 바뀝니다. 화면 제목을 `copy` 키로 그리는 섹션(`hero`→`heroTitle`, `pop`→`trendsTitle`, `issues`→`issuesTitle`, `releases`→`releasesTitle`, `rates`→`fxTitle`, `market`→`marketTitle`, `map-channels`→`mapChannelsTitle`, 복지모아 `ranking-head`→`rankingTitle`, `calc-head`→`calcTitle`, `compare-head`→`compareTitle`)은 어드민의 제목칸이 그 문구를 고칩니다.
+- 섹션 순서는 **같은 탭 패널 안에서만** 바뀝니다(탭이 다른 섹션끼리 자리를 맞바꾸지는 않음). 서로 다른 `.wrap` 에 들어 있는 섹션도 앞 섹션 바로 뒤로 옮겨 순서를 맞추므로, 탭 안 블록 순서는 자유롭게 바꿀 수 있습니다. `visible:false` 는 `display:none` 으로 숨깁니다.
+- 사이트 HTML 에는 `data-section` 이 있는데 설정에 그 id 가 없으면, 그 섹션은 손대지 않고 그 패널의 **맨 뒤**에 놓입니다. 사이트에 섹션을 새로 넣을 때는 `assets/js/sites.js` 의 `sections` 목록(어드민 ② 화면 정의)과 사이트의 `site-config.json` 에도 같은 id 를 추가해야 합니다.
 - 탭을 숨기면 모바일 하단 내비게이션 칸 수(`--moa-tab-count`)도 보이는 탭 수에 맞춰 줄어듭니다.
 
 ## 사이트에 연결하는 방법 (2026-11-18 연결 완료)
@@ -71,20 +83,20 @@
 
 | 사이트 | 설정 파일 | 로더 | 반영 |
 | --- | --- | --- | --- |
-| 포켓몬카드모아 | `assets/config/site-config.json` (v4.11 추가) | `assets/js/site-config-loader.js` | GitHub Pages, 30초~1분 |
-| 회사복지모아 | `public/config/site-config.json` (v0.12.1 추가, 문구·섹션 v0.12.2 정리) | `public/js/site-config-loader.js` | Render 자동 배포, 1~2분 |
+| 포켓몬카드모아 | `assets/config/site-config.json` (v4.11 추가) | `assets/js/site-config-loader.js` (v3) | GitHub Pages, 30초~1분 |
+| 회사복지모아 | `public/config/site-config.json` (v0.12.1 추가, 문구·섹션 v0.12.2 정리) | `public/js/site-config-loader.js` (v3) | Render 자동 배포, 1~2분 |
 
 - 두 사이트의 설정 파일은 **지금 화면에 보이는 값 그대로** 넣어 두었습니다(공지 바·팝업 모두 `enabled:false`). 그래서 연결만으로 달라지는 화면은 없고, 어드민에서 바꾼 값만 반영됩니다.
 - 붙인 방법은 두 사이트 모두 같습니다 — 사이트 스크립트 뒤(포케모아 `app.js` 뒤, 복지모아 `ads.js` 뒤)에 한 줄:
 
 ```html
 <!-- 포켓몬카드모아 -->
-<script src="assets/js/site-config-loader.js?v=77" defer
+<script src="assets/js/site-config-loader.js?v=85" defer
         data-config="assets/config/site-config.json"
         data-tab-container=".main-nav" data-banner-host=".site-header"></script>
 
 <!-- 회사복지모아 (CSP script-src 'self' 안에서 동작) -->
-<script src="/js/site-config-loader.js?v=1" defer
+<script src="/js/site-config-loader.js?v=3" defer
         data-config="/config/site-config.json"
         data-tab-container=".main-nav" data-banner-host=".site-header"></script>
 ```
@@ -117,7 +129,7 @@
 | 브랜드·헤더 | `siteTitle` `subtitle` `headerDate` |
 | 홈 히어로 | `heroTag` `heroTitle` `heroDescription` `ctaLabel` `ctaLabel2` |
 | 탭 머리글 | `mapEyebrow` `mapTitle` `mapLead` `scheduleEyebrow` `scheduleTitle` `scheduleLead` `guideEyebrow` `guideTitle` `guideLead` `trendsEyebrow` `trendsTitle` `trendsLead` |
-| 섹션 머리글 | `pricingEyebrow` `pricingDesc` `pricingLink` `boxesEyebrow` `boxesDesc` `boxesLink` `offlineEyebrow` `offlineDesc` `offlineLink` `trendEyebrow` `trendDesc` `trendLink` `tipsEyebrow` `faqEyebrow` |
+| 섹션 머리글 | `pricingEyebrow` `pricingDesc` `pricingLink` `boxesEyebrow` `boxesDesc` `boxesLink` `offlineEyebrow` `offlineDesc` `offlineLink` `trendEyebrow` `trendDesc` `trendLink` `tipsEyebrow` `faqEyebrow` `mapChannelsTitle` `fxTitle` `marketTitle` |
 | 일정·소식 안쪽 | `issuesEyebrow` `issuesTitle` `issuesDesc` `issuesLink` `releasesEyebrow` `releasesTitle` `releasesDesc` `releasesLink` |
 | 재고 상태 안내(5개) | `status1Title`~`status5Title`, `status1Desc`~`status5Desc` |
 | 푸터 | `footerText` `footerNote1` `footerNote2` `footerNote3` `footerCopyright` `footerDataDate` |

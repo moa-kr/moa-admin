@@ -10,7 +10,7 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#101f3c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23101f3c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=14">
+<link rel="stylesheet" href="assets/css/admin.css?v=15">
 </head>
 <body>
 
@@ -26,7 +26,7 @@
         <h1>모아 어드민</h1>
       </div>
     </div>
-    <p class="gate-lead">포켓몬카드모아와 회사복지모아의 공지·팝업, 탭 순서, 문구를 한 화면에서 고치고 바로 배포합니다.</p>
+    <p class="gate-lead">포켓몬카드모아와 회사복지모아의 공지·팝업, 탭 순서, 탭 안 섹션 순서·내용, 문구를 한 화면에서 고치고 바로 배포합니다.</p>
 
     <form class="gate-form" id="gate-form" autocomplete="on">
       <label class="field">
@@ -213,8 +213,8 @@
       <!-- ② 탭·섹션 순서 -->
       <section class="panel" data-panel="order" hidden>
         <div class="panel-head">
-          <h2>탭 · 섹션 순서와 노출</h2>
-          <p>이름을 누르면 그 자리에서 고칠 수 있어요. ⠿ 를 끌어서 순서를 바꾸거나 ▲▼ 버튼을 눌러 옮기고, 스위치를 끄면 사이트에서 그 탭·섹션이 숨겨집니다.</p>
+          <h2>탭 · 탭 안 섹션 편집</h2>
+          <p>탭을 고르면 <b>그 탭 안의 섹션</b>이 나옵니다. ⠿ 를 끌거나 ▲▼ 로 순서를 바꾸고, 스위치를 끄면 사이트에서 숨겨집니다. <b>✎</b> 를 누르면 그 섹션의 제목·부제·설명·링크·본문을 그 자리에서 고칠 수 있어요.</p>
         </div>
 
         <div class="card">
@@ -227,8 +227,12 @@
 
         <div class="card">
           <div class="card-head">
-            <h3>페이지 섹션 <span class="tag">navigation.sections</span></h3>
-            <span class="muted small">홈 화면 안쪽 순서 · 이름은 섹션 머리글이 됩니다</span>
+            <h3>탭 안 섹션 <span class="tag">navigation.sections</span></h3>
+            <span class="muted small">탭을 골라 그 안쪽을 편집</span>
+          </div>
+          <div class="card-body">
+            <div class="section-tabs" id="section-tabs" role="tablist" aria-label="편집할 탭 고르기"></div>
+            <p class="note" id="section-tab-note">탭을 고르면 그 탭 안의 섹션이 나옵니다.</p>
           </div>
           <div class="reorder" id="list-sections" data-list="sections"></div>
         </div>
@@ -367,7 +371,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=14"></script>
-<script src="assets/js/app.js?v=14"></script>
+<script src="assets/js/sites.js?v=15"></script>
+<script src="assets/js/app.js?v=15"></script>
 </body>
 </html>

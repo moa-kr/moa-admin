@@ -1,8 +1,8 @@
-/* 모아 어드민 공통 사이트 설정 로더 v2
+/* 모아 어드민 공통 사이트 설정 로더 v3
    ────────────────────────────────────────────────────────────────
    moa-kr/pokemoa · moa-kr/bokjinabi 에 실제로 들어가 있는 파일과 같은 내용입니다.
    모아 어드민이 커밋하는 site-config.json 을 읽어 공지 배너 · 팝업 · 탭 순서/노출 ·
-   섹션 순서/노출 · 문구를 화면에 적용합니다.
+   섹션 순서/노출 · 섹션 본문 · 문구를 화면에 적용합니다.
 
    붙이는 방법 (HTML 의 </body> 앞, 사이트 스크립트 뒤)
      <script src="assets/js/site-config-loader.js?v=1" defer
@@ -19,7 +19,11 @@
    - 탭       : [data-tab] 또는 [data-nav] 요소 (id = data-tab/data-nav 값)
    - 섹션     : [data-section] 요소 (id = data-section 값)
    - 섹션 제목: 섹션 안의 [data-section-title] 요소 (없으면 그대로 둠)
+   - 섹션 본문: navigation.sections[].body 값 → 섹션 맨 아래 .moa-section-body 로 그려짐
    - 문구     : [data-copy="heroDescription"] (글자로) / [data-copy-html="heroTitle"] (일부 태그만 허용)
+
+   섹션 순서는 같은 탭 패널(.tab-panel · #view 등) 안에서만 바뀜니다. 서로 다른 .wrap 에
+   들어 있어도 앞 섹션 바로 뒤로 옮겨 순서를 맞추므로 탭 내부 블록 순서를 자유롭게 바꿀 수 있습니다.
 
    SPA(회사복지모아)처럼 화면을 다시 그리는 사이트는 다시 그린 뒤
    document.dispatchEvent(new CustomEvent("moa:route-rendered")) 를 보내면
@@ -28,12 +32,15 @@
 (function () {
   "use strict";
 
-  const VERSION = "2.0";
+  const VERSION = "3.0";
   const STYLE_ID = "moa-site-config-style";
   const DISMISS_PREFIX = "moa:popup:";
   const TAB_SELECTOR = "[data-tab],[data-nav]";
   const SECTION_SELECTOR = "[data-section]";
   const HIDDEN_CLASS = "moa-hidden-by-config";
+  const BODY_CLASS = "moa-section-body";
+  // 섹션을 담는 화면 단위(탭 패널·뷰). 섹션 순서는 이 안에서만 맞춘다.
+  const PANEL_SELECTOR = "[data-panel], .tab-panel, #view, [data-view], main";
   // 제목처럼 마크업이 필요한 자리에서만 허용하는 태그(나머지는 글자로 내린다).
   const SAFE_TAGS = { B: 1, STRONG: 1, EM: 1, I: 1, U: 1, SMALL: 1, BR: 1, SPAN: 1 };
   // 사이트의 강조 표시(예: 복지모아 .hl)를 살리기 위해 class 만 남긴다. 그 밖의 속성(style·on*)은 지운다.
@@ -68,6 +75,11 @@
         font-weight:800;font-size:14px;cursor:pointer;text-align:center;text-decoration:none}
       .moa-popup .moa-popup-dismiss{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:12px;color:#8b95ac}
       .moa-popup .moa-popup-dismiss button{background:none;border:0;color:inherit;cursor:pointer;font:inherit;text-decoration:underline}
+      .${BODY_CLASS}{margin:16px 0 0;padding:12px 14px;border-radius:12px;border:1px solid rgba(125,135,160,.32);
+        background:rgba(125,135,160,.06);font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+      .${BODY_CLASS} p{margin:0 0 8px}
+      .${BODY_CLASS} p:last-child{margin-bottom:0}
+      .${BODY_CLASS} b,.${BODY_CLASS} strong{font-weight:800}
       .${HIDDEN_CLASS}{display:none !important}
     `;
     document.head.appendChild(style);
@@ -286,6 +298,77 @@
     }
   }
 
+  /* 섹션을 담는 화면 단위. 가장 가까운 탭 패널/뷰를 찾고, 없으면 body. */
+  function panelOf(el) {
+    let node = el.parentElement;
+    while (node && node !== document.body) {
+      if (node.matches && node.matches(PANEL_SELECTOR)) return node;
+      node = node.parentElement;
+    }
+    return document.body;
+  }
+
+  /* 같은 탭 안의 섹션을 order 순서대로 나란히 놓는다.
+     섹션이 서로 다른 .wrap 안에 있어도 순서를 바꿀 수 있도록, 앞 섹션 바로 뒤로 옮긴다.
+     (옮겨도 각 섹션의 class·바깥 .wrap 은 그대로라 화면 폭·여백은 유지된다.) */
+  function orderSections(items, list) {
+    if (!items.length || !list.length) return;
+    const conf = new Map(list.map((item) => [item.id, item]));
+    const groups = new Map();
+    items.forEach((el) => {
+      if (!el.parentNode) return;
+      const key = panelOf(el);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(el);
+    });
+    groups.forEach((group) => {
+      if (group.length < 2) return;
+      const rank = (el) => {
+        const item = conf.get(el.getAttribute("data-section") || "");
+        const order = item ? Number(item.order) : NaN;
+        return Number.isFinite(order) ? order : 999;
+      };
+      const sorted = group.slice().sort((a, b) => rank(a) - rank(b));
+      // 이미 문서 순서가 맞으면 손대지 않는다(필요한 섹션만 옮김).
+      const FOLLOWING = 4; // Node.DOCUMENT_POSITION_FOLLOWING
+      let prev = sorted[0];
+      for (let i = 1; i < sorted.length; i++) {
+        const el = sorted[i];
+        if (el === prev) continue;
+        if (!(prev.compareDocumentPosition(el) & FOLLOWING)) {
+          prev.parentNode.insertBefore(el, prev.nextSibling);
+        }
+        prev = el;
+      }
+    });
+  }
+
+  /* 섹션 하나에 붙는 ‘본문 문단’(admin 의 navigation.sections[].body).
+     비어 있으면 붙이지 않고, 값이 있으면 섹션 맨 아래에 한 번만 그린다. */
+  function directChild(el, className) {
+    for (let i = 0; i < el.children.length; i++) {
+      if (el.children[i].classList.contains(className)) return el.children[i];
+    }
+    return null;
+  }
+
+  function applySectionBody(el, section) {
+    const html = section && section.body != null ? String(section.body).trim() : "";
+    let body = directChild(el, BODY_CLASS);
+    if (!html) {
+      if (body) body.remove();
+      return;
+    }
+    if (!body) {
+      body = document.createElement("div");
+      body.className = BODY_CLASS;
+      body.setAttribute("data-moa-section-body", section.id || "");
+      el.appendChild(body);
+    }
+    const next = sanitizeHtml(html);
+    if (body.innerHTML !== next) body.innerHTML = next;
+  }
+
   function applySections(root, cfg) {
     const scope = root || document.body;
     if (!cfg.navigation || !Array.isArray(cfg.navigation.sections)) return;
@@ -298,8 +381,9 @@
       el.classList.toggle(HIDDEN_CLASS, section.visible === false);
       const title = el.querySelector("[data-section-title]");
       if (title && section.label) title.textContent = section.label;
+      applySectionBody(el, section);
     });
-    placeInOrder(items, cfg.navigation.sections, (el) => el.getAttribute("data-section") || "");
+    orderSections(items, cfg.navigation.sections);
   }
 
   /* ───────────── 문구 ───────────── */
