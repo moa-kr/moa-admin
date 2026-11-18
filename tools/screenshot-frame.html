@@ -27,7 +27,8 @@
     frame.id = "frame";
     frame.width = String(w);
     frame.height = String(h);
-    frame.src = src;
+    // 캡처할 때마다 최신 화면을 받도록 캐시를 피한다.
+    frame.src = src + (src.indexOf("?") >= 0 ? "&" : "?") + "frame=" + Date.now();
     frame.title = "모아 어드민 화면";
     document.body.appendChild(frame);
   })();
