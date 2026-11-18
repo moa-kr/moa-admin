@@ -9,7 +9,8 @@
   const LS = {
     session: "moa-admin.session",
     draft: "moa-admin.draft.",
-    log: "moa-admin.log"
+    log: "moa-admin.log",
+    ui: "moa-admin.ui"
   };
   const REMEMBER_DAYS = 90;
 
@@ -162,6 +163,22 @@
     try {
       localStorage.removeItem(LS.session);
       sessionStorage.removeItem(LS.session);
+    } catch (err) { /* 무시 */ }
+  }
+
+  /* 마지막으로 보던 사이트·탭을 기억한다(새로고침해도 그 자리로). */
+  function saveUi() {
+    try {
+      sessionStorage.setItem(LS.ui, JSON.stringify({ site: state.site, tab: state.tab }));
+    } catch (err) { /* 저장소를 못 쓰면 무시 */ }
+  }
+  function restoreUi() {
+    try {
+      const raw = sessionStorage.getItem(LS.ui);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && SITES[parsed.site]) state.site = parsed.site;
+      if (parsed && parsed.tab) state.tab = parsed.tab;
     } catch (err) { /* 무시 */ }
   }
 
@@ -394,14 +411,22 @@
     });
     const inquiryTab = $('.tab[data-tab="inquiry"]');
     if (inquiryTab) inquiryTab.hidden = siteId !== "bokjimoa";
-    if (siteId !== "bokjimoa" && state.tab === "inquiry") setTab("notice");
+    if (siteId !== "bokjimoa" && state.tab === "inquiry") state.tab = "notice";
+    saveUi();
+    applyTab();
     renderAll();
+  }
+
+  function applyTab() {
+    if (state.tab === "inquiry" && state.site !== "bokjimoa") state.tab = "notice";
+    $$(".tab").forEach((btn) => btn.classList.toggle("is-active", btn.dataset.tab === state.tab));
+    $$(".panel").forEach((panel) => { panel.hidden = panel.dataset.panel !== state.tab; });
   }
 
   function setTab(tabId) {
     state.tab = tabId;
-    $$(".tab").forEach((btn) => btn.classList.toggle("is-active", btn.dataset.tab === tabId));
-    $$(".panel").forEach((panel) => { panel.hidden = panel.dataset.panel !== tabId; });
+    saveUi();
+    applyTab();
     if (tabId === "inquiry") renderInquiries();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -691,8 +716,14 @@
 
   /* ───────────── 전체 렌더 ───────────── */
   function renderAll() {
+    $$(".site-btn").forEach((btn) => {
+      const on = btn.dataset.site === state.site;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
     const inquiryTab = $('.tab[data-tab="inquiry"]');
     if (inquiryTab) inquiryTab.hidden = state.site !== "bokjimoa";
+    applyTab();
     syncInputs();
     updateDerived();
     renderOrderList("tabs");
@@ -1218,6 +1249,7 @@
     } catch (err) { state.log = []; }
 
     bindGate();
+    restoreUi();
 
     const session = loadSession();
     if (session && (session.token || session.key || session.mode === "demo")) {

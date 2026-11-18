@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<title>모아 어드민 — 화면 캡처용 프레임</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #ffffff; }
+  iframe { display: block; border: 0; }
+  p { font: 13px -apple-system, "Malgun Gothic", sans-serif; color: #5b6784; padding: 10px; }
+  body.capture p { display: none; }
+</style>
+</head>
+<body>
+<!-- 지정한 크기(예: 390×844)의 뷰포트에서 관리 화면을 그려, 그 영역만 캡처하기 위한 틀입니다.
+     사용: tools/screenshot-frame.html?w=390&h=844  (경로는 기본 ../index.html) -->
+<p>관리 화면을 지정 크기로 그리는 캡처용 페이지입니다. 위/아래 크기를 주소에 넣어 쓰세요.</p>
+<script>
+  (function () {
+    "use strict";
+    var params = new URLSearchParams(location.search);
+    var w = Number(params.get("w") || 1440);
+    var h = Number(params.get("h") || 900);
+    var src = params.get("src") || "../index.html";
+    if (params.get("capture") === "1") document.body.className = "capture";
+    var frame = document.createElement("iframe");
+    frame.id = "frame";
+    frame.width = String(w);
+    frame.height = String(h);
+    frame.src = src;
+    frame.title = "모아 어드민 화면";
+    document.body.appendChild(frame);
+  })();
+</script>
+</body>
+</html>
