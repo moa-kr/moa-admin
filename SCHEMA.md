@@ -74,6 +74,7 @@
   - 옛 이름 `status`·`restock`(현황 카드·최근 입고 기록)은 포케모아 v76 에서 화면에서 빠졌으므로 목록에 두지 않습니다. 설정에 남아 있어도 화면에는 아무 영향이 없습니다.
 - `label` 은 그 항목의 **화면 문구**입니다. 탭은 내비게이션 이름표, 섹션은 섹션 머리글(`[data-section-title]`)이 이 값으로 바뀝니다. 화면 제목을 `copy` 키로 그리는 섹션(`hero`→`heroTitle`, `pop`→`trendsTitle`, `issues`→`issuesTitle`, `releases`→`releasesTitle`, `rates`→`fxTitle`, `market`→`marketTitle`, `map-channels`→`mapChannelsTitle`, 복지모아 `ranking-head`→`rankingTitle`, `calc-head`→`calcTitle`, `compare-head`→`compareTitle`)은 어드민의 제목칸이 그 문구를 고칩니다.
 - 섹션 순서는 **같은 탭 패널 안에서만** 바뀝니다(탭이 다른 섹션끼리 자리를 맞바꾸지는 않음). 서로 다른 `.wrap` 에 들어 있는 섹션도 앞 섹션 바로 뒤로 옮겨 순서를 맞추므로, 탭 안 블록 순서는 자유롭게 바꿀 수 있습니다. `visible:false` 는 `display:none` 으로 숨깁니다.
+  - 주의: 섹션이 아닌 블록(광고 자리 `data-ad-slot`, 출처 안내 `src-note` 등)은 자기 자리에 그대로 남습니다. 그래서 섹션을 크게 옮기면 그 사이에 끼어 있던 광고가 섹션들 사이가 아니라 위·아래로 밀려 보일 수 있습니다. 기본 순서에서는 아무것도 옮기지 않으므로(문서 순서가 이미 맞으면 무변경) 저장만으로는 화면이 달라지지 않습니다.
 - 사이트 HTML 에는 `data-section` 이 있는데 설정에 그 id 가 없으면, 그 섹션은 손대지 않고 그 패널의 **맨 뒤**에 놓입니다. 사이트에 섹션을 새로 넣을 때는 `assets/js/sites.js` 의 `sections` 목록(어드민 ② 화면 정의)과 사이트의 `site-config.json` 에도 같은 id 를 추가해야 합니다.
 - 탭을 숨기면 모바일 하단 내비게이션 칸 수(`--moa-tab-count`)도 보이는 탭 수에 맞춰 줄어듭니다.
 
