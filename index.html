@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>모아 어드민 — 포켓몬카드모아 · 회사복지모아 통합 관리</title>
+<meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
+<meta name="theme-color" content="#101f3c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23101f3c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+
+<!-- ───────────────────────── 로그인 게이트 ───────────────────────── -->
+<div class="gate" id="gate" hidden>
+  <div class="gate-wrap">
+    <div class="gate-brand">
+      <span class="moa-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="34" height="34"><rect width="32" height="32" rx="9" fill="#101f3c"/><rect x="7" y="7" width="7.5" height="7.5" rx="2.2" fill="#ffcb05"/><rect x="17.5" y="7" width="7.5" height="7.5" rx="2.2" fill="#ffcb05" opacity=".7"/><rect x="7" y="17.5" width="7.5" height="7.5" rx="2.2" fill="#ffcb05" opacity=".7"/><rect x="17.5" y="17.5" width="7.5" height="7.5" rx="2.2" fill="#ffcb05"/></svg>
+      </span>
+      <div>
+        <p class="gate-kicker">MOA ADMIN</p>
+        <h1>모아 어드민</h1>
+      </div>
+    </div>
+    <p class="gate-lead">포켓몬카드모아와 회사복지모아의 공지·팝업, 탭 순서, 문구를 한 화면에서 고치고 바로 배포합니다.</p>
+
+    <form class="gate-form" id="gate-form" autocomplete="off">
+      <label class="field">
+        <span class="field-label">GitHub 개인 액세스 토큰 <em>(PAT)</em></span>
+        <input type="password" id="gate-token" placeholder="ghp_… 또는 github_pat_…" spellcheck="false" autocomplete="off">
+        <span class="field-hint" id="gate-token-hint">저장하면 사이트에 바로 커밋할 수 있어요. 없으면 저장 기능만 잠깁니다.</span>
+      </label>
+
+      <label class="field">
+        <span class="field-label">회사복지모아 관리자 키 <em>(x-sync-key)</em> <span class="opt">선택</span></span>
+        <input type="password" id="gate-key" placeholder="문의 조회·삭제에 쓰는 64자리 키" spellcheck="false" autocomplete="off">
+        <span class="field-hint">비워 두면 나중에 ‘문의’ 화면에서 입력할 수 있어요.</span>
+      </label>
+
+      <label class="check-row">
+        <input type="checkbox" id="gate-remember" checked>
+        <span>90일 동안 로그인 유지 <em class="muted">(해제하면 이 브라우저 탭을 닫을 때 로그아웃)</em></span>
+      </label>
+
+      <p class="gate-error" id="gate-error" hidden></p>
+
+      <button type="submit" class="btn btn-primary btn-block" id="gate-submit">로그인하고 시작</button>
+      <button type="button" class="btn btn-ghost btn-block" id="gate-demo">데모(미리보기) 모드로 둘러보기</button>
+    </form>
+
+    <details class="gate-help">
+      <summary>토큰은 어떻게 만드나요?</summary>
+      <ol>
+        <li>GitHub 로그인 → <a href="https://github.com/settings/tokens/new?scopes=repo&description=moa-admin" target="_blank" rel="noreferrer">Personal access tokens (classic)</a> 에서 <b>repo</b> 권한을 체크해 발급합니다.</li>
+        <li>또는 Fine-grained token 으로 <b>moa-kr/pokemoa</b>·<b>moa-kr/bokjinabi</b> 두 저장소에 <b>Contents: Read and write</b> 권한을 주면 됩니다.</li>
+        <li>발급한 값을 위 칸에 붙여 넣고 로그인하세요. 토큰은 이 브라우저에만 저장되고 서버로 보내지 않습니다.</li>
+      </ol>
+      <p class="muted">관리자 키는 <code>scheduled-actions/📰-복지모아-임단협-뉴스-자동-반영/.sync-key</code> 파일에 있습니다.</p>
+    </details>
+  </div>
+</div>
+
+<!-- ───────────────────────── 관리 콘솔 ───────────────────────── -->
+<div class="app" id="app" hidden>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="moa-mark sm" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="26" height="26"><rect width="32" height="32" rx="9" fill="#101f3c"/><rect x="7" y="7" width="7.5" height="7.5" rx="2.2" fill="#ffcb05"/><rect x="17.5" y="7" width="7.5" height="7.5" rx="2.2" fill="#ffcb05" opacity=".7"/><rect x="7" y="17.5" width="7.5" height="7.5" rx="2.2" fill="#ffcb05" opacity=".7"/><rect x="17.5" y="17.5" width="7.5" height="7.5" rx="2.2" fill="#ffcb05"/></svg>
+      </span>
+      <span class="topbar-title">모아 어드민</span>
+      <span class="mode-chip" id="mode-chip">데모 모드</span>
+    </div>
+
+    <div class="site-switch" role="tablist" aria-label="사이트 선택">
+      <button type="button" class="site-btn is-active" data-site="pokemoa" role="tab" aria-selected="true">
+        <span class="site-dot pokemoa"></span>포켓몬카드모아<span class="site-sub">pokemoa</span>
+      </button>
+      <button type="button" class="site-btn" data-site="bokjimoa" role="tab" aria-selected="false">
+        <span class="site-dot bokjimoa"></span>회사복지모아<span class="site-sub">bokjimoa</span>
+      </button>
+    </div>
+
+    <div class="topbar-right">
+      <span class="user-chip" id="user-chip" hidden></span>
+      <a class="btn btn-sm btn-ghost" id="btn-open-live" href="#" target="_blank" rel="noreferrer">사이트 열기</a>
+      <button type="button" class="btn btn-sm btn-ghost" id="btn-logout">로그아웃</button>
+    </div>
+  </header>
+
+  <div class="topbar2">
+    <nav class="tabs" id="tabs" aria-label="관리 항목">
+      <button type="button" class="tab is-active" data-tab="notice">① 공지·팝업</button>
+      <button type="button" class="tab" data-tab="order">② 탭·섹션 순서</button>
+      <button type="button" class="tab" data-tab="copy">③ 문구</button>
+      <button type="button" class="tab" data-tab="inquiry" data-only-site="bokjimoa">④ 문의</button>
+      <button type="button" class="tab" data-tab="deploy">⑤ 저장·배포</button>
+    </nav>
+    <div class="topbar2-right">
+      <span class="dirty-chip" id="dirty-chip" hidden>저장 안 된 변경</span>
+      <button type="button" class="btn btn-sm btn-ghost" id="btn-preview-toggle" aria-pressed="false">미리보기</button>
+      <button type="button" class="btn btn-sm btn-primary" id="btn-save-top">저장 및 사이트 반영</button>
+    </div>
+  </div>
+
+  <main class="layout">
+    <div class="editor" id="editor">
+
+      <!-- ① 공지·팝업 -->
+      <section class="panel" data-panel="notice">
+        <div class="panel-head">
+          <h2>공지 배너 · 팝업</h2>
+          <p>사이트 위쪽 공지 바와 첫 방문 팝업을 켜고 끕니다. 오른쪽 미리보기에 바로 반영돼요.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>상단 공지 바 <span class="tag">banner</span></h3>
+            <label class="switch">
+              <input type="checkbox" data-bind="banner.enabled" id="banner-enabled">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span class="switch-label" id="banner-state">꺼짐</span>
+            </label>
+          </div>
+          <div class="card-body">
+            <label class="field">
+              <span class="field-label">공지 문구</span>
+              <input type="text" data-bind="banner.text" maxlength="120" placeholder="예) 30th CELEBRATION 정가 구매처를 새로 정리했어요.">
+            </label>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">링크 주소 <span class="opt">선택</span></span>
+                <input type="url" data-bind="banner.linkUrl" placeholder="https://moa-kr.github.io/pokemoa/#home">
+              </label>
+              <label class="field">
+                <span class="field-label">링크 문구 <span class="opt">선택</span></span>
+                <input type="text" data-bind="banner.linkLabel" maxlength="20" placeholder="자세히 보기">
+              </label>
+            </div>
+            <div class="field">
+              <span class="field-label">강조 스타일</span>
+              <div class="seg" id="banner-style">
+                <button type="button" data-style="info">안내 <span class="dot info"></span></button>
+                <button type="button" data-style="warn">주의 <span class="dot warn"></span></button>
+                <button type="button" data-style="urgent">긴급 <span class="dot urgent"></span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>첫 방문 팝업 <span class="tag">popup</span></h3>
+            <label class="switch">
+              <input type="checkbox" data-bind="popup.enabled" id="popup-enabled">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span class="switch-label" id="popup-state">꺼짐</span>
+            </label>
+          </div>
+          <div class="card-body">
+            <label class="field">
+              <span class="field-label">팝업 제목</span>
+              <input type="text" data-bind="popup.title" maxlength="60" placeholder="예) 새 소식이 있어요">
+            </label>
+            <label class="field">
+              <span class="field-label">팝업 본문</span>
+              <textarea data-bind="popup.body" rows="4" maxlength="600" placeholder="여러 줄로 쓸 수 있어요. (줄바꿈 그대로 노출)"></textarea>
+            </label>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">버튼 문구</span>
+                <input type="text" data-bind="popup.buttonText" maxlength="20" placeholder="확인">
+              </label>
+              <label class="field">
+                <span class="field-label">버튼 링크 <span class="opt">선택</span></span>
+                <input type="url" data-bind="popup.buttonUrl" placeholder="https://…">
+              </label>
+            </div>
+            <div class="grid-3">
+              <label class="field">
+                <span class="field-label">시작일</span>
+                <input type="date" data-bind="popup.startDate">
+              </label>
+              <label class="field">
+                <span class="field-label">종료일</span>
+                <input type="date" data-bind="popup.endDate">
+              </label>
+              <label class="field">
+                <span class="field-label">다시 보지 않기</span>
+                <div class="input-suffix">
+                  <input type="number" data-bind="popup.dismissDays" min="0" max="90" step="1">
+                  <span>일</span>
+                </div>
+              </label>
+            </div>
+            <p class="note" id="popup-period-note">기간을 비우면 항상 노출됩니다. ‘다시 보지 않기’는 방문자 브라우저에 그 일수만큼 기억됩니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ② 탭·섹션 순서 -->
+      <section class="panel" data-panel="order" hidden>
+        <div class="panel-head">
+          <h2>탭 · 섹션 순서와 노출</h2>
+          <p>끌어서 순서를 바꾸거나 ▲▼ 버튼을 눌러 옮깁니다. 끄면 사이트에서 그 탭·섹션이 숨겨집니다.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>상단 탭 <span class="tag">navigation.tabs</span></h3>
+            <span class="muted small">끌어서 정렬 · 모바일에서는 ▲▼</span>
+          </div>
+          <div class="reorder" id="list-tabs" data-list="tabs"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>페이지 섹션 <span class="tag">navigation.sections</span></h3>
+            <span class="muted small">홈 화면 안쪽 순서</span>
+          </div>
+          <div class="reorder" id="list-sections" data-list="sections"></div>
+        </div>
+      </section>
+
+      <!-- ③ 문구 -->
+      <section class="panel" data-panel="copy" hidden>
+        <div class="panel-head">
+          <h2>세부 문구</h2>
+          <p>사이트 이름, 첫 화면 문구, 현황 카드 설명, 푸터 문구를 고칩니다.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>기본 정보 <span class="tag">copy</span></h3></div>
+          <div class="card-body">
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">사이트 이름</span>
+                <input type="text" data-bind="copy.siteTitle" maxlength="30">
+              </label>
+              <label class="field">
+                <span class="field-label">부제 (한 줄 소개)</span>
+                <input type="text" data-bind="copy.subtitle" maxlength="60">
+              </label>
+            </div>
+            <label class="field">
+              <span class="field-label">첫 화면 제목 (hero)</span>
+              <input type="text" data-bind="copy.heroTitle" maxlength="80">
+            </label>
+            <label class="field">
+              <span class="field-label">첫 화면 설명</span>
+              <textarea data-bind="copy.heroDescription" rows="3" maxlength="300"></textarea>
+            </label>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">주요 버튼 문구</span>
+                <input type="text" data-bind="copy.ctaLabel" maxlength="24">
+              </label>
+              <label class="field">
+                <span class="field-label">푸터 문구</span>
+                <input type="text" data-bind="copy.footerText" maxlength="200">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>현황 카드 <span class="tag">cards</span></h3>
+            <span class="muted small">제목·설명을 고치고 노출을 끌 수 있어요</span>
+          </div>
+          <div class="card-body" id="list-cards"></div>
+        </div>
+      </section>
+
+      <!-- ④ 문의 -->
+      <section class="panel" data-panel="inquiry" hidden>
+        <div class="panel-head">
+          <h2>회사복지모아 관리자 문의</h2>
+          <p>복지모아에 들어온 문의를 읽고, 확인이 끝난 문의를 지웁니다.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>연결 <span class="tag">x-sync-key</span></h3>
+            <span class="status-pill" id="inquiry-conn">연결 전</span>
+          </div>
+          <div class="card-body">
+            <div class="inline-row">
+              <input type="password" id="inquiry-key" placeholder="관리자 키(x-sync-key)" spellcheck="false" autocomplete="off">
+              <button type="button" class="btn btn-sm btn-dark" id="inquiry-key-save">키 저장</button>
+              <button type="button" class="btn btn-sm btn-ghost" id="inquiry-key-forget">삭제</button>
+            </div>
+            <p class="note">키는 이 브라우저에만 저장됩니다. 서버: <code>https://bokjimoa.onrender.com/api/admin/inquiries</code></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>문의 목록</h3>
+            <div class="inline-row tight">
+              <select id="inquiry-status">
+                <option value="">전체</option>
+                <option value="new">신규</option>
+                <option value="read">읽음</option>
+                <option value="done">완료</option>
+              </select>
+              <button type="button" class="btn btn-sm btn-ghost" id="inquiry-refresh">새로고침</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="stat-row" id="inquiry-stats" hidden></div>
+            <p class="note" id="inquiry-msg">‘새로고침’을 누르면 문의를 불러옵니다.</p>
+            <div class="inquiry-list" id="inquiry-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ⑤ 저장·배포 -->
+      <section class="panel" data-panel="deploy" hidden>
+        <div class="panel-head">
+          <h2>저장 &amp; 즉시 배포</h2>
+          <p>설정을 JSON으로 만들어 GitHub 저장소에 커밋합니다. 커밋이 곧 배포예요.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>배포 대상</h3></div>
+          <div class="card-body">
+            <dl class="kv" id="deploy-target"></dl>
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary" id="btn-save">저장 및 사이트 반영</button>
+              <button type="button" class="btn btn-ghost" id="btn-pull">GitHub 현재 값 불러오기</button>
+            </div>
+            <div class="result" id="deploy-result" hidden></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>JSON 내보내기 / 불러오기</h3></div>
+          <div class="card-body">
+            <div class="btn-row">
+              <button type="button" class="btn btn-ghost" id="btn-export">JSON 내려받기</button>
+              <label class="btn btn-ghost file-btn">JSON 올리기<input type="file" id="file-import" accept="application/json,.json" hidden></label>
+              <button type="button" class="btn btn-ghost" id="btn-reset">기본값으로 되돌리기</button>
+            </div>
+            <p class="note">내려받은 파일은 그대로 저장소의 <code id="path-note">assets/config/site-config.json</code> 에 넣어도 됩니다.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>연결 상태</h3></div>
+          <div class="card-body">
+            <ul class="checks" id="session-checks"></ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>최근 작업</h3></div>
+          <div class="card-body"><ul class="log" id="activity-log"></ul></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 미리보기 -->
+    <aside class="preview-rail" id="preview-rail">
+      <div class="preview-head">
+        <h2>모바일 미리보기</h2>
+        <span class="muted small" id="preview-site">포켓몬카드모아</span>
+      </div>
+      <div class="phone" id="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-screen" id="phone-screen"></div>
+      </div>
+      <div class="preview-foot">
+        <label class="check-row small"><input type="checkbox" id="preview-popup" checked><span>팝업 미리보기</span></label>
+        <span class="muted small" id="preview-note">화면은 실제 사이트와 세부 디자인이 조금 다를 수 있어요.</span>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="assets/js/sites.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "site": "pokemoa",
+  "siteName": "포켓몬카드모아",
+  "theme": {
+    "accent": "#101f3c",
+    "accentSoft": "#ffcb05",
+    "mode": "dark"
+  },
+  "copy": {
+    "siteTitle": "포켓몬카드모아",
+    "subtitle": "포켓몬 카드 정가·입고·재고 한눈에",
+    "heroTitle": "오늘 입고된 카드, 어디서 살 수 있을까?",
+    "heroDescription": "확장팩별 정가 구매처와 편의점 4사 재고를 한 번에 확인하세요.",
+    "ctaLabel": "내 주변 매장 지도 열기",
+    "footerText": "포켓몬카드모아 — 정가 구매처·입고 기록·재고 지도를 모아 안내합니다."
+  },
+  "banner": {
+    "enabled": false,
+    "text": "30th CELEBRATION 정가 구매처를 새로 정리했어요.",
+    "linkUrl": "https://moa-kr.github.io/pokemoa/#home",
+    "linkLabel": "구매처 보기",
+    "style": "info",
+    "updatedAt": null
+  },
+  "popup": {
+    "enabled": false,
+    "id": "popup-1",
+    "title": "포켓몬카드모아에 오신 걸 환영해요",
+    "body": "지도에서 내 주변 편의점 재고를 확인하고,\n확장팩별 정가 구매처도 함께 살펴보세요.",
+    "buttonText": "확인",
+    "buttonUrl": "",
+    "startDate": "",
+    "endDate": "",
+    "dismissDays": 1,
+    "updatedAt": null
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "id": "map",
+        "label": "동네에서 찾기",
+        "visible": true,
+        "order": 1
+      },
+      {
+        "id": "home",
+        "label": "정가 구매처",
+        "visible": true,
+        "order": 2
+      },
+      {
+        "id": "schedule",
+        "label": "일정·소식",
+        "visible": true,
+        "order": 3
+      },
+      {
+        "id": "guide",
+        "label": "도감·시세",
+        "visible": true,
+        "order": 4
+      },
+      {
+        "id": "trends",
+        "label": "팝수 조회",
+        "visible": true,
+        "order": 5
+      }
+    ],
+    "sections": [
+      {
+        "id": "hero",
+        "label": "첫 화면 소개",
+        "visible": true,
+        "order": 1
+      },
+      {
+        "id": "status",
+        "label": "현황 카드",
+        "visible": true,
+        "order": 2
+      },
+      {
+        "id": "restock",
+        "label": "최근 입고 기록",
+        "visible": true,
+        "order": 3
+      },
+      {
+        "id": "pricing",
+        "label": "정가 구매처",
+        "visible": true,
+        "order": 4
+      },
+      {
+        "id": "trend",
+        "label": "인기 카드 시세",
+        "visible": true,
+        "order": 5
+      },
+      {
+        "id": "faq",
+        "label": "자주 묻는 질문",
+        "visible": true,
+        "order": 6
+      }
+    ]
+  },
+  "cards": [
+    {
+      "id": "stock",
+      "title": "실시간 재고",
+      "description": "내 주변 편의점 4사 재고를 지도에서 확인",
+      "visible": true,
+      "order": 1
+    },
+    {
+      "id": "retail",
+      "title": "정가 구매처",
+      "description": "포켓몬스토어·SSG·G마켓 등 정가 판매처 정리",
+      "visible": true,
+      "order": 2
+    },
+    {
+      "id": "pop",
+      "title": "팝수 조회",
+      "description": "카드 번호로 PSA·BRG 팝수 확인",
+      "visible": true,
+      "order": 3
+    }
+  ],
+  "meta": {
+    "updatedBy": "moa-admin",
+    "updatedAt": "2026-11-18T12:00:00.000Z",
+    "note": "예시 파일입니다. 모아 어드민에서 저장하면 이 형식으로 커밋됩니다."
+  }
+}
