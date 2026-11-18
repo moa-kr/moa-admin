@@ -10,7 +10,7 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#101f3c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23101f3c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffcb05'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=11">
+<link rel="stylesheet" href="assets/css/admin.css?v=12">
 </head>
 <body>
 
@@ -28,17 +28,16 @@
     </div>
     <p class="gate-lead">포켓몬카드모아와 회사복지모아의 공지·팝업, 탭 순서, 문구를 한 화면에서 고치고 바로 배포합니다.</p>
 
-    <form class="gate-form" id="gate-form" autocomplete="off">
+    <form class="gate-form" id="gate-form" autocomplete="on">
       <label class="field">
-        <span class="field-label">GitHub 개인 액세스 토큰 <em>(PAT)</em></span>
-        <input type="password" id="gate-token" placeholder="ghp_… 또는 github_pat_…" spellcheck="false" autocomplete="off">
-        <span class="field-hint" id="gate-token-hint">저장하면 사이트에 바로 커밋할 수 있어요. 없으면 저장 기능만 잠깁니다.</span>
+        <span class="field-label">아이디</span>
+        <input type="text" id="gate-id" placeholder="아이디" spellcheck="false" autocapitalize="off" autocomplete="username">
       </label>
 
       <label class="field">
-        <span class="field-label">회사복지모아 관리자 키 <em>(x-sync-key)</em> <span class="opt">선택</span></span>
-        <input type="password" id="gate-key" placeholder="문의 조회·삭제에 쓰는 64자리 키" spellcheck="false" autocomplete="off">
-        <span class="field-hint">비워 두면 나중에 ‘문의’ 화면에서 입력할 수 있어요.</span>
+        <span class="field-label">비밀번호</span>
+        <input type="password" id="gate-pw" placeholder="비밀번호" autocomplete="current-password">
+        <span class="field-hint">아이디·비밀번호는 복지모아 서버(<code>bokjimoa.onrender.com</code>)에서만 확인합니다.</span>
       </label>
 
       <label class="check-row">
@@ -48,18 +47,28 @@
 
       <p class="gate-error" id="gate-error" hidden></p>
 
-      <button type="submit" class="btn btn-primary btn-block" id="gate-submit">로그인하고 시작</button>
+      <button type="submit" class="btn btn-primary btn-block" id="gate-submit">로그인</button>
       <button type="button" class="btn btn-ghost btn-block" id="gate-demo">데모(미리보기) 모드로 둘러보기</button>
     </form>
 
-    <details class="gate-help">
-      <summary>토큰은 어떻게 만드나요?</summary>
-      <ol>
-        <li>GitHub 로그인 → <a href="https://github.com/settings/tokens/new?scopes=repo&description=moa-admin" target="_blank" rel="noreferrer">Personal access tokens (classic)</a> 에서 <b>repo</b> 권한을 체크해 발급합니다.</li>
-        <li>또는 Fine-grained token 으로 <b>moa-kr/pokemoa</b>·<b>moa-kr/bokjinabi</b> 두 저장소에 <b>Contents: Read and write</b> 권한을 주면 됩니다.</li>
-        <li>발급한 값을 위 칸에 붙여 넣고 로그인하세요. 토큰은 이 브라우저에만 저장되고 서버로 보내지 않습니다.</li>
-      </ol>
-      <p class="muted">관리자 키는 <code>scheduled-actions/📰-복지모아-임단협-뉴스-자동-반영/.sync-key</code> 파일에 있습니다.</p>
+    <details class="gate-help" id="gate-advanced">
+      <summary>고급: GitHub 토큰으로 직접 로그인</summary>
+      <form class="gate-form" id="gate-token-form" autocomplete="off">
+        <label class="field">
+          <span class="field-label">GitHub 개인 액세스 토큰 <em>(PAT)</em></span>
+          <input type="password" id="gate-token" placeholder="ghp_… 또는 github_pat_…" spellcheck="false" autocomplete="off">
+          <span class="field-hint" id="gate-token-hint">아이디 로그인이 막힐 때만 쓰는 예비 경로입니다. 토큰은 이 브라우저에만 저장되고 서버로 보내지 않습니다.</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">회사복지모아 관리자 키 <em>(x-sync-key)</em> <span class="opt">선택</span></span>
+          <input type="password" id="gate-key" placeholder="문의 조회·삭제에 쓰는 64자리 키" spellcheck="false" autocomplete="off">
+          <span class="field-hint">비워 두면 나중에 ‘문의’ 화면에서 입력할 수 있어요.</span>
+        </label>
+
+        <button type="submit" class="btn btn-ghost btn-block" id="gate-token-submit">토큰으로 로그인</button>
+      </form>
+      <p class="muted" style="margin:10px 0 0">토큰은 <a href="https://github.com/settings/tokens/new?scopes=repo&description=moa-admin" target="_blank" rel="noreferrer">Personal access tokens (classic)</a> 에서 <b>repo</b> 권한으로 발급합니다. 관리자 키는 서버 환경변수 <code>BARGAINING_SYNC_KEY</code> 값입니다.</p>
     </details>
   </div>
 </div>
@@ -229,41 +238,15 @@
       <section class="panel" data-panel="copy" hidden>
         <div class="panel-head">
           <h2>세부 문구</h2>
-          <p>사이트 이름, 첫 화면 문구, 현황 카드 설명, 푸터 문구를 고칩니다.</p>
+          <p>사이트에 보이는 문구를 여기서 모두 고칩니다. 고치는 즉시 오른쪽 미리보기에 반영되고, <b>저장 및 사이트 반영</b>을 누르면 실제 사이트에 적용됩니다.</p>
         </div>
 
         <div class="card">
-          <div class="card-head"><h3>기본 정보 <span class="tag">copy</span></h3></div>
-          <div class="card-body">
-            <div class="grid-2">
-              <label class="field">
-                <span class="field-label">사이트 이름</span>
-                <input type="text" data-bind="copy.siteTitle" maxlength="30">
-              </label>
-              <label class="field">
-                <span class="field-label">부제 (한 줄 소개)</span>
-                <input type="text" data-bind="copy.subtitle" maxlength="60">
-              </label>
-            </div>
-            <label class="field">
-              <span class="field-label">첫 화면 제목 (hero)</span>
-              <input type="text" data-bind="copy.heroTitle" maxlength="80">
-            </label>
-            <label class="field">
-              <span class="field-label">첫 화면 설명</span>
-              <textarea data-bind="copy.heroDescription" rows="3" maxlength="300"></textarea>
-            </label>
-            <div class="grid-2">
-              <label class="field">
-                <span class="field-label">주요 버튼 문구</span>
-                <input type="text" data-bind="copy.ctaLabel" maxlength="24">
-              </label>
-              <label class="field">
-                <span class="field-label">푸터 문구</span>
-                <input type="text" data-bind="copy.footerText" maxlength="200">
-              </label>
-            </div>
+          <div class="card-head">
+            <h3>화면 문구 <span class="tag">copy</span></h3>
+            <span class="muted small">섹션 제목과 탭 이름표는 ② 탭·섹션 순서에서</span>
           </div>
+          <div class="card-body" id="copy-form"></div>
         </div>
 
         <div class="card">
@@ -288,12 +271,13 @@
             <span class="status-pill" id="inquiry-conn">연결 전</span>
           </div>
           <div class="card-body">
-            <div class="inline-row">
+            <div class="inline-row" id="inquiry-key-row">
               <input type="password" id="inquiry-key" placeholder="관리자 키(x-sync-key)" spellcheck="false" autocomplete="off">
               <button type="button" class="btn btn-sm btn-dark" id="inquiry-key-save">키 저장</button>
               <button type="button" class="btn btn-sm btn-ghost" id="inquiry-key-forget">삭제</button>
             </div>
-            <p class="note">키는 이 브라우저에만 저장됩니다. 서버: <code>https://bokjimoa.onrender.com/api/admin/inquiries</code></p>
+            <p class="note" id="inquiry-auth-note" hidden>아이디로 로그인한 상태입니다 — 아이디 로그인 토큰으로 바로 연결되므로 관리자 키를 넣을 필요가 없어요.</p>
+            <p class="note">서버: <code>https://bokjimoa.onrender.com/api/admin/inquiries</code></p>
           </div>
         </div>
 
@@ -331,7 +315,7 @@
             <dl class="kv" id="deploy-target"></dl>
             <div class="btn-row">
               <button type="button" class="btn btn-primary" id="btn-save">저장 및 사이트 반영</button>
-              <button type="button" class="btn btn-ghost" id="btn-pull">GitHub 현재 값 불러오기</button>
+              <button type="button" class="btn btn-ghost" id="btn-pull">현재 값 불러오기</button>
             </div>
             <div class="result" id="deploy-result" hidden></div>
           </div>
@@ -383,7 +367,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=11"></script>
-<script src="assets/js/app.js?v=11"></script>
+<script src="assets/js/sites.js?v=12"></script>
+<script src="assets/js/app.js?v=12"></script>
 </body>
 </html>

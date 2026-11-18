@@ -104,6 +104,10 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .gate-help summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
 .gate-help ol { margin: 8px 0 6px; padding-left: 18px; }
 .gate-help li { margin-bottom: 5px; }
+#gate-advanced .gate-form { margin-top: 12px; }
+#gate-advanced .field { margin-bottom: 10px; }
+#gate-advanced .btn-block { margin-top: 4px; }
+.gate-help code { font-size: 11.5px; }
 
 /* ───────── 상단 바 ───────── */
 .app { min-height: 100vh; display: flex; flex-direction: column; }
@@ -226,6 +230,16 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
   color: var(--ink-2); font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn:hover:not(:disabled) { background: #f2f5fb; }
 .icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* 문구 편집 */
+.copygroup { padding: 2px 0 8px; border-top: 1px dashed var(--line); margin-bottom: 10px; }
+.copygroup:first-child { border-top: 0; padding-top: 0; }
+.copygroup-head { display: flex; align-items: baseline; gap: 8px; margin: 12px 0 6px; }
+.copygroup-head h4 { font-size: 13px; letter-spacing: -.01em; color: var(--ink); }
+.copygroup-head .muted { margin-left: auto; }
+.copygroup .note { margin: 0 0 10px; }
+.copygroup .field { margin-bottom: 10px; }
+.copygroup .field:last-child { margin-bottom: 0; }
 
 /* 카드 편집 */
 .carditem { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #fff; }

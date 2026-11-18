@@ -304,11 +304,81 @@
     };
   }
 
+  /* ───────────── 모아 어드민 서버(아이디·비번 로그인) ─────────────
+     로그인은 bokjimoa.onrender.com 이 대조하고 HMAC 서명 토큰만 돌려준다. 토큰·브라우저
+     관리자 키로 /api/admin/* 를 부르므로, GitHub 토큰(PAT)은 예비 경로로만 남긴다. */
+  function apiHeaders(extra) {
+    const session = state.session || {};
+    const headers = Object.assign({}, extra || {});
+    if (session.mode === "idpw" && session.token) headers.Authorization = `Bearer ${session.token}`;
+    else if (session.key) headers["x-sync-key"] = session.key;
+    return headers;
+  }
+
+  async function apiRequest(path, options) {
+    const opts = options || {};
+    const headers = apiHeaders(opts.json ? { "Content-Type": "application/json" } : null);
+    let res;
+    try {
+      res = await fetch(`${API_BASE}${path}`, {
+        method: opts.method || "GET",
+        headers,
+        body: opts.body,
+        cache: "no-store"
+      });
+    } catch (err) {
+      return { ok: false, status: 0, error: "복지모아 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.", data: null };
+    }
+    let data = null;
+    const text = await res.text();
+    if (text) { try { data = JSON.parse(text); } catch (err) { data = null; } }
+    if (!res.ok || (data && data.ok === false)) {
+      const error = (data && data.error) || `서버 오류 (HTTP ${res.status})`;
+      if (res.status === 401 || res.status === 403) sessionExpired(error);
+      return { ok: false, status: res.status, error, data };
+    }
+    return { ok: true, status: res.status, data };
+  }
+
+  /* 토큰이 만료·위조됐을 때: 조용히 게이트로 돌려보내고 이유를 알려준다. */
+  function sessionExpired(message) {
+    const session = state.session || {};
+    if (session.mode !== "idpw") return;
+    clearSession();
+    state.session = null;
+    showGate();
+    gateError(message || "로그인이 만료되었습니다. 다시 로그인해 주세요.");
+  }
+
+  async function loginWithIdPw(username, password, remember) {
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/api/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, remember }),
+        cache: "no-store"
+      });
+    } catch (err) {
+      return { ok: false, error: "복지모아 서버에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요." };
+    }
+    let data = null;
+    const text = await res.text();
+    if (text) { try { data = JSON.parse(text); } catch (err) { data = null; } }
+    if (res.status === 503) {
+      return { ok: false, error: "서버에 아이디·비번 로그인 설정(ADMIN_LOGIN_ID·ADMIN_LOGIN_PW)이 아직 없습니다. 아래 ‘고급: GitHub 토큰으로 직접 로그인’을 써 주세요." };
+    }
+    if (!res.ok || !data || data.ok === false) {
+      return { ok: false, error: (data && data.error) || `로그인하지 못했습니다 (HTTP ${res.status}).` };
+    }
+    return { ok: true, data };
+  }
+
   /* ───────────── 로그인 게이트 ───────────── */
   function showGate() {
     $("#gate").hidden = false;
     $("#app").hidden = true;
-    setTimeout(() => { const el = $("#gate-token"); if (el) el.focus(); }, 30);
+    setTimeout(() => { const el = $("#gate-id"); if (el) el.focus(); }, 30);
   }
 
   function gateError(message) {
@@ -318,18 +388,58 @@
     el.hidden = false;
   }
 
+  /* 1순위: 아이디·비밀번호 로그인(서버 토큰). */
   async function handleGateSubmit(event) {
+    event.preventDefault();
+    gateError("");
+    const username = $("#gate-id").value.trim();
+    const password = $("#gate-pw").value;
+    const remember = $("#gate-remember").checked;
+    if (!username || !password) {
+      gateError("아이디와 비밀번호를 모두 넣어 주세요. 화면만 둘러보려면 ‘데모 모드’를 누르세요.");
+      return;
+    }
+
+    const submit = $("#gate-submit");
+    submit.disabled = true;
+    submit.textContent = "로그인하는 중…";
+    try {
+      const result = await loginWithIdPw(username, password, remember);
+      if (!result.ok) { gateError(result.error); return; }
+      const data = result.data || {};
+      const session = {
+        mode: "idpw",
+        token: data.token || "",
+        key: "",
+        remember,
+        login: (data.user && data.user.login) || username,
+        avatar: "",
+        repos: { pokemoa: true, bokjimoa: true },
+        serverExpiresAt: data.expiresAt || ""
+      };
+      state.session = saveSession(session);
+      $("#gate-pw").value = "";
+      addLog(`${session.login} 아이디 로그인`);
+      await startApp(true);
+    } finally {
+      submit.disabled = false;
+      submit.textContent = "로그인";
+    }
+  }
+
+  /* 예비 경로: GitHub PAT(또는 관리자 키만)로 로그인. */
+  async function handleTokenGateSubmit(event) {
     event.preventDefault();
     gateError("");
     const token = $("#gate-token").value.trim();
     const key = $("#gate-key").value.trim();
     const remember = $("#gate-remember").checked;
     if (!token && !key) {
-      gateError("GitHub 토큰이나 관리자 키 중 하나는 넣어 주세요. 화면만 둘러보려면 ‘데모 모드’를 누르세요.");
+      gateError("GitHub 토큰이나 관리자 키 중 하나는 넣어 주세요.");
       return;
     }
 
-    const submit = $("#gate-submit");
+    const submit = $("#gate-token-submit");
     submit.disabled = true;
     submit.textContent = "확인하는 중…";
     try {
@@ -355,7 +465,7 @@
       await startApp(!token || (repos.pokemoa || repos.bokjimoa));
     } finally {
       submit.disabled = false;
-      submit.textContent = "로그인하고 시작";
+      submit.textContent = "토큰으로 로그인";
     }
   }
 
@@ -395,7 +505,7 @@
     bindUi();
     renderAll();
 
-    if (state.session.mode === "live" && allowPrefetch) {
+    if ((state.session.mode === "live" || state.session.mode === "idpw") && allowPrefetch) {
       await pullConfig(state.site, true);
     }
     if (Object.keys(SITES).some((id) => state.dirty[id])) {
@@ -406,12 +516,12 @@
   function updateSessionUi() {
     const session = state.session || {};
     const chip = $("#mode-chip");
-    chip.textContent = session.mode === "live" ? "실서버 연결" : session.mode === "key" ? "관리자 키 모드" : "데모 모드";
-    chip.classList.toggle("live", session.mode === "live");
+    chip.textContent = session.mode === "idpw" ? "아이디 로그인" : session.mode === "live" ? "실서버 연결" : session.mode === "key" ? "관리자 키 모드" : "데모 모드";
+    chip.classList.toggle("live", session.mode === "live" || session.mode === "idpw");
 
     const userChip = $("#user-chip");
     if (session.login) {
-      userChip.innerHTML = `${session.avatar ? `<img src="${esc(session.avatar)}" alt="">` : ""}<span>@${esc(session.login)}</span>`;
+      userChip.innerHTML = `${session.avatar ? `<img src="${esc(session.avatar)}" alt="">` : ""}<span>${session.mode === "idpw" ? esc(session.login) : `@${esc(session.login)}`}</span>`;
       userChip.hidden = false;
     } else {
       userChip.hidden = true;
@@ -471,6 +581,8 @@
   function bindGate() {
     const form = $("#gate-form");
     if (form) form.addEventListener("submit", handleGateSubmit);
+    const tokenForm = $("#gate-token-form");
+    if (tokenForm) tokenForm.addEventListener("submit", handleTokenGateSubmit);
     const demo = $("#gate-demo");
     if (demo) demo.addEventListener("click", handleDemo);
   }
@@ -790,6 +902,46 @@
       </div>`).join("");
   }
 
+  /* ───────────── 문구 입력칸 ───────────── */
+  /* 사이트별 copyGroups(sites.js) 로 ③ 문구 화면을 그린다. 서버·저장 형식은 copy.<key> 그대로다. */
+  function renderCopyForm() {
+    const box = $("#copy-form");
+    if (!box) return;
+    const groups = current().copyGroups || [];
+    if (!groups.length) {
+      box.innerHTML = '<p class="note">이 사이트에 등록된 문구 목록이 없습니다.</p>';
+      return;
+    }
+    box.innerHTML = groups.map((group) => `
+      <section class="copygroup">
+        <div class="copygroup-head">
+          <h4>${esc(group.name)}</h4>
+          <span class="muted small">${group.fields.length}개 문구</span>
+        </div>
+        ${group.note ? `<p class="note">${esc(group.note)}</p>` : ""}
+        ${group.fields.map(copyFieldHtml).join("")}
+      </section>`).join("");
+  }
+
+  function copyFieldHtml(field) {
+    const raw = getPath(config(), `copy.${field.key}`);
+    const value = raw == null ? "" : String(raw);
+    const id = `copy-${field.key}`;
+    const rich = field.kind === "html" || field.kind === "areaHtml";
+    const hint = rich ? ' <em>&lt;b&gt;·&lt;br&gt; 등 일부 태그 사용 가능</em>' : "";
+    const max = Number(field.max) || 80;
+    if (field.kind === "area" || field.kind === "areaHtml") {
+      return `<label class="field" for="${esc(id)}">
+        <span class="field-label">${esc(field.label)}${hint}</span>
+        <textarea id="${esc(id)}" data-bind="copy.${esc(field.key)}" rows="2" maxlength="${max}">${esc(value)}</textarea>
+      </label>`;
+    }
+    return `<label class="field" for="${esc(id)}">
+      <span class="field-label">${esc(field.label)}${hint}</span>
+      <input type="text" id="${esc(id)}" data-bind="copy.${esc(field.key)}" value="${esc(value)}" maxlength="${max}">
+    </label>`;
+  }
+
   /* ───────────── 파생 UI(스위치 라벨 등) ───────────── */
   function updateDerived() {
     const cfg = config();
@@ -822,6 +974,7 @@
     const inquiryTab = $('.tab[data-tab="inquiry"]');
     if (inquiryTab) inquiryTab.hidden = state.site !== "bokjimoa";
     applyTab();
+    renderCopyForm();
     syncInputs();
     updateDerived();
     renderOrderList("tabs");
@@ -973,18 +1126,19 @@
   async function saveToGitHub() {
     const site = current();
     const session = state.session || {};
+    const viaServer = session.mode === "idpw";
     if (session.mode === "demo") {
-      setResult(`<h4>데모 모드입니다</h4><p>실제 저장은 GitHub 토큰으로 로그인해야 합니다. 지금 설정은 ‘JSON 내려받기’로 파일로 보관할 수 있어요.</p>
-        <p>로그아웃 후 토큰을 넣고 다시 로그인하면 <code>${esc(site.repo)}</code> 의 <code>${esc(site.path)}</code> 로 바로 커밋됩니다.</p>`, true);
+      setResult(`<h4>데모 모드입니다</h4><p>실제 저장은 아이디로 로그인해야 합니다. 지금 설정은 ‘JSON 내려받기’로 파일로 보관할 수 있어요.</p>
+        <p>로그아웃 후 아이디·비밀번호로 다시 로그인하면 <code>${esc(site.repo)}</code> 의 <code>${esc(site.path)}</code> 로 바로 커밋됩니다.</p>`, true);
       setTab("deploy");
       return;
     }
-    if (!session.token) {
-      setResult("<h4>GitHub 토큰이 없습니다</h4><p>관리자 키만으로 로그인한 상태라 저장은 할 수 없습니다. 토큰을 넣고 다시 로그인해 주세요.</p>", true);
+    if (!viaServer && !session.token) {
+      setResult("<h4>로그인이 필요합니다</h4><p>관리자 키만으로 로그인한 상태라 저장은 할 수 없습니다. 아이디로 다시 로그인해 주세요.</p>", true);
       setTab("deploy");
       return;
     }
-    if (session.repos && session.repos[site.id] === false) {
+    if (!viaServer && session.repos && session.repos[site.id] === false) {
       setResult(`<h4>쓰기 권한이 없습니다</h4><p>이 토큰으로는 <code>${esc(site.repo)}</code> 에 커밋할 수 없습니다. GitHub 저장소 권한(Contents: Read and write)을 확인해 주세요.</p>`, true);
       setTab("deploy");
       return;
@@ -996,39 +1150,60 @@
     const contentPath = `/repos/${site.repo}/contents/${site.path}`;
     const buttons = [$("#btn-save"), $("#btn-save-top")];
     buttons.forEach((b) => { if (b) b.disabled = true; });
-    setResult("<h4>커밋하는 중…</h4><p>GitHub에 설정 파일을 올리고 있습니다.</p>", false);
+    setResult("<h4>커밋하는 중…</h4><p>복지모아 서버가 GitHub에 설정 파일을 올리고 있습니다.</p>", false);
 
     try {
-      const head = await ghRequest(`${contentPath}?ref=${encodeURIComponent(site.branch)}`);
-      let sha = null;
-      if (head.ok && head.data && head.data.sha) sha = head.data.sha;
-      else if (head.status !== 404) {
-        setResult(`<h4>현재 파일을 읽지 못했습니다</h4><p>${esc(head.error || "알 수 없는 오류")}</p>`, true);
-        return;
-      }
-
-      const body = {
-        message: `chore(config): ${site.name} 사이트 설정 업데이트 (moa-admin)`,
-        content: toBase64(json),
-        branch: site.branch,
-        committer: {
-          name: "모아 어드민",
-          email: "moa-admin@users.noreply.github.com"
+      let commit = {};
+      if (viaServer) {
+        // 아이디 로그인 모드: 서버가 보관한 PAT 로 대신 커밋한다(브라우저에 토큰이 없다).
+        const put = await apiRequest("/api/admin/repo-config", {
+          method: "PUT",
+          json: true,
+          body: JSON.stringify({
+            site: site.id,
+            config: payload,
+            message: `chore(config): ${site.name} 사이트 설정 업데이트 (moa-admin)`
+          })
+        });
+        if (!put.ok) {
+          setResult(`<h4>커밋하지 못했습니다</h4><p>${esc(put.error)}${put.status ? ` (HTTP ${put.status})` : ""}</p>
+            <p>${put.status === 401 || put.status === 403 ? "로그인을 다시 해 주세요." : "잠시 뒤 다시 시도하거나 서버 상태를 확인해 주세요."}</p>`, true);
+          return;
         }
-      };
-      if (sha) body.sha = sha;
+        commit = (put.data && put.data.commit) || {};
+      } else {
+        const head = await ghRequest(`${contentPath}?ref=${encodeURIComponent(site.branch)}`);
+        let sha = null;
+        if (head.ok && head.data && head.data.sha) sha = head.data.sha;
+        else if (head.status !== 404) {
+          setResult(`<h4>현재 파일을 읽지 못했습니다</h4><p>${esc(head.error || "알 수 없는 오류")}</p>`, true);
+          return;
+        }
 
-      const put = await ghRequest(contentPath, { method: "PUT", body: JSON.stringify(body) });
-      if (!put.ok) {
-        setResult(`<h4>커밋하지 못했습니다</h4><p>${esc(put.error)}${put.status ? ` (HTTP ${put.status})` : ""}</p>
-          <p>토큰 권한과 저장소 이름을 확인해 주세요.</p>`, true);
-        return;
+        const body = {
+          message: `chore(config): ${site.name} 사이트 설정 업데이트 (moa-admin)`,
+          content: toBase64(json),
+          branch: site.branch,
+          committer: {
+            name: "모아 어드민",
+            email: "moa-admin@users.noreply.github.com"
+          }
+        };
+        if (sha) body.sha = sha;
+
+        const put = await ghRequest(contentPath, { method: "PUT", body: JSON.stringify(body) });
+        if (!put.ok) {
+          setResult(`<h4>커밋하지 못했습니다</h4><p>${esc(put.error)}${put.status ? ` (HTTP ${put.status})` : ""}</p>
+            <p>토큰 권한과 저장소 이름을 확인해 주세요.</p>`, true);
+          return;
+        }
+        commit = (put.data && put.data.commit) || {};
       }
 
-      const commit = (put.data && put.data.commit) || {};
-      const shortSha = (commit.sha || "").slice(0, 7);
+      const shortSha = (commit.shortSha || commit.sha || "").slice(0, 7);
+      const commitUrl = commit.htmlUrl || commit.html_url || "#";
       setResult(`<h4>배포 커밋 완료 ✅</h4>
-        <p><b>커밋</b> <code>${esc(shortSha || "(SHA 없음)")}</code> · <a href="${esc(commit.html_url || "#")}" target="_blank" rel="noreferrer">GitHub에서 보기</a></p>
+        <p><b>커밋</b> <code>${esc(shortSha || "(SHA 없음)")}</code> · <a href="${esc(commitUrl)}" target="_blank" rel="noreferrer">GitHub에서 보기</a></p>
         <p><b>저장 위치</b> ${esc(site.repo)} / ${esc(site.path)} (${esc(site.branch)})</p>
         <p><b>반영 예상</b> ${esc(site.deployKind)} — ${esc(site.deployEta)}</p>
         <p><b>바뀐 내용</b> 공지 배너 ${payload.banner.enabled ? "ON" : "OFF"} · 팝업 ${payload.popup.enabled ? "ON" : "OFF"} · 탭 ${payload.navigation.tabs.filter((t) => t.visible).length}개 노출</p>
@@ -1048,43 +1223,74 @@
   async function pullConfig(siteId, silent) {
     const site = SITES[siteId];
     const session = state.session || {};
-    if (!session.token) {
-      if (!silent) toast("GitHub 토큰이 있어야 현재 설정을 불러올 수 있어요.", true);
+    const viaServer = session.mode === "idpw";
+    if (!viaServer && !session.token) {
+      if (!silent) toast("아이디로 로그인해야 현재 설정을 불러올 수 있어요.", true);
       return;
     }
     if (!silent && state.dirty[siteId]) {
       const ok = window.confirm("저장하지 않은 편집 내용이 있습니다. GitHub의 현재 값으로 덮어쓸까요?");
       if (!ok) return;
     }
-    const res = await ghRequest(`/repos/${site.repo}/contents/${site.path}?ref=${encodeURIComponent(site.branch)}`);
-    if (res.ok && res.data && res.data.content) {
-      try {
-        const parsed = JSON.parse(fromBase64(res.data.content));
-        const merged = Object.assign(clone(site.defaults), parsed);
-        merged.navigation = Object.assign({ tabs: [], sections: [] }, parsed.navigation || {});
-        merged.copy = Object.assign(clone(site.defaults.copy), parsed.copy || {});
-        merged.banner = Object.assign(clone(site.defaults.banner), parsed.banner || {});
-        merged.popup = Object.assign(clone(site.defaults.popup), parsed.popup || {});
-        merged.cards = Array.isArray(parsed.cards) && parsed.cards.length ? parsed.cards : clone(site.defaults.cards);
-        state.configs[siteId] = merged;
-        state.source[siteId] = `GitHub ${(res.data.sha || "").slice(0, 7)} (${fmtDateTime(parsed.meta && parsed.meta.updatedAt)})`;
-        clearDirty(siteId);
+
+    let parsed = null;
+    let sha = "";
+    let label = "GitHub";
+    if (viaServer) {
+      const res = await apiRequest(`/api/admin/repo-config?site=${encodeURIComponent(siteId)}`);
+      if (res.ok && res.data && res.data.exists === false) {
+        state.source[siteId] = "아직 설정 파일 없음 (기본값 사용)";
         if (siteId === state.site) renderAll();
-        if (!silent) toast("GitHub의 현재 설정을 불러왔습니다.");
+        if (!silent) toast("아직 저장소에 설정 파일이 없어 기본값을 쓰고 있어요.");
+        return;
+      }
+      if (!res.ok || !res.data || !res.data.config) {
+        if (!silent) toast(`설정을 불러오지 못했습니다: ${(res.data && res.data.error) || res.error}`, true);
+        state.source[siteId] = `불러오기 실패 (${res.error})`;
+        if (siteId === state.site) renderAll();
+        return;
+      }
+      parsed = res.data.config;
+      sha = res.data.sha || "";
+      label = "서버";
+    } else {
+      const res = await ghRequest(`/repos/${site.repo}/contents/${site.path}?ref=${encodeURIComponent(site.branch)}`);
+      if (res.status === 404) {
+        state.source[siteId] = "GitHub에 아직 설정 파일 없음 (기본값 사용)";
+        if (siteId === state.site) renderAll();
+        if (!silent) toast("아직 저장소에 설정 파일이 없어 기본값을 쓰고 있어요.");
+        return;
+      }
+      if (!res.ok || !res.data || !res.data.content) {
+        if (!silent) toast(`설정을 불러오지 못했습니다: ${res.error}`, true);
+        state.source[siteId] = `불러오기 실패 (${res.error})`;
+        if (siteId === state.site) renderAll();
+        return;
+      }
+      try {
+        parsed = JSON.parse(fromBase64(res.data.content));
       } catch (err) {
         if (!silent) toast("설정 파일을 해석하지 못했습니다(JSON 형식 오류).", true);
+        return;
       }
-      return;
+      sha = res.data.sha || "";
     }
-    if (res.status === 404) {
-      state.source[siteId] = "GitHub에 아직 설정 파일 없음 (기본값 사용)";
+
+    try {
+      const merged = Object.assign(clone(site.defaults), parsed);
+      merged.navigation = Object.assign({ tabs: [], sections: [] }, parsed.navigation || {});
+      merged.copy = Object.assign(clone(site.defaults.copy), parsed.copy || {});
+      merged.banner = Object.assign(clone(site.defaults.banner), parsed.banner || {});
+      merged.popup = Object.assign(clone(site.defaults.popup), parsed.popup || {});
+      merged.cards = Array.isArray(parsed.cards) && parsed.cards.length ? parsed.cards : clone(site.defaults.cards);
+      state.configs[siteId] = merged;
+      state.source[siteId] = `${label} ${String(sha).slice(0, 7)} (${fmtDateTime(parsed.meta && parsed.meta.updatedAt)})`;
+      clearDirty(siteId);
       if (siteId === state.site) renderAll();
-      if (!silent) toast("아직 저장소에 설정 파일이 없어 기본값을 쓰고 있어요.");
-      return;
+      if (!silent) toast("사이트의 현재 설정을 불러왔습니다.");
+    } catch (err) {
+      if (!silent) toast("설정 파일을 반영하지 못했습니다.", true);
     }
-    if (!silent) toast(`설정을 불러오지 못했습니다: ${res.error}`, true);
-    state.source[siteId] = `불러오기 실패 (${res.error})`;
-    if (siteId === state.site) renderAll();
   }
 
   function exportJson() {
@@ -1160,6 +1366,10 @@
     const items = [];
     if (session.mode === "demo") {
       items.push(["info", "데모 모드 — 실제 커밋은 하지 않습니다."]);
+    } else if (session.mode === "idpw") {
+      items.push(["ok", `${esc(session.login)} 아이디로 로그인됨 (복지모아 서버 프록시)`]);
+      items.push(["ok", "저장·불러오기: bokjimoa.onrender.com 서버가 대신 커밋합니다"]);
+      items.push(["ok", "문의 조회·삭제: 아이디 로그인 토큰으로 연결됩니다"]);
     } else if (session.mode === "live") {
       items.push(["ok", `GitHub @${esc(session.login)} 토큰 확인됨`]);
       Object.keys(SITES).forEach((id) => {
@@ -1169,7 +1379,9 @@
     } else {
       items.push(["wait", "관리자 키 모드 — 저장 기능은 잠겨 있습니다."]);
     }
-    items.push([session.key ? "ok" : "wait", session.key ? "복지모아 관리자 키 저장됨" : "복지모아 관리자 키 없음 (문의 조회 불가)"]);
+    if (session.mode !== "idpw") {
+      items.push([session.key ? "ok" : "wait", session.key ? "복지모아 관리자 키 저장됨" : "복지모아 관리자 키 없음 (문의 조회 불가)"]);
+    }
     box.innerHTML = items.map(([cls, text]) => {
       const mark = cls === "ok" ? "✓" : cls === "bad" ? "✕" : "•";
       return `<li><span class="${cls}">${mark}</span><span>${text}</span></li>`;
@@ -1196,6 +1408,11 @@
 
   /* ───────────── 문의 ───────────── */
   function saveInquiryKey() {
+    if (state.session && state.session.mode === "idpw") {
+      toast("아이디로 로그인한 상태에서는 문의가 자동으로 연결됩니다.");
+      loadInquiries();
+      return;
+    }
     const value = $("#inquiry-key").value.trim();
     if (!value) { toast("관리자 키를 입력해 주세요.", true); return; }
     state.session.key = value;
@@ -1220,10 +1437,11 @@
   }
 
   async function loadInquiries() {
-    const key = (state.session && state.session.key) || "";
+    const session = state.session || {};
+    const viaServer = session.mode === "idpw";
     const info = $("#inquiry-msg");
-    if (!key) {
-      info.textContent = "관리자 키를 먼저 입력해 주세요.";
+    if (!viaServer && !session.key) {
+      info.textContent = "아이디로 로그인하거나 관리자 키를 먼저 입력해 주세요.";
       $("#inquiry-conn").textContent = "연결 전";
       $("#inquiry-conn").className = "status-pill";
       return;
@@ -1232,14 +1450,10 @@
     state.inquiries.loading = true;
     info.textContent = "불러오는 중…";
     try {
-      const url = `${API_BASE}/api/admin/inquiries?limit=100${status ? `&status=${encodeURIComponent(status)}` : ""}`;
-      const res = await fetch(url, { headers: { "x-sync-key": key }, cache: "no-store" });
-      let data = null;
-      const text = await res.text();
-      try { data = text ? JSON.parse(text) : null; } catch (err) { data = null; }
-      if (!res.ok || !data || data.ok === false) {
-        const reason = (data && data.error) || `HTTP ${res.status}`;
-        throw new Error(reason);
+      const res = await apiRequest(`/api/admin/inquiries?limit=100${status ? `&status=${encodeURIComponent(status)}` : ""}`);
+      const data = res.data;
+      if (!res.ok || !data) {
+        throw new Error(res.error || `HTTP ${res.status}`);
       }
       state.inquiries = {
         loading: false,
@@ -1253,7 +1467,7 @@
       const pill = $("#inquiry-conn");
       pill.textContent = "연결됨";
       pill.className = "status-pill ok";
-      info.textContent = `문의 ${data.total}건${state.inquiries.operatorEmail ? ` · 알림 메일 ${data.operatorEmail}` : ""}`;
+      info.textContent = `문의 ${data.total}건${state.inquiries.operatorEmail ? ` · 알림 메일 ${state.inquiries.operatorEmail}` : ""}`;
     } catch (err) {
       state.inquiries.loading = false;
       state.inquiries.error = err.message || "알 수 없는 오류";
@@ -1286,6 +1500,11 @@
       }
     }
     const keyInput = $("#inquiry-key");
+    const keyRow = $("#inquiry-key-row");
+    const authNote = $("#inquiry-auth-note");
+    const viaServer = Boolean(state.session && state.session.mode === "idpw");
+    if (keyRow) keyRow.hidden = viaServer;
+    if (authNote) authNote.hidden = !viaServer;
     if (keyInput && state.session && state.session.key && !keyInput.value) keyInput.value = state.session.key;
 
     if (inf.loading) { list.innerHTML = '<p class="note">불러오는 중…</p>'; return; }
@@ -1316,20 +1535,12 @@
     const id = Number(btn.dataset.del);
     if (!id) return;
     if (!window.confirm(`문의 #${id} 를 삭제할까요? 되돌릴 수 없습니다.`)) return;
-    const key = (state.session && state.session.key) || "";
     btn.disabled = true;
     btn.textContent = "삭제 중…";
     try {
-      const res = await fetch(`${API_BASE}/api/admin/inquiries/${id}`, {
-        method: "DELETE",
-        headers: { "x-sync-key": key },
-        cache: "no-store"
-      });
-      let data = null;
-      const text = await res.text();
-      try { data = text ? JSON.parse(text) : null; } catch (err) { data = null; }
-      if (!res.ok || !data || data.ok === false) {
-        throw new Error((data && data.error) || `HTTP ${res.status}`);
+      const res = await apiRequest(`/api/admin/inquiries/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        throw new Error(res.error || `HTTP ${res.status}`);
       }
       addLog(`문의 #${id} 삭제`);
       toast(`문의 #${id} 를 삭제했습니다.`);

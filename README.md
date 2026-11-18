@@ -7,13 +7,16 @@
 
 ## 쓰는 방법
 
-1. 주소를 엽니다. GitHub 로그인 화면 없이 **토큰 입력 칸**이 나옵니다.
-2. [Personal access token (classic)](https://github.com/settings/tokens/new?scopes=repo&description=moa-admin) 에서 `repo` 권한으로 토큰을 만들어 붙여 넣습니다.
-   (Fine-grained token 이면 `moa-kr/pokemoa`·`moa-kr/bokjinabi` 두 저장소에 **Contents: Read and write**)
-3. 복지모아 문의까지 보려면 관리자 키(`x-sync-key`, `scheduled-actions/📰-복지모아-임단협-뉴스-자동-반영/.sync-key`)도 함께 넣습니다.
-4. ①~③ 에서 고치고 **저장 및 사이트 반영**을 누르면 설정 JSON이 저장소에 커밋되고, 곧 사이트에 반영됩니다.
+1. 주소를 엽니다. **아이디·비밀번호** 칸이 나옵니다(기본 경로).
+2. 아이디·비밀번호를 넣고 `90일 동안 로그인 유지`를 확인한 뒤 **로그인**을 누릅니다.
+   - 로그인은 복지모아 서버(`https://bokjimoa.onrender.com/api/admin/login`)가 확인하고, 브라우저에는 **HMAC 서명 토큰**만 남습니다.
+   - 비밀번호는 서버의 Render 환경변수(`ADMIN_LOGIN_ID`·`ADMIN_LOGIN_PW`)에만 있고 저장소에는 없습니다.
+3. **불러오기**·**저장 및 사이트 반영**·**회사복지모아 문의 조회/삭제**는 모두 같은 서버(`/api/admin/repo-config`, `/api/admin/inquiries`)를 Bearer 토큰으로 부릅니다. GitHub PAT 은 서버(`ADMIN_GITHUB_PAT`)에만 있습니다.
+4. ①~③ 에서 고치고 **저장 및 사이트 반영**을 누르면 서버가 설정 JSON을 저장소에 커밋하고, 곧 사이트에 반영됩니다.
 
-토큰이 없어도 **데모(미리보기) 모드**로 화면과 미리보기를 그대로 써 볼 수 있습니다(저장만 잠김).
+**예비 경로** — 아이디 로그인이 막히면 아래 접힌 **‘고급: GitHub 토큰으로 직접 로그인’** 에서 PAT(+관리자 키 `x-sync-key`)로 들어갈 수 있습니다. 이 경로는 브라우저가 GitHub API 를 직접 부릅니다.
+
+로그인 없이도 **데모(미리보기) 모드**로 화면과 미리보기를 그대로 써 볼 수 있습니다(저장만 잠김).
 
 ## 관리 항목
 
@@ -22,8 +25,8 @@
 | ① 공지·팝업 | 상단 공지 바(문구·링크·info/warn/urgent), 첫 방문 팝업(제목·본문·버튼·기간·다시 보지 않기 일수) | `banner`, `popup` |
 | ② 탭·섹션 순서 | 끌어서 정렬(HTML5 DnD) + ▲▼ 버튼 + 노출 스위치 | `navigation.tabs`, `navigation.sections` |
 | ③ 문구 | 사이트 이름·부제·hero·현황 카드 설명·푸터 | `copy`, `cards` |
-| ④ 문의 | 복지모아 `/api/admin/inquiries` 조회·삭제 (`x-sync-key`) | (서버 데이터, 커밋 없음) |
-| ⑤ 저장·배포 | GitHub Contents API 커밋, JSON 내보내기/불러오기, 연결 상태 | — |
+| ④ 문의 | 복지모아 `/api/admin/inquiries` 조회·삭제 (아이디 로그인 토큰 또는 `x-sync-key`) | (서버 데이터, 커밋 없음) |
+| ⑤ 저장·배포 | 복지모아 서버 프록시(`/api/admin/repo-config`) 커밋, JSON 내보내기/불러오기, 연결 상태 | — |
 
 오른쪽(모바일에서는 ‘미리보기’ 버튼)에 390px 폰 프레임 미리보기가 있어, 고치는 즉시 공지 바와 팝업이 어떻게 보일지 확인할 수 있습니다.
 
