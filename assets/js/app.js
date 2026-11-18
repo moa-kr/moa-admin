@@ -38,6 +38,19 @@
   /* 사이트와 같은 규칙으로 제목 마크업(<br>·<em>·<span class="hl"> 등)만 남긴다. */
   const PREVIEW_TAGS = { B: 1, STRONG: 1, EM: 1, I: 1, U: 1, SMALL: 1, BR: 1, SPAN: 1 };
   const PREVIEW_ATTRS = { class: 1, "aria-hidden": 1 };
+
+  /* 탭·섹션 이름은 사이트의 내비게이션 글자/섹션 머리글이 된다. 스키마와 같은 길이 제한을 쓴다. */
+  const LABEL_LIMIT = { tabs: 20, sections: 30 };
+  /* 이름을 바꿔도 화면에 제목이 없는 섹션은 무엇이 바뀌는지 알려 준다(두 사이트의 실제 마크업 기준). */
+  const SECTION_LABEL_NOTE = {
+    pokemoa: {
+      hero: "화면 제목은 ③ 문구의 ‘첫 화면 제목’을 씁니다",
+      pop: "이 섹션에는 화면 제목이 없습니다"
+    },
+    bokjimoa: {
+      hero: "화면 제목은 ③ 문구의 ‘첫 화면 제목’을 씁니다"
+    }
+  };
   function safeHtml(value) {
     const holder = document.createElement("div");
     holder.innerHTML = String(value == null ? "" : value);
@@ -589,6 +602,43 @@
       if (action === "up") moveItem(listName, id, -1);
       if (action === "down") moveItem(listName, id, 1);
     });
+
+    // 이름 편집 — 입력하는 즉시 설정·미리보기·‘저장 안 된 변경’에 반영한다.
+    box.addEventListener("input", (event) => {
+      const input = event.target.closest("input[data-label-field]");
+      if (!input) return;
+      const row = input.closest("[data-id]");
+      if (!row) return;
+      const item = config().navigation[listName].find((x) => x.id === row.dataset.id);
+      if (!item) return;
+      item.label = input.value;
+      markDirty(true);
+      syncRowAria(row, input.value || item.id);
+      schedulePreview();
+    });
+    // 입력을 마쳤을 때 비어 있으면 기본 이름으로 되돌린다.
+    box.addEventListener("change", (event) => {
+      const input = event.target.closest("input[data-label-field]");
+      if (!input) return;
+      const row = input.closest("[data-id]");
+      if (!row) return;
+      if (input.value.trim()) return;
+      const item = config().navigation[listName].find((x) => x.id === row.dataset.id);
+      if (!item) return;
+      item.label = restoreDefaultLabel(listName, item.id);
+      input.value = item.label;
+      markDirty(true);
+      syncRowAria(row, item.label);
+      schedulePreview();
+      toast("이름이 비어 있어 기본 이름으로 되돌렸습니다.");
+    });
+
+    /* 끌기는 이름칸·버튼·스위치가 아닌 곳에서만 시작한다(입력칸에서 글자를 고를 수 있도록). */
+    box.addEventListener("pointerdown", (event) => {
+      const row = event.target.closest(".rrow");
+      if (!row) return;
+      row.draggable = !event.target.closest("input, button, label, select, textarea, a");
+    });
     box.addEventListener("change", (event) => {
       const el = event.target;
       if (el.dataset.act !== "vis") return;
@@ -666,13 +716,20 @@
     const box = $(`#list-${listName}`);
     if (!box) return;
     const list = sortedByOrder(config().navigation[listName]);
-    box.innerHTML = list.map((item, index) => `
+    const limit = LABEL_LIMIT[listName] || 20;
+    const notes = SECTION_LABEL_NOTE[state.site] || {};
+    box.innerHTML = list.map((item, index) => {
+      const kind = listName === "tabs" ? "탭" : "섹션";
+      const note = listName === "sections" ? notes[item.id] : "";
+      return `
       <div class="rrow ${item.visible ? "" : "is-hidden-item"}" draggable="true" data-id="${esc(item.id)}">
-        <span class="rdrag" aria-hidden="true">⠿</span>
+        <span class="rdrag" title="끌어서 순서 바꾸기" aria-hidden="true">⠿</span>
         <span class="rnum">${index + 1}</span>
-        <div style="min-width:0;flex:1">
-          <div class="rlabel">${esc(item.label)}</div>
-          <div class="rid">${esc(item.id)}</div>
+        <div class="rmain">
+          <input type="text" class="rlabel-input" data-label-field="1" value="${esc(item.label)}"
+                 maxlength="${limit}" placeholder="화면에 보일 이름" spellcheck="false"
+                 aria-label="${esc(item.id)} ${kind} 이름" title="이름을 눌러 고치면 미리보기와 사이트에 반영됩니다">
+          <div class="rid">${esc(item.id)}${note ? ` · <span class="rhint">${esc(note)}</span>` : ""}</div>
         </div>
         <div class="rmove">
           <button type="button" class="icon-btn" data-act="up" aria-label="${esc(item.label)} 위로" ${index === 0 ? "disabled" : ""}>▲</button>
@@ -682,7 +739,26 @@
             <span class="switch-track"><span class="switch-thumb"></span></span>
           </label>
         </div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
+  }
+
+  /* 이름을 고치는 동안에는 목록을 다시 그리지 않는다(입력 중 커서가 튀지 않도록).
+     버튼·스위치의 읽어주기 문구만 그 자리에서 새 이름으로 바꾼다. */
+  function syncRowAria(row, label) {
+    $$("button[data-act]", row).forEach((btn) => {
+      const dir = btn.dataset.act === "up" ? "위로" : "아래로";
+      btn.setAttribute("aria-label", `${label} ${dir}`);
+    });
+    const sw = $('input[data-act="vis"]', row);
+    if (sw) sw.setAttribute("aria-label", `${label} 노출`);
+  }
+
+  /* 이름을 비우면 사이트에는 반영되지 않으므로 기본 이름으로 되돌린다. */
+  function restoreDefaultLabel(listName, id) {
+    const defaults = (current().defaults.navigation || {})[listName] || [];
+    const found = defaults.find((x) => x.id === id);
+    return found ? found.label : id;
   }
 
   /* ───────────── 카드 목록 ───────────── */
