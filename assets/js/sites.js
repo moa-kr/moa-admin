@@ -428,7 +428,7 @@
     "status3Title": "없음",
     "status3Desc": "재고 0으로 확인된 매장입니다.",
     "status4Title": "보유 카드 표시",
-    "status4Desc": "실시간 조회에서 확인한 상품명과 수량(예: 닌자스피너 · 3개)만 붙습니다.",
+    "status4Desc": "실시간 조회에서 확인한 상품명과 수량만 붙습니다.",
     "status5Title": "오프라인 판매처",
     "status5Desc": "대형마트, 아트박스, 포켓몬코리아 자판기, 공인 카드샵 장소를 표시합니다. ",
     "mapChannelsTitle": "실제 재고를 확인하는 공식 채널",
