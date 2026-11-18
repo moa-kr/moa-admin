@@ -35,6 +35,28 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
+  /* 사이트와 같은 규칙으로 제목 마크업(<br>·<em>·<span class="hl"> 등)만 남긴다. */
+  const PREVIEW_TAGS = { B: 1, STRONG: 1, EM: 1, I: 1, U: 1, SMALL: 1, BR: 1, SPAN: 1 };
+  const PREVIEW_ATTRS = { class: 1, "aria-hidden": 1 };
+  function safeHtml(value) {
+    const holder = document.createElement("div");
+    holder.innerHTML = String(value == null ? "" : value);
+    (function clean(node) {
+      Array.from(node.childNodes).forEach((child) => {
+        if (child.nodeType === 3) return;
+        if (child.nodeType !== 1) { child.remove(); return; }
+        if (!PREVIEW_TAGS[child.tagName]) {
+          child.parentNode.replaceChild(document.createTextNode(child.textContent || ""), child);
+          return;
+        }
+        Array.from(child.attributes).forEach((attr) => {
+          if (!PREVIEW_ATTRS[attr.name.toLowerCase()]) child.removeAttribute(attr.name);
+        });
+        clean(child);
+      });
+    })(holder);
+    return holder.innerHTML;
+  }
   function getPath(obj, path) {
     return path.split(".").reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
   }
@@ -783,10 +805,8 @@
           </div>`).join("")}</div>`
       : "";
 
-    const hasStatusSection = sections.some((s) => s.id === "status");
-    const cardBlock = (!hasStatusSection && statusCard)
-      ? `<div class="pv-sect"><h2 style="color:${inkColor};--bar:${accent}">현황</h2>${statusCard}</div>`
-      : "";
+    // 현황 카드(cards)는 두 사이트 화면에 자리가 없어 미리보기에 따로 그리지 않는다.
+    const cardBlock = "";
 
     const sectionHtml = sections.map((section) => {
       if (section.id === "status") {
@@ -794,7 +814,7 @@
       }
       if (section.id === "hero") {
         return `<div class="pv-hero" style="background:${dark ? "linear-gradient(135deg,#18264a,#0f1b35)" : "#eef3ff"};color:${dark ? "#fff" : "#101f3c"}">
-          <h1>${esc(cfg.copy.heroTitle)}</h1>
+          <h1>${safeHtml(cfg.copy.heroTitle)}</h1>
           <p>${esc(cfg.copy.heroDescription)}</p>
           ${cfg.copy.ctaLabel ? `<span class="pv-cta" style="background:${accent};color:${dark ? "#101f3c" : "#fff"}">${esc(cfg.copy.ctaLabel)}</span>` : ""}
         </div>`;
