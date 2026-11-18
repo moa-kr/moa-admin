@@ -578,6 +578,7 @@
   /* ───────────── 탭/사이트 전환 ───────────── */
   function setSite(siteId) {
     if (!SITES[siteId]) return;
+    const previous = state.site;
     state.site = siteId;
     $$(".site-btn").forEach((btn) => {
       const on = btn.dataset.site === siteId;
@@ -590,6 +591,11 @@
     saveUi();
     applyTab();
     renderAll();
+    // 사이트를 바큘 때도 그 사이트의 저장된 설정을 먼저 읽는다(기본값으로 덮어쓰지 않도록).
+    if (siteId !== previous && !state.dirty[siteId] && state.session &&
+        (state.session.mode === "idpw" || state.session.mode === "live")) {
+      pullConfig(siteId, true);
+    }
   }
 
   function applyTab() {
