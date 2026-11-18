@@ -594,7 +594,14 @@
     // 사이트를 바큘 때도 그 사이트의 저장된 설정을 먼저 읽는다(기본값으로 덮어쓰지 않도록).
     if (siteId !== previous && !state.dirty[siteId] && state.session &&
         (state.session.mode === "idpw" || state.session.mode === "live")) {
-      pullConfig(siteId, true);
+      pullConfig(siteId, true).then(() => {
+        // 복지모아 서버(Render)가 잠들어 첫 요청이 실패할 수 있다 — 한 번만 다시 시도한다.
+        if (state.site !== siteId || state.dirty[siteId]) return;
+        if (String(state.source[siteId]).indexOf("불러오기 실패") !== 0) return;
+        setTimeout(() => {
+          if (state.site === siteId && !state.dirty[siteId]) pullConfig(siteId, true);
+        }, 2500);
+      });
     }
   }
 
@@ -1368,6 +1375,12 @@
       setResult(`<h4>쓰기 권한이 없습니다</h4><p>이 토큰으로는 <code>${esc(site.repo)}</code> 에 커밋할 수 없습니다. GitHub 저장소 권한(Contents: Read and write)을 확인해 주세요.</p>`, true);
       setTab("deploy");
       return;
+    }
+    // 저장된 설정을 아직 못 읽은 상태(기본값·불러오기 실패)에서 저장하면 화면의 기본값으로 덮어쓴다 — 한 번 더 확인한다.
+    const sourceNow = String(state.source[site.id] || "");
+    if (/^(기본값|불러오기 실패|GitHub에 아직|아직 설정 파일 없음)/.test(sourceNow)) {
+      const ok = window.confirm(`${site.name}의 저장된 설정을 아직 읽지 못했습니다(지금 화면: ${sourceNow}).\n\n이대로 저장하면 화면의 기본값이 저장소 파일을 덮어씁니다. 먼저 ‘현재 값 불러오기’를 누르는 것이 안전합니다.\n\n그래도 저장할까요?`);
+      if (!ok) return;
     }
     if (!window.confirm(`${site.name} (${site.repo}) 의 ${site.path} 에 저장하고 배포할까요?`)) return;
 
