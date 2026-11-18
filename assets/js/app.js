@@ -1114,6 +1114,10 @@
     saveSession(state.session);
     $("#inquiry-key").value = "";
     state.inquiries = { loading: false, error: "", list: [], byStatus: null, total: 0, operatorEmail: "", loadedAt: "" };
+    const pill = $("#inquiry-conn");
+    if (pill) { pill.textContent = "연결 전"; pill.className = "status-pill"; }
+    const info = $("#inquiry-msg");
+    if (info) info.textContent = "‘새로고침’을 누르면 문의를 불러옵니다.";
     renderChecks();
     renderInquiries();
     toast("키를 지웠습니다.");
