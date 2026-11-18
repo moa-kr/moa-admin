@@ -9,11 +9,11 @@
   },
   "copy": {
     "siteTitle": "포켓몬카드모아",
-    "subtitle": "포켓몬 카드 정가·입고·재고 한눈에",
-    "heroTitle": "오늘 입고된 카드, 어디서 살 수 있을까?",
-    "heroDescription": "확장팩별 정가 구매처와 편의점 4사 재고를 한 번에 확인하세요.",
-    "ctaLabel": "내 주변 매장 지도 열기",
-    "footerText": "포켓몬카드모아 — 정가 구매처·입고 기록·재고 지도를 모아 안내합니다."
+    "subtitle": "POKEMON CARD MOA",
+    "heroTitle": "30th CELEBRATION,<br><em>정가</em>로 만나는 방법",
+    "heroDescription": "포켓몬 카드 정가 구매처와 추첨 일정, 입고 기록, 편의점 4사 재고와 취급 카드까지 한 화면에 모았습니다. 리셀가에 흔들리지 않도록 기준 가격부터 확인하세요.",
+    "ctaLabel": "정가 구매처 보기",
+    "footerText": "포켓몬 카드의 정가 구매처, 추첨·입고 일정, 주변 매장 재고, 수록 카드 정보를 한 곳에 모은 비공식 정보 사이트입니다. 데이터 기준일 2026-11-17."
   },
   "banner": {
     "enabled": false,
@@ -76,34 +76,52 @@
         "order": 1
       },
       {
-        "id": "status",
-        "label": "현황 카드",
+        "id": "pricing",
+        "label": "70,000원에 살 수 있는 곳, 채널별 조건까지",
         "visible": true,
         "order": 2
       },
       {
-        "id": "restock",
-        "label": "최근 입고 기록",
+        "id": "boxes",
+        "label": "30th 말고 다른 박스, 정가로 사는 곳",
         "visible": true,
         "order": 3
       },
       {
-        "id": "pricing",
-        "label": "정가 구매처",
+        "id": "offline",
+        "label": "마트·아트박스·자판기·카드샵에서 정가로 사는 곳",
         "visible": true,
         "order": 4
       },
       {
         "id": "trend",
-        "label": "인기 카드 시세",
+        "label": "지금 가장 많이 찾는 4개 세트",
         "visible": true,
         "order": 5
       },
       {
-        "id": "faq",
-        "label": "자주 묻는 질문",
+        "id": "tips",
+        "label": "헛걸음을 줄이는 세 가지 순서",
         "visible": true,
         "order": 6
+      },
+      {
+        "id": "cards",
+        "label": "수록 카드와 레어도",
+        "visible": true,
+        "order": 7
+      },
+      {
+        "id": "faq",
+        "label": "구매 전에 가장 많이 묻는 것들",
+        "visible": true,
+        "order": 8
+      },
+      {
+        "id": "pop",
+        "label": "팝수 조회",
+        "visible": true,
+        "order": 9
       }
     ]
   },
@@ -132,7 +150,7 @@
   ],
   "meta": {
     "updatedBy": "moa-admin",
-    "updatedAt": "2026-11-18T12:00:00.000Z",
-    "note": "예시 파일입니다. 모아 어드민에서 저장하면 이 형식으로 커밋됩니다."
+    "updatedAt": "2026-11-18T00:00:00.000Z",
+    "note": "기본값 예시입니다. moa-kr/pokemoa 의 실제 설정을 그대로 옮겨 적었습니다."
   }
 }

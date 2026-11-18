@@ -11,11 +11,11 @@
     theme: { accent: "#101f3c", accentSoft: "#ffcb05", mode: "dark" },
     copy: {
       siteTitle: "포켓몬카드모아",
-      subtitle: "포켓몬 카드 정가·입고·재고 한눈에",
-      heroTitle: "오늘 입고된 카드, 어디서 살 수 있을까?",
-      heroDescription: "확장팩별 정가 구매처와 편의점 4사 재고를 한 번에 확인하세요.",
-      ctaLabel: "내 주변 매장 지도 열기",
-      footerText: "포켓몬카드모아 — 정가 구매처·입고 기록·재고 지도를 모아 안내합니다."
+      subtitle: "POKEMON CARD MOA",
+      heroTitle: "30th CELEBRATION,<br><em>정가</em>로 만나는 방법",
+      heroDescription: "포켓몬 카드 정가 구매처와 추첨 일정, 입고 기록, 편의점 4사 재고와 취급 카드까지 한 화면에 모았습니다. 리셀가에 흔들리지 않도록 기준 가격부터 확인하세요.",
+      ctaLabel: "정가 구매처 보기",
+      footerText: "포켓몬 카드의 정가 구매처, 추첨·입고 일정, 주변 매장 재고, 수록 카드 정보를 한 곳에 모은 비공식 정보 사이트입니다. 데이터 기준일 2026-11-17."
     },
     banner: {
       enabled: false,
@@ -47,11 +47,14 @@
       ],
       sections: [
         { id: "hero", label: "첫 화면 소개", visible: true, order: 1 },
-        { id: "status", label: "현황 카드", visible: true, order: 2 },
-        { id: "restock", label: "최근 입고 기록", visible: true, order: 3 },
-        { id: "pricing", label: "정가 구매처", visible: true, order: 4 },
-        { id: "trend", label: "인기 카드 시세", visible: true, order: 5 },
-        { id: "faq", label: "자주 묻는 질문", visible: true, order: 6 }
+        { id: "pricing", label: "70,000원에 살 수 있는 곳, 채널별 조건까지", visible: true, order: 2 },
+        { id: "boxes", label: "30th 말고 다른 박스, 정가로 사는 곳", visible: true, order: 3 },
+        { id: "offline", label: "마트·아트박스·자판기·카드샵에서 정가로 사는 곳", visible: true, order: 4 },
+        { id: "trend", label: "지금 가장 많이 찾는 4개 세트", visible: true, order: 5 },
+        { id: "tips", label: "헛걸음을 줄이는 세 가지 순서", visible: true, order: 6 },
+        { id: "cards", label: "수록 카드와 레어도", visible: true, order: 7 },
+        { id: "faq", label: "구매 전에 가장 많이 묻는 것들", visible: true, order: 8 },
+        { id: "pop", label: "팝수 조회", visible: true, order: 9 }
       ]
     },
     cards: [
@@ -70,10 +73,10 @@
     copy: {
       siteTitle: "회사복지모아",
       subtitle: "500대 기업 복지·임단협 현황을 한눈에",
-      heroTitle: "우리 회사 복지, 다른 회사와 비교해 보세요",
-      heroDescription: "공식 자료와 재직자 제보를 구분해 표시합니다. 확인된 값만 적고, 확인되지 않은 값은 ‘확인 필요’로 둡니다.",
+      heroTitle: "회사별 사내 복지,<br>찾아보고 <span class=\"hl\">골라서</span> 비교",
+      heroDescription: "기업별 복지를 한눈에 보고, 원하는 회사만 골라 비교하세요.",
       ctaLabel: "복지 올리기",
-      footerText: "회사복지모아 · BETA — 공식 자료와 이용자 제보를 구분해 표시합니다."
+      footerText: "회사복지모아 · BETA"
     },
     banner: {
       enabled: false,
@@ -103,10 +106,11 @@
         { id: "compare", label: "비교하기", visible: true, order: 4 }
       ],
       sections: [
-        { id: "search", label: "회사 찾기", visible: true, order: 1 },
-        { id: "recent", label: "최근 업로드된 회사", visible: true, order: 2 },
-        { id: "popular", label: "인기 · 등록 많은 회사", visible: true, order: 3 },
-        { id: "upload-cta", label: "내 회사 복지를 알려주세요", visible: true, order: 4 }
+        { id: "hero", label: "첫 화면 소개", visible: true, order: 1 },
+        { id: "search", label: "회사 찾기", visible: true, order: 2 },
+        { id: "recent", label: "최근 업로드된 회사", visible: true, order: 3 },
+        { id: "popular", label: "인기 · 등록 많은 회사", visible: true, order: 4 },
+        { id: "upload-cta", label: "내 회사 복지를 알려주세요", visible: true, order: 5 }
       ]
     },
     cards: [

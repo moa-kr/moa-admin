@@ -18,7 +18,7 @@
 | `site` | `"pokemoa"` \| `"bokjimoa"` | 설정 소유 사이트 |
 | `siteName` | 문자열 | 표시 이름(보통 `copy.siteTitle`) |
 | `theme` | `{ accent, accentSoft, mode }` | 사이트 강조색·밝기(`light`/`dark`) |
-| `copy` | 객체 | 화면 문구 — `siteTitle`, `subtitle`, `heroTitle`, `heroDescription`, `ctaLabel`, `footerText` |
+| `copy` | 객체 | 화면 문구 — `siteTitle`, `subtitle`, `heroTitle`, `heroDescription`, `ctaLabel`, `footerText` (사이트별로 붙는 자리는 아래 ‘문구가 붙는 자리’ 참고) |
 | `banner` | 객체 | 상단 공지 바 |
 | `popup` | 객체 | 첫 방문 팝업 |
 | `navigation` | `{ tabs[], sections[] }` | 탭·섹션의 순서와 노출 |
@@ -54,47 +54,56 @@
 ```
 
 - `order` 는 1부터. 사이트는 **오름차순**으로 그리고, `visible: false` 인 항목은 숨깁니다.
-- `id` 는 각 사이트 코드가 이미 쓰는 값이어야 합니다.
+- `id` 는 각 사이트 코드가 이미 쓰는 값이어야 합니다(사이트 HTML 의 `data-tab`/`data-nav`/`data-section` 값).
   - pokemoa 탭: `map`(동네에서 찾기) · `home`(정가 구매처) · `schedule`(일정·소식) · `guide`(도감·시세) · `trends`(팝수 조회)
-  - pokemoa 섹션: `hero` · `status` · `restock` · `pricing` · `trend` · `faq`
+  - pokemoa 섹션(9곳, v4.11 화면 기준): `hero`(첫 화면 소개) · `pricing`(30th 정가 구매처) · `boxes`(다른 박스 정가 구매처) · `offline`(마트·아트박스·자판기·카드샵) · `trend`(인기 카드팩) · `tips`(오늘의 체크) · `cards`(수록 카드 도감) · `faq`(자주 묻는 질문) · `pop`(팝수 조회)
   - bokjimoa 탭: `home` · `ranking` · `calculator` · `compare`
-  - bokjimoa 섹션: `search` · `recent` · `popular` · `upload-cta`
-- `label` 을 바꾸면 사이트의 탭 이름표가 그 문구로 바뀝니다.
+  - bokjimoa 섹션(5곳, v0.12.2 화면 기준): `hero`(첫 화면 소개) · `search`(회사 찾기) · `recent`(최근 업로드된 회사) · `popular`(인기 · 등록 많은 회사) · `upload-cta`(내 회사 복지를 알려주세요)
+  - 옛 이름 `status`·`restock`(현황 카드·최근 입고 기록)은 포케모아 v76 에서 화면에서 빠졌으므로 목록에 두지 않습니다. 설정에 남아 있어도 화면에는 아무 영향이 없습니다.
+- `label` 은 그 항목의 **화면 문구**입니다. 탭은 내비게이션 이름표, 섹션은 섹션 머리글(`[data-section-title]`)이 이 값으로 바뀝니다. 지금 값은 두 사이트의 실제 화면 문구와 같아서, 저장만으로 달라지는 곳은 없습니다.
+- 섹션 순서는 **같은 패널 안에서만** 바뀝니다(탭이 다른 섹션끼리 자리를 맞바꾸지는 않음). `visible:false` 는 `display:none` 으로 숨깁니다.
+- 탭을 숨기면 모바일 하단 내비게이션 칸 수(`--moa-tab-count`)도 보이는 탭 수에 맞춰 줄어듭니다.
 
-## 사이트에 연결하는 방법
+## 사이트에 연결하는 방법 (2026-11-18 연결 완료)
 
-- **회사복지모아**: `public/config/site-config.json` 을 이미 넣어 두었습니다(v0.12.1, 배너·팝업 모두 `enabled:false`). 사이트 화면이 이 값을 읽게 하는 것은 아직 연결하지 않았습니다.
-- **포켓몬카드모아**: 파일을 아직 넣지 않았습니다. 어드민에서 처음 저장할 때 `assets/config/site-config.json` 이 새로 만들어집니다.
+두 사이트 모두 설정 파일과 로더를 넣어 두었고, 어드민에서 저장하면 실제 화면에 반영됩니다.
 
-어드민이 커밋한 값이 화면에 나타나게 하려면 각 저장소에 아래 두 줄만 넣으면 됩니다.
+| 사이트 | 설정 파일 | 로더 | 반영 |
+| --- | --- | --- | --- |
+| 포켓몬카드모아 | `assets/config/site-config.json` (v4.11 추가) | `assets/js/site-config-loader.js` | GitHub Pages, 30초~1분 |
+| 회사복지모아 | `public/config/site-config.json` (v0.12.1 추가, 문구·섹션 v0.12.2 정리) | `public/js/site-config-loader.js` | Render 자동 배포, 1~2분 |
 
-1. 저장소에 `assets/js/site-config-loader.js` 를 복사합니다(이 저장소의 같은 파일이 참고 부품입니다).
-2. 사이트 HTML 의 `</body>` 앞에 붙입니다.
+- 두 사이트의 설정 파일은 **지금 화면에 보이는 값 그대로** 넣어 두었습니다(공지 바·팝업 모두 `enabled:false`). 그래서 연결만으로 달라지는 화면은 없고, 어드민에서 바꾼 값만 반영됩니다.
+- 붙인 방법은 두 사이트 모두 같습니다 — 사이트 스크립트 뒤(포케모아 `app.js` 뒤, 복지모아 `ads.js` 뒤)에 한 줄:
 
 ```html
-<script src="assets/js/site-config-loader.js" defer></script>
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    MoaSiteConfig.load("assets/config/site-config.json").then(function (cfg) {
-      if (!cfg) return;                        // 파일이 없으면 기존 화면 그대로
-      MoaSiteConfig.apply(cfg, {
-        host: document.querySelector("header") || document.body,
-        place: "afterbegin",
-        tabContainer: document.querySelector(".main-nav"),
-        texts: {
-          "#hero-title": cfg.copy.heroTitle,
-          "#hero-desc": cfg.copy.heroDescription,
-          "#site-footer": cfg.copy.footerText
-        }
-      });
-    });
-  });
-</script>
+<!-- 포켓몬카드모아 -->
+<script src="assets/js/site-config-loader.js?v=77" defer
+        data-config="assets/config/site-config.json"
+        data-tab-container=".main-nav" data-banner-host=".site-header"></script>
+
+<!-- 회사복지모아 (CSP script-src 'self' 안에서 동작) -->
+<script src="/js/site-config-loader.js?v=1" defer
+        data-config="/config/site-config.json"
+        data-tab-container=".main-nav" data-banner-host=".site-header"></script>
 ```
 
-- 회사복지모아는 경로가 `public/config/site-config.json` 이라 `load("/config/site-config.json")` 로 부릅니다.
-- 서버 CSP(`script-src 'self'`) 안에서 동작하도록 외부 CDN 없이 순수 스크립트로 만들었습니다.
-- `orderTabs` 는 `[data-tab]` 속성이 붙은 요소만 재배치합니다. pokemoa 의 `data-tab="map"` 같은 기존 속성을 그대로 씁니다.
+- 로더는 `data-config` 만 있으면 스스로 붙습니다(외부 CDN·프레임워크 없음). 설정 파일이 없거나(404) `schemaVersion` 이 1이 아니면 아무것도 하지 않고 화면은 그대로 둡니다.
+- 화면에서 다시 그리는 사이트(복지모아 SPA)는 `document.dispatchEvent(new CustomEvent("moa:route-rendered"))` 를 보내면 로더가 섹션·문구를 그 화면 기준으로 다시 맞춥니다(배너·팝업은 한 번만).
+- 다른 사이트에 새로 붙일 때는 `site-config-loader.js` 를 복사하고 위 한 줄만 넣으면 됩니다.
+
+## 문구가 붙는 자리
+
+사이트 HTML 은 `data-copy="키"`(글자로 넣기) 또는 `data-copy-html="키"`(아래 태그만 허용) 로 표시해 둡니다.
+
+| 사이트 | `siteTitle` | `subtitle` | `heroTitle` | `heroDescription` | `ctaLabel` | `footerText` |
+| --- | --- | --- | --- | --- | --- | --- |
+| 포켓몬카드모아 | 헤더 로고 이름 | 헤더 로고 영문 부제 | 홈 히어로 제목(마크업 허용) | 홈 히어로 설명 | 히어로 노란 버튼 | 푸터 소개 문단 |
+| 회사복지모아 | 헤더 로고 이름 | (자리 없음) | 홈 히어로 제목(마크업 허용) | 홈 히어로 설명 | (자리 없음) | 푸터 브랜드 줄 |
+
+- `data-copy-html` 은 `<b>`·`<strong>`·`<em>`·`<i>`·`<u>`·`<small>`·`<br>`·`<span>` 만 남기고 나머지 태그는 글자로 바꿉니다(스크립트 실행 없음). 그래서 `heroTitle` 에는 `<br>`·`<em>` 같은 표시를 그대로 쓸 수 있습니다.
+- `subtitle`·`ctaLabel` 처럼 그 사이트에 자리가 없는 값은 저장해도 화면에 나타나지 않습니다(미리보기에만 보입니다).
+- `cards`(현황 카드)와 `theme`(강조색)는 **미리보기 전용**입니다. 두 사이트 화면의 카드 숫자·색은 코드/데이터에서 정해집니다.
 
 ## 문의 API (복지모아)
 

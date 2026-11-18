@@ -90,7 +90,7 @@
             "type": "object",
             "required": ["id", "label", "visible", "order"],
             "properties": {
-              "id": { "type": "string", "description": "페이지 안쪽 섹션 식별자(예: hero, status, pricing, faq)." },
+              "id": { "type": "string", "description": "페이지 안쪽 섹션 식별자(예: hero, pricing, boxes, offline, trend, tips, cards, faq, pop / 복지모아 search, recent, popular, upload-cta)." },
               "label": { "type": "string", "maxLength": 30 },
               "visible": { "type": "boolean" },
               "order": { "type": "integer", "minimum": 1 }

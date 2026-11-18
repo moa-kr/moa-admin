@@ -10,10 +10,10 @@
   "copy": {
     "siteTitle": "회사복지모아",
     "subtitle": "500대 기업 복지·임단협 현황을 한눈에",
-    "heroTitle": "우리 회사 복지, 다른 회사와 비교해 보세요",
-    "heroDescription": "공식 자료와 재직자 제보를 구분해 표시합니다. 확인된 값만 적고, 확인되지 않은 값은 ‘확인 필요’로 둡니다.",
+    "heroTitle": "회사별 사내 복지,<br>찾아보고 <span class=\"hl\">골라서</span> 비교",
+    "heroDescription": "기업별 복지를 한눈에 보고, 원하는 회사만 골라 비교하세요.",
     "ctaLabel": "복지 올리기",
-    "footerText": "회사복지모아 · BETA — 공식 자료와 이용자 제보를 구분해 표시합니다."
+    "footerText": "회사복지모아 · BETA"
   },
   "banner": {
     "enabled": false,
@@ -64,28 +64,34 @@
     ],
     "sections": [
       {
+        "id": "hero",
+        "label": "첫 화면 소개",
+        "visible": true,
+        "order": 1
+      },
+      {
         "id": "search",
         "label": "회사 찾기",
         "visible": true,
-        "order": 1
+        "order": 2
       },
       {
         "id": "recent",
         "label": "최근 업로드된 회사",
         "visible": true,
-        "order": 2
+        "order": 3
       },
       {
         "id": "popular",
         "label": "인기 · 등록 많은 회사",
         "visible": true,
-        "order": 3
+        "order": 4
       },
       {
         "id": "upload-cta",
         "label": "내 회사 복지를 알려주세요",
         "visible": true,
-        "order": 4
+        "order": 5
       }
     ]
   },
@@ -114,7 +120,7 @@
   ],
   "meta": {
     "updatedBy": "moa-admin",
-    "updatedAt": "2026-11-18T12:00:00.000Z",
-    "note": "예시 파일입니다. 모아 어드민에서 저장하면 이 형식으로 커밋됩니다."
+    "updatedAt": "2026-11-18T00:00:00.000Z",
+    "note": "기본값 예시입니다. moa-kr/bokjinabi 의 실제 설정을 그대로 옮겨 적었습니다."
   }
 }
