@@ -837,7 +837,7 @@
     if (note) {
       const tab = tabs.find((x) => x.id === now) || tabs[0];
       const count = config().navigation.sections.filter((section) => sectionTabOf(section) === tab.id).length;
-      note.textContent = `‘${tab.label}’ 탭 안의 섹션 ${count}개입니다. 순서·노출을 바꾸고, ✎ 를 누르면 제목·부제·설명·본문을 그 자리에서 고칩니다.`;
+      note.textContent = `‘${tab.label}’ 탭 안의 섹션 ${count}개입니다. 순서·노출을 바꾸고, ✎ 를 누르면 그 섹션의 제목·설명은 물론 작은 버튼·라벨·안내 문구까지 한자리에서 고칩니다.`;
     }
   }
 
