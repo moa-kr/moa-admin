@@ -30,6 +30,16 @@
     // 캡처할 때마다 최신 화면을 받도록 캐시를 피한다.
     frame.src = src + (src.indexOf("?") >= 0 ? "&" : "?") + "frame=" + Date.now();
     frame.title = "모아 어드민 화면";
+    // 캡처에 스크롤바가 섞이지 않도록(같은 출처라 안쪽 문서에 스타일을 넣을 수 있다).
+    frame.addEventListener("load", function () {
+      try {
+        var doc = frame.contentDocument;
+        if (!doc) return;
+        var style = doc.createElement("style");
+        style.textContent = "html::-webkit-scrollbar{width:0;height:0}html{scrollbar-width:none}";
+        doc.head.appendChild(style);
+      } catch (err) { /* 다른 출처면 그대로 둔다 */ }
+    });
     document.body.appendChild(frame);
   })();
 </script>
