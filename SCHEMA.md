@@ -18,7 +18,7 @@
 | `site` | `"pokemoa"` \| `"bokjimoa"` | 설정 소유 사이트 |
 | `siteName` | 문자열 | 표시 이름(보통 `copy.siteTitle`) |
 | `theme` | `{ accent, accentSoft, mode }` | 사이트 강조색·밝기(`light`/`dark`) |
-| `copy` | 객체 | 화면 문구 — `siteTitle`, `subtitle`, `heroTitle`, `heroDescription`, `ctaLabel`, `footerText` (사이트별로 붙는 자리는 아래 ‘문구가 붙는 자리’ 참고) |
+| `copy` | 객체 | 화면 문구 — 키 전체 목록은 아래 ‘문구 키 전체 목록’ 참고 |
 | `banner` | 객체 | 상단 공지 바 |
 | `popup` | 객체 | 첫 방문 팝업 |
 | `navigation` | `{ tabs[], sections[] }` | 탭·섹션의 순서와 노출 |
@@ -95,15 +95,47 @@
 
 ## 문구가 붙는 자리
 
-사이트 HTML 은 `data-copy="키"`(글자로 넣기) 또는 `data-copy-html="키"`(아래 태그만 허용) 로 표시해 둡니다.
+사이트 HTML·템플릿은 `data-copy="키"`(글자로 넣기) 또는 `data-copy-html="키"`(아래 태그만 허용) 로 표시해 둡니다. 로더는 `copy` 객체의 **같은 이름 키**를 찾아 그 자리에 넣고, 키가 없으면 그 자리는 사이트 문구를 그대로 둡니다.
 
 | 사이트 | `siteTitle` | `subtitle` | `heroTitle` | `heroDescription` | `ctaLabel` | `footerText` |
 | --- | --- | --- | --- | --- | --- | --- |
-| 포켓몬카드모아 | 헤더 로고 이름 | 헤더 로고 영문 부제 | 홈 히어로 제목(마크업 허용) | 홈 히어로 설명 | 히어로 노란 버튼 | 푸터 소개 문단 |
+| 포켓몬카드모아 | 헤더·푸터 로고 이름 | 헤더 로고 영문 부제 | 홈 히어로 제목(마크업 허용) | 홈 히어로 설명 | 히어로 노란 버튼 | 푸터 소개 문단 |
 | 회사복지모아 | 헤더 로고 이름 | (자리 없음) | 홈 히어로 제목(마크업 허용) | 홈 히어로 설명 | (자리 없음) | 푸터 브랜드 줄 |
+
+## 문구 키 전체 목록 (2026-11-18 확장)
+
+- `data-copy` — 글자만 넣습니다(자식 태그가 있으면 지워집니다).
+- `data-copy-html` — `<b>`·`<strong>`·`<em>`·`<i>`·`<u>`·`<small>`·`<br>`·`<span>` 만 남기고 넣습니다(`class`·`aria-hidden` 유지).
+- 같은 키를 여러 자리에 쓸 수 있습니다(예: `siteTitle` — 헤더 로고 + 푸터 로고).
+- 섹션의 **굵은 제목**(`[data-section-title]`)은 `navigation.sections[].label` 이 담당합니다(어드민 ② 탭). `copy` 키가 아닙니다.
+- 회사복지모아의 ‘회사 찾기’ 설명은 가운데에 회사 수가 자동으로 들어가므로 `searchDescA`(앞) + 숫자 + `searchDescB`(뒤) 로 나눠 두었습니다.
+
+### 포켓몬카드모아
+
+| 묶음 | 키 |
+| --- | --- |
+| 브랜드·헤더 | `siteTitle` `subtitle` `headerDate` |
+| 홈 히어로 | `heroTag` `heroTitle` `heroDescription` `ctaLabel` `ctaLabel2` |
+| 탭 머리글 | `mapEyebrow` `mapTitle` `mapLead` `scheduleEyebrow` `scheduleTitle` `scheduleLead` `guideEyebrow` `guideTitle` `guideLead` `trendsEyebrow` `trendsTitle` `trendsLead` |
+| 섹션 머리글 | `pricingEyebrow` `pricingDesc` `pricingLink` `boxesEyebrow` `boxesDesc` `boxesLink` `offlineEyebrow` `offlineDesc` `offlineLink` `trendEyebrow` `trendDesc` `trendLink` `tipsEyebrow` `faqEyebrow` |
+| 일정·소식 안쪽 | `issuesEyebrow` `issuesTitle` `issuesDesc` `issuesLink` `releasesEyebrow` `releasesTitle` `releasesDesc` `releasesLink` |
+| 재고 상태 안내(5개) | `status1Title`~`status5Title`, `status1Desc`~`status5Desc` |
+| 푸터 | `footerText` `footerNote1` `footerNote2` `footerNote3` `footerCopyright` `footerDataDate` |
+
+### 회사복지모아
+
+| 묶음 | 키 |
+| --- | --- |
+| 브랜드 | `siteTitle` (그 밖에 `subtitle`·`ctaLabel` 은 자리 없음) |
+| 홈 히어로 | `heroEyebrow` `heroTitle` `heroDescription` `heroCta1` `heroCta2` |
+| 이용 안내 | `guideTitle` `guide1Title`~`guide4Title` `guide1Desc`~`guide4Desc` |
+| 바로가기 메뉴 | `shortcutLabel` `shortcutHint` `shortcut1Title`~`shortcut3Title` `shortcut1Desc`~`shortcut3Desc` |
+| 섹션 설명 | `searchDescA` `searchDescB` `recentDesc` `popularDesc` `popularLink` `uploadDesc` `uploadCta1` `uploadCta2` |
+| 푸터 | `footerText` `footerNote` |
 
 - `data-copy-html` 은 `<b>`·`<strong>`·`<em>`·`<i>`·`<u>`·`<small>`·`<br>`·`<span>` 만 남기고 나머지 태그는 글자로 바꿉니다(스크립트 실행 없음). 속성은 `class`·`aria-hidden` 만 남기므로 사이트의 강조 표시(복지모아 `<span class="hl">골라서</span>`)가 그대로 유지됩니다. 그래서 `heroTitle` 에는 `<br>`·`<em>` 같은 표시를 그대로 쓸 수 있습니다.
 - `subtitle`·`ctaLabel` 처럼 그 사이트에 자리가 없는 값은 저장해도 화면에 나타나지 않습니다(미리보기에만 보입니다).
+- 어드민 ③ 문구 화면의 입력칸은 `assets/js/sites.js` 의 `copyGroups` 목록으로 그립니다. 사이트에 문구 자리를 새로 넣을 때는 **HTML 의 `data-copy` 키 + `sites.js` 의 `copyGroups` 항목 + 그 사이트 `site-config.json` 기본값** 세 곳을 같은 이름으로 맞춥니다.
 - `cards`(현황 카드)와 `theme`(강조색)는 **미리보기 전용**입니다. 두 사이트 화면의 카드 숫자·색은 코드/데이터에서 정해집니다.
 
 ## 문의 API (복지모아)
