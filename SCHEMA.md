@@ -131,6 +131,7 @@
 | 이용 안내 | `guideTitle` `guide1Title`~`guide4Title` `guide1Desc`~`guide4Desc` |
 | 바로가기 메뉴 | `shortcutLabel` `shortcutHint` `shortcut1Title`~`shortcut3Title` `shortcut1Desc`~`shortcut3Desc` |
 | 섹션 설명 | `searchDescA` `searchDescB` `recentDesc` `popularDesc` `popularLink` `uploadDesc` `uploadCta1` `uploadCta2` |
+| 탭 화면 머리글 | `rankingTitle` `rankingDesc` `calcTitle` `calcDesc` `compareTitle` |
 | 푸터 | `footerText` `footerNote` |
 
 - `data-copy-html` 은 `<b>`·`<strong>`·`<em>`·`<i>`·`<u>`·`<small>`·`<br>`·`<span>` 만 남기고 나머지 태그는 글자로 바꿉니다(스크립트 실행 없음). 속성은 `class`·`aria-hidden` 만 남기므로 사이트의 강조 표시(복지모아 `<span class="hl">골라서</span>`)가 그대로 유지됩니다. 그래서 `heroTitle` 에는 `<br>`·`<em>` 같은 표시를 그대로 쓸 수 있습니다.

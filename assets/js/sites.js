@@ -204,7 +204,12 @@
       "uploadDesc": "회사 이메일 인증 후 올릴 수 있어요. 올린 항목은 ‘내 제보’에서 수정·삭제됩니다.",
       "uploadCta1": "복지 올리기",
       "uploadCta2": "회사 비교하기",
-      "footerNote": "공식 자료와 이용자 제보를 구분해 표시합니다. 확인된 값만 적고, 확인되지 않은 값은 '확인 필요'로 둡니다."
+      "footerNote": "공식 자료와 이용자 제보를 구분해 표시합니다. 확인된 값만 적고, 확인되지 않은 값은 '확인 필요'로 둡니다.",
+      "rankingTitle": "직장인이 가장 궁금한 복지 TOP",
+      "rankingDesc": "같은 테마끼리 회사 복지를 모아 순위를 매깁니다. 금액은 항목에 적힌 값만 쓰고, 금액이 없는 제도는 따로 표시합니다.",
+      "calcTitle": "내 조건으로 보는 연간 복지 금액",
+      "calcDesc": "회사와 상황을 고르면 공개된 복지 항목을 1년 기준으로 환산해 드립니다. 추정 기준과 근거도 함께 보여드려요.",
+      "compareTitle": "비교할 회사 선택"
     };
 
   const BOKJIMOA_COPY_GROUPS = [
@@ -253,6 +258,17 @@
         { key: "shortcut2Desc", label: "2 · 설명", kind: "text", max: 60 },
         { key: "shortcut3Title", label: "3 · 제목", kind: "text", max: 24 },
         { key: "shortcut3Desc", label: "3 · 설명", kind: "text", max: 60 }
+      ]
+    },
+    {
+      name: "탭 화면 머리글",
+      note: "주제별 TOP·복지 계산기 화면 맨 위의 제목과 설명, 비교 화면의 머리글입니다. (회사 비교의 ‘담긴 회사 N/4’ 줄은 숫자가 자동이라 코드에 둡니다.)",
+      fields: [
+        { key: "rankingTitle", label: "주제별 TOP · 제목", kind: "text", max: 60 },
+        { key: "rankingDesc", label: "주제별 TOP · 설명", kind: "area", max: 200 },
+        { key: "calcTitle", label: "복지 계산기 · 제목", kind: "text", max: 60 },
+        { key: "calcDesc", label: "복지 계산기 · 설명", kind: "area", max: 200 },
+        { key: "compareTitle", label: "회사 비교 · 머리글", kind: "text", max: 40 }
       ]
     },
     {
