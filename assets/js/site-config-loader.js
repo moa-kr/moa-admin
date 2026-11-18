@@ -36,6 +36,8 @@
   const HIDDEN_CLASS = "moa-hidden-by-config";
   // 제목처럼 마크업이 필요한 자리에서만 허용하는 태그(나머지는 글자로 내린다).
   const SAFE_TAGS = { B: 1, STRONG: 1, EM: 1, I: 1, U: 1, SMALL: 1, BR: 1, SPAN: 1 };
+  // 사이트의 강조 표시(예: 복지모아 .hl)를 살리기 위해 class 만 남긴다. 그 밖의 속성(style·on*)은 지운다.
+  const SAFE_ATTRS = { class: 1, "aria-hidden": 1 };
 
   const STYLES = {
     info: { light: ["#eaf0ff", "#1b3a8f"], dark: ["#22345e", "#dbe7ff"] },
@@ -319,7 +321,9 @@
           child.parentNode.replaceChild(text, child);
           return;
         }
-        Array.prototype.slice.call(child.attributes).forEach((attr) => child.removeAttribute(attr.name));
+        Array.prototype.slice.call(child.attributes).forEach((attr) => {
+          if (!SAFE_ATTRS[attr.name.toLowerCase()]) child.removeAttribute(attr.name);
+        });
         clean(child);
       });
     })(holder);
