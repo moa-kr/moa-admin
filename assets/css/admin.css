@@ -247,7 +247,8 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 /* ② 탭 안 섹션 — 펼치는 내용 편집기 */
 .rrow { flex-wrap: wrap; }
 .rrow.is-open { border-color: #cfd8ea; box-shadow: 0 2px 10px rgba(16, 31, 60, .06); }
-.seditor { flex: 1 0 100%; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.seditor { flex: 1 0 100%; margin-top: 10px; padding: 12px 12px 10px; border-top: 1px dashed var(--line);
+  background: #f7f9fd; border-radius: 10px; }
 .sedit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 @media (max-width: 620px) { .sedit-grid { grid-template-columns: 1fr; } }
 .seditor .field { margin-bottom: 8px; }
