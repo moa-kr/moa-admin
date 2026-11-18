@@ -181,6 +181,8 @@
     // ② ‘탭 안 섹션’에서 지금 고치고 있는 탭과, 펼쳐 둔 섹션 편집기
     sectionTab: { pokemoa: "home", bokjimoa: "home" },
     openSections: {},
+    // ③ 문구 화면에서 펼쳐 둔 묶음(기본은 모두 접힘)
+    copyOpen: {},
     previewPopup: true,
     inquiries: { loading: false, error: "", list: [], byStatus: null, total: 0, operatorEmail: "", loadedAt: "" },
     log: []
@@ -720,12 +722,22 @@
       schedulePreview();
     });
 
-    // ③ 문구 → ② 섹션으로 바로 넘어가기
+    // ③ 문구 — 묶음 접기/펼치기, 모두 펼치기·접기, ② 섹션으로 이동
     const copyForm = $("#copy-form");
     if (copyForm) {
       copyForm.addEventListener("click", (event) => {
+        const all = event.target.closest("[data-copy-all]");
+        if (all) {
+          const open = all.dataset.copyAll === "open";
+          $$("#copy-form details.copygroup").forEach((details) => {
+            details.open = open;
+            state.copyOpen[`${state.site}:${details.dataset.groupName}`] = open;
+          });
+          return;
+        }
         const btn = event.target.closest("[data-goto-section]");
         if (!btn) return;
+        event.preventDefault();   // <summary> 안의 버튼 — 묶음이 접히지 않게 한다
         const id = btn.dataset.gotoSection;
         if (!id) return;
         if (btn.dataset.gotoTab) state.sectionTab[state.site] = btn.dataset.gotoTab;
@@ -736,6 +748,12 @@
         const row = $(`#list-sections [data-id="${id}"]`);
         if (row && row.scrollIntoView) row.scrollIntoView({ block: "center", behavior: "smooth" });
       });
+      /* toggle 은 버블되지 않아 캡처 단계에서 받아 ‘펼쳐 둔 묶음’을 기억한다(새로 그려도 유지). */
+      copyForm.addEventListener("toggle", (event) => {
+        const details = event.target;
+        if (!details || !details.classList || !details.classList.contains("copygroup")) return;
+        state.copyOpen[`${state.site}:${details.dataset.groupName}`] = details.open;
+      }, true);
     }
 
     // 상단 저장 / 배포 탭 저장
@@ -1187,27 +1205,36 @@
         counts[group.tab] = (counts[group.tab] || 0) + group.fields.length;
       }
     });
-    box.innerHTML = groups.map((group) => {
+    box.innerHTML = `<div class="copy-toolbar">
+        <span>문구 <b>${groups.reduce((sum, g) => sum + ((g.kind === "tab" || g.kind === "sum") ? 0 : g.fields.length), 0)}</b>개 · 묶음은 기본으로 접혀 있습니다.</span>
+        <button type="button" class="btn btn-sm btn-ghost" data-copy-all="open">모두 펼치기</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-copy-all="close">모두 접기</button>
+      </div>` + groups.map((group) => {
       if (group.kind === "tab") {
         return `<div class="copygrouptab" data-copytab="${esc(group.tab)}">
           <span>${esc(group.name)}</span><b>${counts[group.tab] || 0}개 문구</b>
         </div>`;
       }
       if (group.kind === "sum") return "";
+      const openKey = `${state.site}:${group.name}`;
+      const isOpen = Boolean(state.copyOpen[openKey]);
       const jump = group.kind === "section" && group.section
         ? `<button type="button" class="linkbtn" data-goto-section="${esc(group.section)}" data-goto-tab="${esc(group.tab || "")}">② 에서 이 섹션 편집 →</button>`
         : "";
       const empty = group.fields.length ? "" : '<p class="note">이 묶음에는 아직 문구가 없습니다.</p>';
-      return `<section class="copygroup" data-group-kind="${esc(group.kind || "group")}" data-group-section="${esc(group.section || "")}">
-        <div class="copygroup-head">
+      return `<details class="copygroup" data-group-kind="${esc(group.kind || "group")}" data-group-section="${esc(group.section || "")}" data-group-name="${esc(group.name)}"${isOpen ? " open" : ""}>
+        <summary class="copygroup-head">
+          <span class="cg-mark" aria-hidden="true"></span>
           <h4>${esc(group.name)}</h4>
-          <span class="muted small">${group.fields.length}개 문구</span>
+          <span class="muted small">${group.fields.length}개</span>
           ${jump}
+        </summary>
+        <div class="copygroup-body">
+          ${group.note ? `<p class="note">${esc(group.note)}</p>` : ""}
+          ${empty}${group.fields.map(copyFieldHtml).join("")}
         </div>
-        ${group.note ? `<p class="note">${esc(group.note)}</p>` : ""}
-        ${empty}${group.fields.map(copyFieldHtml).join("")}
-      </section>`;
-    }).join("");
+      </details>`;
+    }).join("") ;
   }
 
   function copyFieldHtml(field) {
