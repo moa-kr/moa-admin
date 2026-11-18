@@ -11,7 +11,16 @@
     draft: "moa-admin.draft.",
     log: "moa-admin.log"
   };
-  const REMEMBER_DAYS = 90;
+  /* 화면이 멈췄을 때 원인을 볼 수 있도록 스크립트 오류를 모아 둔다(운영 점검용). */
+  window.__moaAdminErrors = window.__moaAdminErrors || [];
+  window.addEventListener("error", (event) => {
+    window.__moaAdminErrors.push(String(event.message || "script error"));
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason;
+    window.__moaAdminErrors.push(`unhandledrejection: ${String((reason && reason.message) || reason)}`);
+  });
+
 
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
