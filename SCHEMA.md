@@ -115,42 +115,75 @@
 | 포켓몬카드모아 | 헤더·푸터 로고 이름 | 헤더 로고 영문 부제 | 홈 히어로 제목(마크업 허용) | 홈 히어로 설명 | 히어로 노란 버튼 | 푸터 소개 문단 |
 | 회사복지모아 | 헤더 로고 이름 | (자리 없음) | 홈 히어로 제목(마크업 허용) | 홈 히어로 설명 | (자리 없음) | 푸터 브랜드 줄 |
 
-## 문구 키 전체 목록 (2026-11-18 확장)
+## 문구 키 전체 목록 (2026-11-19 전면 확장)
 
-- `data-copy` — 글자만 넣습니다(자식 태그가 있으면 지워집니다).
+- `data-copy` — 글자만 넣습니다(자식 태그가 있으면 지워집니다). 아이콘 같은 자식이 있는 버튼은 글자만 `<span data-copy="…">` 로 감쌉니다.
 - `data-copy-html` — `<b>`·`<strong>`·`<em>`·`<i>`·`<u>`·`<small>`·`<br>`·`<span>` 만 남기고 넣습니다(`class`·`aria-hidden` 유지).
-- 같은 키를 여러 자리에 쓸 수 있습니다(예: `siteTitle` — 헤더 로고 + 푸터 로고).
+- 같은 키를 여러 자리에 쓸 수 있습니다(예: `siteTitle` — 헤더 로고 + 푸터 로고, `inquiryBtn` — 탭마다 있는 ‘관리자 문의’ 버튼).
 - 섹션의 **굵은 제목**(`[data-section-title]`)은 `navigation.sections[].label` 이 담당합니다(어드민 ② 탭). `copy` 키가 아닙니다.
+- JS 가 값을 덮어쓰는 자리(실시간 시세·환율 값, 지도 조회 결과·상태, 카드 도감·비교표·이슈/발매 목록, 세트 요약, 팝수 안내)는 `data-copy` 를 붙이지 않았습니다.
 - 회사복지모아의 ‘회사 찾기’ 설명은 가운데에 회사 수가 자동으로 들어가므로 `searchDescA`(앞) + 숫자 + `searchDescB`(뒤) 로 나눠 두었습니다.
 
-### 포켓몬카드모아
+**키 수**: 포켓몬카드모아 171개 · 회사복지모아 65개. 사이트 HTML(`data-copy`)·`site-config.json` 기본값·`sites.js` 필드 정의가 **같은 키 집합**입니다(정합성 테스트로 확인).
 
-| 묶음 | 키 |
-| --- | --- |
-| 브랜드·헤더 | `siteTitle` `subtitle` `headerDate` |
-| 홈 히어로 | `heroTag` `heroTitle` `heroDescription` `ctaLabel` `ctaLabel2` |
-| 탭 머리글 | `mapEyebrow` `mapTitle` `mapLead` `scheduleEyebrow` `scheduleTitle` `scheduleLead` `guideEyebrow` `guideTitle` `guideLead` `trendsEyebrow` `trendsTitle` `trendsLead` |
-| 섹션 머리글 | `pricingEyebrow` `pricingDesc` `pricingLink` `boxesEyebrow` `boxesDesc` `boxesLink` `offlineEyebrow` `offlineDesc` `offlineLink` `trendEyebrow` `trendDesc` `trendLink` `tipsEyebrow` `faqEyebrow` `mapChannelsTitle` `fxTitle` `marketTitle` |
-| 일정·소식 안쪽 | `issuesEyebrow` `issuesTitle` `issuesDesc` `issuesLink` `releasesEyebrow` `releasesTitle` `releasesDesc` `releasesLink` |
-| 재고 상태 안내(5개) | `status1Title`~`status5Title`, `status1Desc`~`status5Desc` |
-| 푸터 | `footerText` `footerNote1` `footerNote2` `footerNote3` `footerCopyright` `footerDataDate` |
+### 포켓몬카드모아 (탭 → 섹션 순서, ③ 문구 화면과 같은 묶음)
+
+| 묶음 | 수 | 키 |
+| --- | --- | --- |
+| 머리말 · 공통 | 5 | `siteTitle` `subtitle` `headerDate` `inquiryBtn` `headerReport` |
+| 동네에서 찾기 · 탭 머리글 | 3 | `mapEyebrow` `mapTitle` `mapLead` |
+| 동네에서 찾기 · 화면 공통 | 11 | `mapOfflineLabel` `mapOfflineToggle` `mapRegionLabel` `mapFindRegion` `mapFindMine` `mapRadiusLabel` `mapFilterReset` `mapSortLabel` `mapStockOnly` `mapSideTitle` `mapMore` |
+| 동네에서 찾기 · 상태 안내 (5개) | 10 | `status1Title`~`status5Title` `status1Desc`~`status5Desc` |
+| 동네에서 찾기 · 공식 채널 바로가기 | 1 | `mapChannelsTitle` |
+| 정가 구매처 · 첫 화면 히어로 | 11 | `heroTag` `heroTitle` `heroDescription` `heroPrice1Label` `heroPrice2Label` `heroPrice3Label` `heroWarnTitle` `heroWarnText` `heroWarnLink` `ctaLabel` `ctaLabel2` |
+| 정가 구매처 · 정가 구매처 현황 | 4 | `pricingEyebrow` `pricingDesc` `pricingLink` `pricingSource` |
+| 정가 구매처 · 다른 박스 | 4 | `boxesEyebrow` `boxesDesc` `boxesLink` `boxesSource` |
+| 정가 구매처 · 오프라인 · 자판기 | 11 | `offlineEyebrow` `offlineDesc` `offlineLink` `offlineArtName` `offlineArtSub` `offlineShopName` `offlineShopSub` `offlineVendingName` `offlineVendingSub` `offlineMartName` `offlineMartSub` |
+| 정가 구매처 · 인기 카드팩 트렌드 | 8 | `trendEyebrow` `trendDesc` `trendLink` `trendTag1`~`trendTag4` `trendGo` |
+| 정가 구매처 · 오늘의 체크 | 8 | `tipsEyebrow` `tip1Title` `tip1Body` `tip2Title` `tip2Body` `tip3Title` `tip3Body` `tipsCta` |
+| 일정·소식 · 탭 머리글 | 3 | `scheduleEyebrow` `scheduleTitle` `scheduleLead` |
+| 일정·소식 · 화면 공통 | 18 | `scheduleSubNews` `scheduleSubCal` `scheduleTimelineTitle` `scheduleTimelineSub` `scheduleCalTitle` `scheduleCalSub` `schedulePastToggle` `scheduleNoticeTitle` `scheduleLink1Name` `scheduleLink1Sub` `scheduleLink2Name` `scheduleLink2Sub` `scheduleWeekTitle` `scheduleWeekSub` `scheduleWeekTh1`~`scheduleWeekTh4` |
+| 일정·소식 · 카드 뉴스·소식 | 4 | `issuesEyebrow` `issuesTitle` `issuesDesc` `issuesLink` |
+| 일정·소식 · 발매·재입고 일정 | 4 | `releasesEyebrow` `releasesTitle` `releasesDesc` `releasesLink` |
+| 시세·도감 · 탭 머리글 | 3 | `guideEyebrow` `guideTitle` `guideLead` |
+| 시세·도감 · 화면 공통 | 13 | `setSearchLabel` `setSearchBtn` `setSearchHint` `compareTitle` `calcTitle` `calcBtn` `calcDiffLabel` `calcRateLabel` `checklistTitle` `checklistSub` `fakeTitle` `fakeSub` `fakeNote` |
+| 시세·도감 · 환율 위젯 | 6 | `fxTitle` `fxUsdLabel` `fxUsdCap` `fxJpyLabel` `fxJpyCap` `fxRefresh` |
+| 시세·도감 · 시세·거래가 통합 조회 | 24 | `marketEyebrow` `marketTitle` `marketLead` `marketLabel` `marketClear` `marketGroupKr` `marketKreamName` `marketKreamSub` `marketSnkrdunkName` `marketSnkrdunkSub` `marketGroupFree` `market130Name` `market130Sub` `marketPcName` `marketPcSub` `marketEbaySoldName` `marketEbaySoldSub` `marketEbayBinName` `marketEbayBinSub` `marketGroupPsa` `marketPsaName` `marketPsaSub` `marketPsaBadge` `marketNote` |
+| 시세·도감 · 수록 카드와 레어도 | 3 | `cardsEyebrow` `cardsRarityNote` `cardsMore` |
+| 시세·도감 · 자주 묻는 질문 | 2 | `faqEyebrow` `faqMore` |
+| 팝수 조회 · 탭 머리글 | 3 | `trendsEyebrow` `trendsTitle` `trendsLead` |
+| 팝수 조회 · 팝수 조회 | 6 | `popCrossTitle` `popCrossDesc` `popCrossCta` `popCompanyLabel` `popQueryLabel` `popSearchBtn` |
+| 꼬리말 · 공통 | 6 | `footerText` `footerNote1` `footerNote2` `footerNote3` `footerCopyright` `footerDataDate` |
 
 ### 회사복지모아
 
-| 묶음 | 키 |
-| --- | --- |
-| 브랜드 | `siteTitle` (그 밖에 `subtitle`·`ctaLabel` 은 자리 없음) |
-| 홈 히어로 | `heroEyebrow` `heroTitle` `heroDescription` `heroCta1` `heroCta2` |
-| 이용 안내 | `guideTitle` `guide1Title`~`guide4Title` `guide1Desc`~`guide4Desc` |
-| 바로가기 메뉴 | `shortcutLabel` `shortcutHint` `shortcut1Title`~`shortcut3Title` `shortcut1Desc`~`shortcut3Desc` |
-| 섹션 설명 | `searchDescA` `searchDescB` `recentDesc` `popularDesc` `popularLink` `uploadDesc` `uploadCta1` `uploadCta2` |
-| 탭 화면 머리글 | `rankingTitle` `rankingDesc` `calcTitle` `calcDesc` `compareTitle` |
-| 푸터 | `footerText` `footerNote` |
+| 묶음 | 수 | 키 |
+| --- | --- | --- |
+| 머리말 · 공통 | 2 | `siteTitle` `subtitle` |
+| 홈 · 화면 공통(바로가기 메뉴) | 8 | `shortcutLabel` `shortcutHint` `shortcut1Title`~`shortcut3Title` `shortcut1Desc`~`shortcut3Desc` |
+| 홈 · 첫 화면 소개 | 18 | `heroEyebrow` `heroTitle` `heroDescription` `heroCta1` `heroCta2` `stat1Label`~`stat4Label` `guideTitle` `guide1Title`~`guide4Title` `guide1Desc`~`guide4Desc` |
+| 홈 · 회사 찾기 | 4 | `searchDescA` `searchDescB` `findOnlyData` `findMoreBtn` |
+| 홈 · 최근 업로드된 회사 | 1 | `recentDesc` |
+| 홈 · 인기 · 등록 많은 회사 | 2 | `popularDesc` `popularLink` |
+| 홈 · 내 회사 복지를 알려주세요 | 4 | `uploadDesc` `uploadCta1` `uploadCta2` `companyViewBtn` |
+| 주제별 TOP · 머리글 | 2 | `rankingTitle` `rankingDesc` |
+| 주제별 TOP · 순위 목록 | 3 | `rankingMetricCount` `rankingMetricValue` `rankingFootnote` |
+| 복지 계산기 · 머리글 | 2 | `calcTitle` `calcDesc` |
+| 복지 계산기 · 입력·결과 | 13 | `calcCompanyLabel` `calcMarriedLabel` `calcSingle` `calcMarried` `calcChildrenLabel` `calcHousingLabel` `calcHousingNone` `calcHousingJeonse` `calcHousingPurchase` `calcInterestLabel` `calcMedical` `calcLeisure` `calcLiveHint` |
+| 비교하기 · 회사 선택 | 2 | `compareTitle` `compareRange` |
+| 비교하기 · 비교표 | 2 | `compareEmptyTitle` `compareEmptyDesc` |
+| 꼬리말 · 공통 | 2 | `footerText` `footerNote` |
 
-- `data-copy-html` 은 `<b>`·`<strong>`·`<em>`·`<i>`·`<u>`·`<small>`·`<br>`·`<span>` 만 남기고 나머지 태그는 글자로 바꿉니다(스크립트 실행 없음). 속성은 `class`·`aria-hidden` 만 남기므로 사이트의 강조 표시(복지모아 `<span class="hl">골라서</span>`)가 그대로 유지됩니다. 그래서 `heroTitle` 에는 `<br>`·`<em>` 같은 표시를 그대로 쓸 수 있습니다.
-- `subtitle`·`ctaLabel` 처럼 그 사이트에 자리가 없는 값은 저장해도 화면에 나타나지 않습니다(미리보기에만 보입니다).
-- 어드민 ③ 문구 화면의 입력칸은 `assets/js/sites.js` 의 `copyGroups` 목록으로 그립니다. 사이트에 문구 자리를 새로 넣을 때는 **HTML 의 `data-copy` 키 + `sites.js` 의 `copyGroups` 항목 + 그 사이트 `site-config.json` 기본값** 세 곳을 같은 이름으로 맞춥니다.
+- `data-copy-html` 은 `<b>`·`<strong>`·`<em>`·`<i>`·`<u>`·`<small>`·`<br>`·`<span>` 만 남기고 나머지 태그는 글자로 바꿉니다(스크립트 실행 없음). 속성은 `class`·`aria-hidden` 만 남기므로 사이트의 강조 표시(복지모아 `<span class="hl">골라서</span>`)가 그대로 유지됩니다.
+- 문구 자리를 새로 넣을 때는 **HTML 의 `data-copy` 키 + `sites.js` 의 `fields`(라벨·형식·길이) 와 그 키를 담은 섹션의 `copyKeys` + 그 사이트 `site-config.json` 기본값** 네 곳을 같은 이름으로 맞춥니다. 키가 `copyKeys` 에 들어가면 ②의 ✎ 편집기와 ③ 문구 화면에 함께 나옵니다.
 - `cards`(현황 카드)와 `theme`(강조색)는 **미리보기 전용**입니다. 두 사이트 화면의 카드 숫자·색은 코드/데이터에서 정해집니다.
+
+## ② ✎ 편집기와 ③ 문구의 관계 (2026-11-19)
+
+- ② 의 섹션 카드에서 **✎** 를 누르면 그 섹션의 `copyKeys` 가 **대표 문구**(표제·제목·설명·링크)와 **세부 문구**(버튼·라벨·안내, 접이식 묶음)로 나뉘어 한 아코디언 안에 펼쳐집니다. 제목 칸에는 `화면 제목` 배지가 붙습니다.
+- ③ 문구 화면은 **머리말 → 탭(탭 머리글 · 화면 공통 · 섹션들) → 꼬리말** 순서로 묶여 있고, 섹션 묶음에는 `② 에서 이 섹션 편집 →` 이동 버튼이 있습니다.
+- 두 화면의 입력칸은 **같은 `copy.<key>` 값**을 쓰므로 한쪽을 고치면 다른 쪽 칸이 즉시 같이 바뀝니다(양방향 동기화).
+- 오른쪽 모바일 미리보기는 지금 고른 탭의 섹션을 그리면서 표제·제목·설명·링크와 세부 문구 일부를 실제 값으로 보여 줍니다.
 
 ## 문의 API (복지모아)
 

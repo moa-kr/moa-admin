@@ -67,11 +67,21 @@
   }
   /* 문구 정의(라벨·형식·길이) — ② 섹션 편집과 미리보기가 함께 쓴다. */
   function copyFieldOf(key) {
+    const fieldMap = current().fields;
+    if (fieldMap && fieldMap[key]) {
+      const def = fieldMap[key];
+      return { key, label: def[0], kind: def[1], max: def[2] };
+    }
     let found = null;
     (current().copyGroups || []).forEach((group) => {
-      group.fields.forEach((field) => { if (field.key === key) found = field; });
+      (group.fields || []).forEach((field) => { if (field.key === key) found = field; });
     });
     return found || { key, label: key, kind: "text", max: 120 };
+  }
+  /* 섹션 편집기에서 ‘대표 문구’(제목·표제·설명·링크)로 묶을 키인지. */
+  function isPrimaryKey(key, titleKey) {
+    if (key === titleKey) return true;
+    return /(Eyebrow|Title|Desc|Description|Lead|Link|Cta|Tag)$/.test(key);
   }
   function safeHtml(value) {
     const holder = document.createElement("div");
@@ -642,6 +652,7 @@
       setPath(config(), path, value);
       markDirty(true);
       updateDerived();
+      syncSectionInput(path);
       schedulePreview();
     };
     document.addEventListener("input", (event) => {
@@ -708,6 +719,24 @@
       markDirty(true);
       schedulePreview();
     });
+
+    // ③ 문구 → ② 섹션으로 바로 넘어가기
+    const copyForm = $("#copy-form");
+    if (copyForm) {
+      copyForm.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-goto-section]");
+        if (!btn) return;
+        const id = btn.dataset.gotoSection;
+        if (!id) return;
+        if (btn.dataset.gotoTab) state.sectionTab[state.site] = btn.dataset.gotoTab;
+        state.openSections[`${state.site}:${id}`] = true;
+        setTab("order");
+        renderSectionTabs();
+        renderOrderList("sections");
+        const row = $(`#list-sections [data-id="${id}"]`);
+        if (row && row.scrollIntoView) row.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    }
 
     // 상단 저장 / 배포 탭 저장
     $("#btn-save").addEventListener("click", saveToGitHub);
@@ -968,22 +997,23 @@
   }
 
   /* ② 섹션 편집기의 입력칸 하나 — ③ 문구와 같은 정의(kind·max)를 쓴다. */
-  function sectionFieldHtml(key) {
+  function sectionFieldHtml(key, titleKey) {
     const field = copyFieldOf(key);
     const id = `s-${state.site}-${key}`;
     const raw = getPath(config(), `copy.${key}`);
     const value = raw == null ? "" : String(raw);
     const rich = field.kind === "html" || field.kind === "areaHtml";
     const hint = rich ? ' <em>&lt;b&gt;·&lt;br&gt; 등 일부 태그 사용 가능</em>' : "";
+    const badge = key === titleKey ? ' <span class="sfield-badge">화면 제목</span>' : "";
     const max = Number(field.max) || 80;
     if (field.kind === "area" || field.kind === "areaHtml") {
       return `<label class="field sfield" for="${esc(id)}">
-        <span class="field-label">${esc(field.label)}${hint}</span>
+        <span class="field-label">${esc(field.label)}${badge}${hint}</span>
         <textarea id="${esc(id)}" data-sfield="${esc(key)}" rows="2" maxlength="${max}">${esc(value)}</textarea>
       </label>`;
     }
     return `<label class="field sfield" for="${esc(id)}">
-      <span class="field-label">${esc(field.label)}${hint}</span>
+      <span class="field-label">${esc(field.label)}${badge}${hint}</span>
       <input type="text" id="${esc(id)}" data-sfield="${esc(key)}" value="${esc(value)}" maxlength="${max}">
     </label>`;
   }
@@ -1041,13 +1071,32 @@
     }).join("");
   }
 
-  /* 섹션 안쪽 내용 편집기 — 표제·설명·링크는 copy 키, 본문은 sections[].body. */
+  /* 섹션 안쪽 내용 편집기 — 대표 문구(표제·제목·설명·링크) + 세부 문구(버튼·라벨·안내) + 본문.
+     세부 문구는 접이식 묶음(기본 펼침)으로 한 아코디언 안에 정리한다. */
   function sectionEditorHtml(section, meta, open) {
     const fields = (meta && meta.fields) || [];
+    const titleKey = (meta && meta.titleKey) || "";
+    const primary = fields.filter((field) => isPrimaryKey(field.key, titleKey));
+    const detail = fields.filter((field) => !isPrimaryKey(field.key, titleKey));
     const body = section.body == null ? "" : String(section.body);
+    const primaryHtml = primary.length
+      ? `<div class="sedit-grid">${primary.map((field) => sectionFieldHtml(field.key, titleKey)).join("")}</div>`
+      : "";
+    const detailHtml = detail.length
+      ? `<details class="sedit-more" open>
+           <summary>세부 문구 ${detail.length}개 <em>버튼 · 라벨 · 안내 문구</em></summary>
+           <div class="sedit-grid">${detail.map((field) => sectionFieldHtml(field.key, titleKey)).join("")}</div>
+         </details>`
+      : "";
+    const empty = !fields.length
+      ? '<p class="note sfield-empty">이 섹션에는 따로 고칠 문구가 없습니다. 아래 본문 문단을 쓸 수 있어요.</p>'
+      : "";
     return `<div class="seditor" id="sedit-${esc(section.id)}" data-seditor="${esc(section.id)}" ${open ? "" : "hidden"}>
-      ${fields.length ? `<div class="sedit-grid">${fields.map(sectionFieldHtml).join("")}</div>`
-        : '<p class="note sfield-empty">이 섹션에는 따로 고칠 문구가 없습니다. 아래 본문 문단을 쓸 수 있어요.</p>'}
+      <div class="sedit-head">
+        <span>이 섹션 문구 <b>${fields.length}</b>개</span>
+        <small>제목·설명은 물론 작은 버튼 · 라벨 · 안내 문구까지 여기서 함께 고칩니다.</small>
+      </div>
+      ${primaryHtml}${detailHtml}${empty}
       <label class="field sfield">
         <span class="field-label">본문 문단 <em>섹션 아래에 덧붙는 안내 글 · &lt;b&gt;·&lt;br&gt; 등 일부 태그 사용</em></span>
         <textarea data-sbody="${esc(section.id)}" rows="2" maxlength="600" placeholder="비우면 본문이 표시되지 않습니다">${esc(body)}</textarea>
@@ -1072,6 +1121,17 @@
     if (!el) return;
     const value = getPath(config(), `copy.${key}`);
     el.value = value == null ? "" : String(value);
+  }
+
+  /* ③ 에서 고친 문구를 ② 섹션 편집기의 같은 칸에도 바로 반영한다(양방향 동기화). */
+  function syncSectionInput(path) {
+    if (!path || path.indexOf("copy.") !== 0) return;
+    const key = path.slice("copy.".length);
+    const value = getPath(config(), `copy.${key}`);
+    $$(`[data-sfield="${key}"]`).forEach((el) => {
+      const next = value == null ? "" : String(value);
+      if (el.value !== next) el.value = next;
+    });
   }
 
   /* 이름을 비우면 사이트에는 반영되지 않으므로 기본 이름으로 되돌린다. */
@@ -1111,7 +1171,8 @@
   }
 
   /* ───────────── 문구 입력칸 ───────────── */
-  /* 사이트별 copyGroups(sites.js) 로 ③ 문구 화면을 그린다. 서버·저장 형식은 copy.<key> 그대로다. */
+  /* ③ 문구 화면 — 머리말 → 탭별(탭 머리글 · 화면 공통 · 섹션들) → 꼬리말 순서로 묶어 그린다.
+     각 섹션 묶음은 ② 의 ✎ 편집기와 같은 값(copy 키)을 쓰므로 양쪽이 실시간으로 동기화된다. */
   function renderCopyForm() {
     const box = $("#copy-form");
     if (!box) return;
@@ -1120,15 +1181,33 @@
       box.innerHTML = '<p class="note">이 사이트에 등록된 문구 목록이 없습니다.</p>';
       return;
     }
-    box.innerHTML = groups.map((group) => `
-      <section class="copygroup">
+    const counts = {};
+    groups.forEach((group) => {
+      if (group.tab && group.kind !== "tab" && group.kind !== "sum" && group.fields) {
+        counts[group.tab] = (counts[group.tab] || 0) + group.fields.length;
+      }
+    });
+    box.innerHTML = groups.map((group) => {
+      if (group.kind === "tab") {
+        return `<div class="copygrouptab" data-copytab="${esc(group.tab)}">
+          <span>${esc(group.name)}</span><b>${counts[group.tab] || 0}개 문구</b>
+        </div>`;
+      }
+      if (group.kind === "sum") return "";
+      const jump = group.kind === "section" && group.section
+        ? `<button type="button" class="linkbtn" data-goto-section="${esc(group.section)}" data-goto-tab="${esc(group.tab || "")}">② 에서 이 섹션 편집 →</button>`
+        : "";
+      const empty = group.fields.length ? "" : '<p class="note">이 묶음에는 아직 문구가 없습니다.</p>';
+      return `<section class="copygroup" data-group-kind="${esc(group.kind || "group")}" data-group-section="${esc(group.section || "")}">
         <div class="copygroup-head">
           <h4>${esc(group.name)}</h4>
           <span class="muted small">${group.fields.length}개 문구</span>
+          ${jump}
         </div>
         ${group.note ? `<p class="note">${esc(group.note)}</p>` : ""}
-        ${group.fields.map(copyFieldHtml).join("")}
-      </section>`).join("");
+        ${empty}${group.fields.map(copyFieldHtml).join("")}
+      </section>`;
+    }).join("");
   }
 
   function copyFieldHtml(field) {
@@ -1255,21 +1334,43 @@
 
     const sectionBody = (section) => (section.body && String(section.body).trim()
       ? `<p class="pv-sect-body">${safeHtml(section.body)}</p>` : "");
+    /* 섹션 안 문구값 — ② 에서 고친 표제·설명·링크·세부 문구가 미리보기에 바로 보이게 한다. */
+    const valueOf = (key) => {
+      const raw = getPath(config(), `copy.${key}`);
+      return raw == null ? "" : String(raw);
+    };
     const sectionHtml = sections.map((section) => {
       if (section.id === "status") {
         return `<div class="pv-sect"><h2 style="color:${inkColor};--bar:${accent}">${esc(section.label)}</h2>${statusCard || '<div class="pv-empty">표시할 카드가 없습니다</div>'}</div>`;
       }
       if (section.id === "hero") {
         return `<div class="pv-hero" style="background:${dark ? "linear-gradient(135deg,#18264a,#0f1b35)" : "#eef3ff"};color:${dark ? "#fff" : "#101f3c"}">
+          ${cfg.copy.heroTag ? `<span class="pv-eyebrow">${safeHtml(cfg.copy.heroTag)}</span>` : ""}
           <h1>${safeHtml(cfg.copy.heroTitle)}</h1>
           <p>${esc(cfg.copy.heroDescription)}</p>
+          ${cfg.copy.heroWarnTitle ? `<span class="pv-detail"><b>${esc(cfg.copy.heroWarnTitle)}</b>${esc(cfg.copy.heroWarnText || "")}</span>` : ""}
           ${cfg.copy.ctaLabel ? `<span class="pv-cta" style="background:${accent};color:${dark ? "#101f3c" : "#fff"}">${esc(cfg.copy.ctaLabel)}</span>` : ""}
           ${sectionBody(section)}
         </div>`;
       }
+      const meta = metaOf(section.id);
+      const fields = (meta && meta.fields) || [];
+      const eyebrowField = fields.find((field) => /Eyebrow$/.test(field.key));
+      const descField = fields.find((field) => /(Description|Desc|Lead)$/.test(field.key));
+      const linkField = fields.find((field) => /Link$/.test(field.key));
+      const used = [meta && meta.titleKey, eyebrowField && eyebrowField.key, descField && descField.key, linkField && linkField.key];
+      const extras = fields.filter((field) => used.indexOf(field.key) < 0).slice(0, 4);
       const title = sectionTitleInfo(section);
       const heading = title.kind === "copy" ? safeHtml(title.value) : esc(title.value);
-      return `<div class="pv-sect"><h2 style="color:${inkColor};--bar:${accent}">${heading}</h2>
+      const eyebrow = eyebrowField ? valueOf(eyebrowField.key) : "";
+      const desc = descField ? valueOf(descField.key) : "";
+      const descRich = descField && (descField.kind === "html" || descField.kind === "areaHtml");
+      return `<div class="pv-sect">
+        ${eyebrow ? `<span class="pv-eyebrow" style="color:${dark ? "#ffcb05" : "#2c5bf6"}">${esc(eyebrow)}</span>` : ""}
+        <h2 style="color:${inkColor};--bar:${accent}">${heading}</h2>
+        ${desc ? `<p class="pv-desc">${descRich ? safeHtml(desc) : esc(desc)}</p>` : ""}
+        ${linkField && valueOf(linkField.key) ? `<span class="pv-link">${esc(valueOf(linkField.key))}</span>` : ""}
+        ${extras.map((field) => `<span class="pv-detail"><b>${esc(field.label)}</b>${esc(valueOf(field.key)) || "—"}</span>`).join("")}
         <div class="pv-row" style="background:${dark ? "rgba(255,255,255,.10)" : "#e8ecf5"};width:92%"></div>
         <div class="pv-row" style="background:${dark ? "rgba(255,255,255,.08)" : "#eef1f7"};width:78%"></div>
         <div class="pv-row" style="background:${dark ? "rgba(255,255,255,.06)" : "#f2f5fa"};width:85%"></div>

@@ -220,6 +220,17 @@
     return el.getAttribute(attr) || "";
   }
 
+  /* 이 항목을 숨길지 — 어드민은 visible, 다른 도구는 enabled 를 쓸 수 있어 둘 다 본다. */
+  function isOff(item) {
+    return Boolean(item) && (item.visible === false || item.enabled === false);
+  }
+
+  /* 탭 id 로 그 탭의 패널을 찾는다(#panel-home · [data-panel="home"] · #viewHome 등). */
+  function panelOfTabId(id) {
+    if (!id) return null;
+    return document.querySelector(`[data-panel="${id}"], .tab-panel#panel-${id}, #panel-${id}, #view-${id}, #view-${id}-panel`);
+  }
+
   /* 설정의 order 순서대로, 같은 부모 안에서만 자리를 맞춘다(패널을 넘나들지 않는다).
      섹션 사이에 낀 광고·안내 요소는 건드리지 않도록 자리표시(주석)를 써서 맞바꾼다. */
   function placeInOrder(elements, list, idGetter) {
@@ -280,9 +291,9 @@
     items.forEach((el) => {
       const tab = conf.get(idOfTab(el));
       if (!tab) return;
-      el.classList.toggle(HIDDEN_CLASS, tab.visible === false);
+      el.classList.toggle(HIDDEN_CLASS, isOff(tab));
       setLabel(el, tab.label);
-      if (tab.visible === false) el.setAttribute("tabindex", "-1");
+      if (isOff(tab)) el.setAttribute("tabindex", "-1");
       else el.removeAttribute("tabindex");
     });
     placeInOrder(items, cfg.navigation.tabs, idOfTab);
@@ -290,12 +301,48 @@
     const visible = items.filter((el) => !el.classList.contains(HIDDEN_CLASS)).length;
     container.style.setProperty("--moa-tab-count", String(Math.max(1, visible)));
 
-    // 지금 보고 있는 탭이 숨겨졌으면 첫 번째 보이는 탭으로 옮긴다.
+    ensureActiveTabVisible(items);
+  }
+
+  /* 지금 보고 있는 탭이 꺼졌으면 첫 번째 보이는 탭으로 옮긴다.
+     사이트 핸들러가 붙기 전이거나 반응하지 않으면 패널을 직접 바꿔 안전하게 마무리한다. */
+  function ensureActiveTabVisible(items) {
+    const isHidden = (el) => el.classList.contains(HIDDEN_CLASS);
+    const idOfTab = (el) => el.getAttribute("data-tab") || el.getAttribute("data-nav") || "";
+
+    // 꺼진 탭의 패널이 열려 있으면 먼저 감춘다(보이는 탭의 패널은 건드리지 않는다).
+    const visibleIds = new Set(items.filter((el) => !isHidden(el)).map(idOfTab));
+    items.filter(isHidden).map(idOfTab).forEach((id) => {
+      const panel = panelOfTabId(id);
+      if (panel) panel.hidden = true;
+    });
+
     const active = items.find((el) => el.classList.contains("is-active") || el.classList.contains("active"));
-    if (active && active.classList.contains(HIDDEN_CLASS)) {
-      const first = items.find((el) => !el.classList.contains(HIDDEN_CLASS));
-      if (first) first.click();
-    }
+    if (!active || !isHidden(active)) return;
+    const first = items.find((el) => !isHidden(el));
+    if (!first) return;
+
+    const snapshot = () => Array.prototype.map.call(
+      document.querySelectorAll("[data-panel], .tab-panel"), (panel) => (panel.hidden ? "1" : "0")
+    ).join("");
+    const before = snapshot();
+    try { first.click(); } catch (err) { /* 핸들러가 없으면 아래에서 직접 바꾼다 */ }
+    if (snapshot() !== before) return;
+
+    // 사이트 핸들러가 반응하지 않았다 — 탭 표시와 패널을 직접 맞춘다.
+    const firstId = idOfTab(first);
+    items.forEach((el) => {
+      const on = el === first;
+      el.classList.toggle("is-active", on);
+      el.classList.toggle("active", on);
+      el.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    document.querySelectorAll("[data-panel], .tab-panel").forEach((panel) => {
+      const pid = panel.getAttribute("data-panel") || String(panel.id || "").replace(/^panel-/, "");
+      if (!pid) return;
+      if (pid === firstId) panel.hidden = false;
+      else if (!visibleIds.has(pid)) panel.hidden = true;
+    });
   }
 
   /* 섹션을 담는 화면 단위. 가장 가까운 탭 패널/뷰를 찾고, 없으면 body. */
@@ -378,7 +425,7 @@
     items.forEach((el) => {
       const section = conf.get(idOf(el, "data-section"));
       if (!section) return;
-      el.classList.toggle(HIDDEN_CLASS, section.visible === false);
+      el.classList.toggle(HIDDEN_CLASS, isOff(section));
       const title = el.querySelector("[data-section-title]");
       if (title && section.label) title.textContent = section.label;
       applySectionBody(el, section);
