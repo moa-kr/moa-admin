@@ -1284,7 +1284,8 @@
       merged.popup = Object.assign(clone(site.defaults.popup), parsed.popup || {});
       merged.cards = Array.isArray(parsed.cards) && parsed.cards.length ? parsed.cards : clone(site.defaults.cards);
       state.configs[siteId] = merged;
-      state.source[siteId] = `${label} ${String(sha).slice(0, 7)} (${fmtDateTime(parsed.meta && parsed.meta.updatedAt)})`;
+      const savedAt = parsed.meta && parsed.meta.updatedAt ? fmtDateTime(parsed.meta.updatedAt) : "";
+      state.source[siteId] = `${label} ${String(sha).slice(0, 7)}${savedAt ? ` (${savedAt})` : ""}`;
       clearDirty(siteId);
       if (siteId === state.site) renderAll();
       if (!silent) toast("사이트의 현재 설정을 불러왔습니다.");
@@ -1505,6 +1506,8 @@
     const viaServer = Boolean(state.session && state.session.mode === "idpw");
     if (keyRow) keyRow.hidden = viaServer;
     if (authNote) authNote.hidden = !viaServer;
+    const authTag = $("#inquiry-auth-tag");
+    if (authTag) authTag.textContent = viaServer ? "아이디 로그인" : "x-sync-key";
     if (keyInput && state.session && state.session.key && !keyInput.value) keyInput.value = state.session.key;
 
     if (inf.loading) { list.innerHTML = '<p class="note">불러오는 중…</p>'; return; }
