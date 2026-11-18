@@ -405,6 +405,14 @@
   }
 
   /* ───────────── 입력 바인딩 ───────────── */
+  /* 로그인 게이트는 앱이 뜨기 전에 먼저 붙여야 한다(로그인 전 화면이라 bindUi 보다 앞선다). */
+  function bindGate() {
+    const form = $("#gate-form");
+    if (form) form.addEventListener("submit", handleGateSubmit);
+    const demo = $("#gate-demo");
+    if (demo) demo.addEventListener("click", handleDemo);
+  }
+
   function bindUi() {
     // data-bind 입력 → 설정값
     const applyValue = (el) => {
@@ -482,9 +490,7 @@
     $("#file-import").addEventListener("change", importJson);
     $("#btn-reset").addEventListener("click", resetConfig);
 
-    // 로그인 게이트
-    $("#gate-form").addEventListener("submit", handleGateSubmit);
-    $("#gate-demo").addEventListener("click", handleDemo);
+    // 로그아웃
     $("#btn-logout").addEventListener("click", logout);
 
     // 미리보기(모바일 오버레이)
@@ -1208,6 +1214,8 @@
       const rawLog = localStorage.getItem(LS.log);
       if (rawLog) state.log = JSON.parse(rawLog).slice(0, 20);
     } catch (err) { state.log = []; }
+
+    bindGate();
 
     const session = loadSession();
     if (session && (session.token || session.key || session.mode === "demo")) {
