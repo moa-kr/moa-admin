@@ -148,7 +148,7 @@
 | 시세·도감 · 탭 머리글 | 3 | `guideEyebrow` `guideTitle` `guideLead` |
 | 시세·도감 · 화면 공통 | 13 | `setSearchLabel` `setSearchBtn` `setSearchHint` `compareTitle` `calcTitle` `calcBtn` `calcDiffLabel` `calcRateLabel` `checklistTitle` `checklistSub` `fakeTitle` `fakeSub` `fakeNote` |
 | 시세·도감 · 환율 위젯 | 6 | `fxTitle` `fxUsdLabel` `fxUsdCap` `fxJpyLabel` `fxJpyCap` `fxRefresh` |
-| 시세·도감 · PSA 거래 내역 조회 | 15 | `marketEyebrow` `marketTitle` `marketLead` `marketLabel` `marketGo` `marketClear` `marketGroupPsa` `marketPsaSearchName` `marketPsaSearchSub` `marketPsaShopName` `marketPsaShopSub` `marketPsaGuideName` `marketPsaGuideSub` `marketPsaBadge` `marketNote` |
+| 시세·도감 · PSA 거래 내역 조회 | 12 | `marketEyebrow` `marketTitle` `marketLead` `marketGroupPsa` `marketPsaSearchName` `marketPsaSearchSub` `marketPsaShopName` `marketPsaShopSub` `marketPsaGuideName` `marketPsaGuideSub` `marketPsaBadge` `marketNote` |
 | 시세·도감 · 리셀 · 해외 실거래 시세 | 18 | `resellEyebrow` `resellTitle` `resellLead` `marketGroupKr` `marketKreamName` `marketKreamSub` `marketSnkrdunkName` `marketSnkrdunkSub` `marketGroupFree` `market130Name` `market130Sub` `marketPcName` `marketPcSub` `marketEbaySoldName` `marketEbaySoldSub` `marketEbayBinName` `marketEbayBinSub` `resellNote` |
 | 시세·도감 · 수록 카드와 레어도 | 3 | `cardsEyebrow` `cardsRarityNote` `cardsMore` |
 | 시세·도감 · 자주 묻는 질문 | 2 | `faqEyebrow` `faqMore` |
