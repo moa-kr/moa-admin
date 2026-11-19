@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=30";
+  const BUILD = "v=31";
   /* 실제 미리보기(iframe)를 띄울 사이트별 출처 — postMessage 대상·허용 검사에 쓴다. */
   const PREVIEW_ORIGIN = {
     pokemoa: "https://moa-kr.github.io",
@@ -561,6 +561,9 @@
     updateSessionUi();
     bindUi();
     renderAll();
+    // ‘⑤ 저장·배포’로 열렸으면 태블릿 중계 서버 버전을 먼저 조용히 확인한다
+    // (복지모아 설정 불러오기를 기다리지 않도록 pullConfig 앞에서 부른다).
+    if (state.tab === "deploy" && state.site === "pokemoa") checkRelay(true);
 
     if ((state.session.mode === "live" || state.session.mode === "idpw") && allowPrefetch) {
       await pullConfig(state.site, true);
@@ -570,8 +573,6 @@
     }
     // 마지막으로 보던 탭이 ‘📊 통계’면 바로 자료를 불러온다(빈 화면으로 열리지 않도록).
     if (state.tab === "stats") loadStats();
-    // ‘⑤ 저장·배포’면 태블릿 중계 서버 버전을 조용히 한 번 확인한다.
-    if (state.tab === "deploy" && state.site === "pokemoa") checkRelay(true);
   }
 
   function updateSessionUi() {
