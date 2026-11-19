@@ -124,7 +124,7 @@
 - JS 가 값을 덮어쓰는 자리(실시간 시세·환율 값, 지도 조회 결과·상태, 카드 도감·비교표·이슈/발매 목록, 세트 요약, 팝수 안내)는 `data-copy` 를 붙이지 않았습니다.
 - 회사복지모아의 ‘회사 찾기’ 설명은 가운데에 회사 수가 자동으로 들어가므로 `searchDescA`(앞) + 숫자 + `searchDescB`(뒤) 로 나눠 두었습니다.
 
-**키 수**: 포켓몬카드모아 171개 · 회사복지모아 65개. 사이트 HTML(`data-copy`)·`site-config.json` 기본값·`sites.js` 필드 정의가 **같은 키 집합**입니다(정합성 테스트로 확인).
+**키 수**: 포켓몬카드모아 168개 · 회사복지모아 65개. 사이트 HTML(`data-copy`)·`site-config.json` 기본값·`sites.js` 필드 정의가 **같은 키 집합**입니다(정합성 테스트로 확인).
 
 ### 포켓몬카드모아 (탭 → 섹션 순서, ③ 문구 화면과 같은 묶음)
 
@@ -135,7 +135,7 @@
 | 동네에서 찾기 · 화면 공통 | 11 | `mapOfflineLabel` `mapOfflineToggle` `mapRegionLabel` `mapFindRegion` `mapFindMine` `mapRadiusLabel` `mapFilterReset` `mapSortLabel` `mapStockOnly` `mapSideTitle` `mapMore` |
 | 동네에서 찾기 · 상태 안내 (5개) | 10 | `status1Title`~`status5Title` `status1Desc`~`status5Desc` |
 | 동네에서 찾기 · 공식 채널 바로가기 | 1 | `mapChannelsTitle` |
-| 정가 구매처 · 첫 화면 히어로 | 11 | `heroTag` `heroTitle` `heroDescription` `heroPrice1Label` `heroPrice2Label` `heroPrice3Label` `heroWarnTitle` `heroWarnText` `heroWarnLink` `ctaLabel` `ctaLabel2` |
+| 정가 구매처 · 첫 화면 히어로 | 8 | `heroTag` `heroTitle` `heroDescription` `heroPrice1Label` `heroPrice2Label` `heroPrice3Label` `ctaLabel` `ctaLabel2` |
 | 정가 구매처 · 정가 구매처 현황 | 4 | `pricingEyebrow` `pricingDesc` `pricingLink` `pricingSource` |
 | 정가 구매처 · 다른 박스 | 4 | `boxesEyebrow` `boxesDesc` `boxesLink` `boxesSource` |
 | 정가 구매처 · 오프라인 · 자판기 | 11 | `offlineEyebrow` `offlineDesc` `offlineLink` `offlineArtName` `offlineArtSub` `offlineShopName` `offlineShopSub` `offlineVendingName` `offlineVendingSub` `offlineMartName` `offlineMartSub` |
