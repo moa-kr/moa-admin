@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=21";
+  const BUILD = "v=22";
   /* 실제 미리보기(iframe)를 띄울 사이트별 출처 — postMessage 대상·허용 검사에 쓴다. */
   const PREVIEW_ORIGIN = {
     pokemoa: "https://moa-kr.github.io",
@@ -1386,9 +1386,9 @@
       : "실제 사이트를 불러오는 중…", false);
     startPreviewTimers();
 
-    const url = force
-      ? `${site.liveUrl}${site.liveUrl.indexOf("?") === -1 ? "?" : "&"}moa_preview=${Date.now()}`
-      : site.liveUrl;
+    // 미리보기 HTML·로더가 캐시에 묶여 옛 빌드로 뜨지 않도록 항상 캐시를 비켜 받는다.
+    // (GitHub Pages 는 HTML 을 10분 캐시하고, 옛 로더에는 미리보기 수신부가 없다.)
+    const url = `${site.liveUrl}${site.liveUrl.indexOf("?") === -1 ? "?" : "&"}moa_preview=${Date.now()}`;
     try { frame.src = url; } catch (err) { showPreviewOverlay("미리보기를 열지 못했습니다.", true); }
     fitPreviewFrame();
   }
