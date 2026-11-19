@@ -10,7 +10,7 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=27">
+<link rel="stylesheet" href="assets/css/admin.css?v=28">
 </head>
 <body>
 
@@ -82,7 +82,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=27</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=28</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -357,6 +357,27 @@
           </div>
         </div>
 
+        <!-- 🔌 태블릿 중계 서버 — 상태 확인 + 원클릭 자가 업데이트(v2.0) -->
+        <div class="card" id="relay-card" hidden>
+          <div class="card-head">
+            <h3>🔌 태블릿 중계 서버 <span class="tag">relay</span></h3>
+            <span class="status-pill" id="relay-conn">확인 전</span>
+          </div>
+          <div class="card-body">
+            <div class="inline-row">
+              <input type="url" id="relay-url" placeholder="https://….trycloudflare.com" spellcheck="false" autocomplete="off">
+              <button type="button" class="btn btn-sm btn-ghost" id="relay-check">상태 확인</button>
+              <button type="button" class="btn btn-sm btn-dark" id="relay-url-save">주소 저장</button>
+            </div>
+            <p class="note" id="relay-info">태블릿에서 도는 중계 서버 주소를 넣고 ‘상태 확인’을 누르면 지금 버전을 보여 줍니다.</p>
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary" id="relay-update">🔄 최신 버전 업데이트</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="relay-health">/health 다시 조회</button>
+            </div>
+            <p class="note">업데이트를 누르면 태블릿의 서버가 <code>relay/server.js</code> 를 GitHub 최신 판으로 스스로 바꾸고 다시 시작합니다(재고 조회는 몇 초만 끊깁니다). <b>cloudflared 임시 주소(<code>trycloudflare.com</code>)는 태블릿을 다시 켤 때마다 바뀌므로</b>, 주소가 바뀌면 위 칸에 새 주소를 넣고 <b>주소 저장</b>을 눌러 주세요.</p>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-head"><h3>최근 작업</h3></div>
           <div class="card-body"><ul class="log" id="activity-log"></ul></div>
@@ -488,7 +509,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=27"></script>
-<script src="assets/js/app.js?v=27"></script>
+<script src="assets/js/sites.js?v=28"></script>
+<script src="assets/js/app.js?v=28"></script>
 </body>
 </html>

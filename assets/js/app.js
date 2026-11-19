@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=27";
+  const BUILD = "v=28";
   /* 실제 미리보기(iframe)를 띄울 사이트별 출처 — postMessage 대상·허용 검사에 쓴다. */
   const PREVIEW_ORIGIN = {
     pokemoa: "https://moa-kr.github.io",
@@ -196,6 +196,8 @@
     // 오른쪽 실제 미리보기(iframe) 상태
     preview: { site: "", ready: false, appliedAt: 0, slowTimer: 0, failTimer: 0 },
     inquiries: { loading: false, error: "", list: [], byStatus: null, total: 0, operatorEmail: "", loadedAt: "" },
+    // 🔌 태블릿 중계 서버 상태 — 마지막으로 본 /health 결과
+    relay: { online: false, version: "", at: 0 },
     // 📊 방문 통계 — 사이트 필터·기간별로 서버에서 집계해 온다.
     stats: { site: "all", days: 7, loading: false, error: "", data: null, loadedAt: "" },
     log: []
@@ -644,6 +646,10 @@
     applyTab();
     if (tabId === "inquiry") renderInquiries();
     if (tabId === "stats") loadStats();
+    if (tabId === "deploy") {
+      renderRelayCard();
+      if (state.site === "pokemoa") checkRelay(true);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -844,6 +850,21 @@
     $("#inquiry-refresh").addEventListener("click", loadInquiries);
     $("#inquiry-status").addEventListener("change", loadInquiries);
     $("#inquiry-list").addEventListener("click", handleInquiryClick);
+
+    // 🔌 태블릿 중계 서버
+    const relayCheck = $("#relay-check");
+    if (relayCheck) relayCheck.addEventListener("click", () => checkRelay(false));
+    const relayHealthBtn = $("#relay-health");
+    if (relayHealthBtn) relayHealthBtn.addEventListener("click", () => checkRelay(false));
+    const relaySave = $("#relay-url-save");
+    if (relaySave) relaySave.addEventListener("click", saveRelayUrl);
+    const relayUpdateBtn = $("#relay-update");
+    if (relayUpdateBtn) relayUpdateBtn.addEventListener("click", updateRelay);
+    const relayInput = $("#relay-url");
+    if (relayInput) {
+      relayInput.value = relaySavedUrl() || RELAY.fallback;
+      relayInput.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); saveRelayUrl(); } });
+    }
 
     window.addEventListener("beforeunload", (event) => {
       if (!isDirty()) return;
@@ -1398,6 +1419,7 @@
     renderFeatures();
     renderDeployTarget();
     renderChecks();
+    renderRelayCard();
     renderActivityLog();
     renderInquiries();
     $("#preview-site").textContent = current().name;
@@ -2240,6 +2262,181 @@
         <div class="hour-legend"><span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>23시</span></div>`;
       }
     }
+  }
+
+  /* ───────────── 🔌 태블릿 중계 서버(relay) — 상태 확인 · 원클릭 업데이트 ─────────────
+     태블릿 Termux 에서 도는 relay/server.js(v2.0) 를 브라우저에서 바로 확인·갱신한다.
+     주소는 cloudflared 임시 주소라서 브라우저(localStorage)에 저장해 둔다. */
+  const RELAY = {
+    ls: "moa-admin.relayUrl",
+    fallback: "https://nyc-rocks-epic-journalists.trycloudflare.com",
+    healthMs: 6000,
+    updateMs: 45000,
+    confirmMs: 12000
+  };
+
+  function relaySavedUrl() {
+    try { return localStorage.getItem(RELAY.ls) || ""; } catch (err) { return ""; }
+  }
+  function relayUrl() {
+    const input = $("#relay-url");
+    const value = (input && input.value.trim()) || relaySavedUrl() || RELAY.fallback;
+    return value.replace(/\/+$/, "");
+  }
+  function relayPill(text, kind) {
+    const pill = $("#relay-conn");
+    if (!pill) return;
+    pill.textContent = text;
+    pill.className = "status-pill" + (kind ? " " + kind : "");
+  }
+  function relayNote(text) {
+    const el = $("#relay-info");
+    if (el) el.textContent = text;
+  }
+  function relayToken() {
+    const session = state.session || {};
+    /* 아이디 로그인이면 복지모아 서버가 발급한 HMAC 토큰, 아니면 x-sync-key 를 쓴다. */
+    if (session.mode === "idpw" && session.token) return session.token;
+    return session.key || "";
+  }
+
+  async function relayHealth(timeoutMs) {
+    const base = relayUrl();
+    if (!base) throw new Error("중계 서버 주소가 없습니다.");
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs || RELAY.healthMs);
+    try {
+      const res = await fetch(`${base}/health`, { cache: "no-store", signal: ctrl.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function relayOfflineNote(why) {
+    relayNote(`중계 서버에 연결하지 못했습니다 — ${why}. ① 태블릿이 켜져 있고 Termux 에서 서버가 도는지 ② cloudflared 주소가 지금 것과 같은지 확인해 주세요.`);
+  }
+
+  async function checkRelay(quiet) {
+    if (!relayUrl()) { relayPill("주소 없음", "bad"); return null; }
+    relayPill("확인 중", "wait");
+    try {
+      const data = await relayHealth(RELAY.healthMs);
+      const version = String((data && data.version) || "?");
+      const upSec = Number((data && data.uptimeSec) || 0);
+      const upText = upSec >= 3600 ? `${Math.floor(upSec / 3600)}시간 ${Math.floor((upSec % 3600) / 60)}분째`
+        : upSec >= 60 ? `${Math.floor(upSec / 60)}분째` : `${upSec}초째`;
+      state.relay = { online: true, version, at: Date.now() };
+      relayPill(`온라인 · v${version}`, "ok");
+      relayNote(`${relayUrl()} · 버전 v${version} · ${upText} 가동 중 (${new Date().toLocaleTimeString("ko-KR")} 확인)`);
+      return data;
+    } catch (err) {
+      state.relay = { online: false, version: "", at: Date.now() };
+      relayPill("오프라인", "bad");
+      const why = err && err.name === "AbortError" ? `${Math.round(RELAY.healthMs / 1000)}초 안에 응답 없음` : (err && err.message) || "연결 실패";
+      relayOfflineNote(why);
+      if (!quiet) toast("중계 서버에 연결하지 못했습니다.", true);
+      return null;
+    }
+  }
+
+  function saveRelayUrl() {
+    const input = $("#relay-url");
+    const value = (input && input.value.trim() || "").replace(/\/+$/, "");
+    if (!/^https?:\/\/[^\s]+$/i.test(value)) {
+      toast("주소는 http:// 또는 https:// 로 시작해야 해요.", true);
+      return;
+    }
+    try { localStorage.setItem(RELAY.ls, value); } catch (err) { /* 무시 */ }
+    addLog(`중계 서버 주소 저장: ${value}`);
+    toast("중계 서버 주소를 저장했습니다.");
+    checkRelay(false);
+  }
+
+  async function updateRelay() {
+    const token = relayToken();
+    if (!token) {
+      toast("아이디로 로그인하거나 복지모아 관리자 키를 저장한 뒤에 업데이트할 수 있어요.", true);
+      return;
+    }
+    const btn = $("#relay-update");
+    const target = relayUrl();
+    btn.disabled = true;
+    relayPill("업데이트 요청 중", "wait");
+    relayNote("중계 서버가 GitHub 최신 판을 내려받아 문법 검사를 거쳐 교체하는 중입니다(최대 20초)…");
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), RELAY.updateMs);
+      let res;
+      try {
+        res = await fetch(`${target}/admin/update`, {
+          method: "POST",
+          headers: { "X-Admin-Token": token, "Content-Type": "application/json" },
+          body: "{}",
+          cache: "no-store",
+          signal: ctrl.signal
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch (err) { data = null; }
+      if (!res.ok || !data || data.ok === false) {
+        const why = (data && data.error) || `HTTP ${res.status}`;
+        relayPill("업데이트 실패", "bad");
+        relayNote(`업데이트하지 못했습니다 — ${why}`);
+        toast(`업데이트 실패: ${why}`, true);
+        addLog(`중계 서버 업데이트 실패: ${why}`);
+        return;
+      }
+      if (!data.restarting) {
+        relayPill(`이미 최신 · v${data.nextVersion || "?"}`, "ok");
+        relayNote(data.note || "이미 최신 버전입니다.");
+        toast("이미 최신 버전입니다.");
+        return;
+      }
+      /* 교체 뒤 재시작이 끝나 새 판이 응답하는지 1.2초 간격으로 확인한다. */
+      relayPill("재시작 확인 중", "wait");
+      relayNote(`v${data.previousVersion} → v${data.nextVersion} 교체 완료. 새 판이 응답하는지 확인하는 중입니다…`);
+      const want = String(data.nextVersion || "");
+      const startedAt = Date.now();
+      let seen = null;
+      while (Date.now() - startedAt < RELAY.confirmMs) {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        try {
+          const health = await relayHealth(3000);
+          if (health && String(health.version) === want) { seen = health; break; }
+        } catch (err) { /* 아직 재시작 중 — 다음 차례에 다시 */ }
+      }
+      if (seen) {
+        state.relay = { online: true, version: want, at: Date.now() };
+        relayPill(`업데이트 완료 · v${want}`, "ok");
+        relayNote(`중계 서버가 v${data.previousVersion} → v${want} 로 바뀌었습니다(직전 판은 server.js.bak 으로 백업). 「동네에서 찾기」에서 실재고를 한 번 확인해 보세요.`);
+        toast(`중계 서버를 v${want} 로 업데이트했습니다.`);
+        addLog(`태블릿 중계 서버 v${data.previousVersion} → v${want} 업데이트`);
+      } else {
+        relayPill("재시작 확인 필요", "wait");
+        relayNote(`v${data.previousVersion} → v${data.nextVersion} 교체는 끝났지만 ${Math.round(RELAY.confirmMs / 1000)}초 안에 새 판 응답을 못 봤습니다. 조금 뒤 「/health 다시 조회」를 눌러 주세요.`);
+        toast("교체는 됐지만 새 판 응답이 아직입니다. 잠시 뒤 상태를 다시 확인해 주세요.", true);
+      }
+    } catch (err) {
+      const why = err && err.name === "AbortError" ? `${Math.round(RELAY.updateMs / 1000)}초 요청 시간 초과` : (err && err.message) || "연결 실패";
+      relayPill("업데이트 실패", "bad");
+      relayNote(`업데이트 요청이 끝나지 않았습니다 — ${why}. 「/health 다시 조회」로 서버 상태를 확인해 주세요.`);
+      toast(`업데이트 요청 실패: ${why}`, true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderRelayCard() {
+    const card = $("#relay-card");
+    if (!card) return;
+    card.hidden = state.site !== "pokemoa";
+    const input = $("#relay-url");
+    if (input && !input.value) input.value = relaySavedUrl() || RELAY.fallback;
   }
 
   /* ───────────── 부팅 ───────────── */
