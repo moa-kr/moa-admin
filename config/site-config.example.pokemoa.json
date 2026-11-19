@@ -204,7 +204,7 @@
       },
       {
         "id": "market",
-        "label": "PSA·eBay 거래가 조회",
+        "label": "PSA 거래 내역 조회",
         "visible": true,
         "order": 2,
         "tab": "guide"
