@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=28";
+  const BUILD = "v=29";
   /* 실제 미리보기(iframe)를 띄울 사이트별 출처 — postMessage 대상·허용 검사에 쓴다. */
   const PREVIEW_ORIGIN = {
     pokemoa: "https://moa-kr.github.io",
@@ -2422,6 +2422,17 @@
         toast("교체는 됐지만 새 판 응답이 아직입니다. 잠시 뒤 상태를 다시 확인해 주세요.", true);
       }
     } catch (err) {
+      const isNet = err instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(String((err && err.message) || ""));
+      const known = String((state.relay && state.relay.version) || "");
+      /* v1.x 는 access-control-allow-headers 에 x-admin-token 이 없어 브라우저 POST 가
+         프리플라이트에서 막힌다(Failed to fetch). 그 사실을 그대로 알려 준다. */
+      if (isNet && known && !/^2\./.test(known)) {
+        relayPill(`업데이트 불가 · v${known}`, "bad");
+        relayNote(`서버가 아직 v${known} 이라 브라우저 요청(X-Admin-Token)을 받지 못합니다 — v2.0 이전 판에는 이 기능이 없습니다. 태블릿 Termux 에서 한 줄 설치를 한 번만 해 주시면, 그 다음부터는 이 버튼으로 갱신됩니다.`);
+        toast(`v${known} 서버는 브라우저 업데이트를 지원하지 않아요. 태블릿에서 v2.0 한 줄 설치가 한 번 필요합니다.`, true);
+        addLog(`중계 서버 v${known} — 브라우저 업데이트 미지원(v2.0 설치 필요)`);
+        return;
+      }
       const why = err && err.name === "AbortError" ? `${Math.round(RELAY.updateMs / 1000)}초 요청 시간 초과` : (err && err.message) || "연결 실패";
       relayPill("업데이트 실패", "bad");
       relayNote(`업데이트 요청이 끝나지 않았습니다 — ${why}. 「/health 다시 조회」로 서버 상태를 확인해 주세요.`);

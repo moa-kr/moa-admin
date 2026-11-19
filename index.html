@@ -10,7 +10,7 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=28">
+<link rel="stylesheet" href="assets/css/admin.css?v=29">
 </head>
 <body>
 
@@ -82,7 +82,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=28</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=29</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -374,7 +374,7 @@
               <button type="button" class="btn btn-primary" id="relay-update">🔄 최신 버전 업데이트</button>
               <button type="button" class="btn btn-ghost btn-sm" id="relay-health">/health 다시 조회</button>
             </div>
-            <p class="note">업데이트를 누르면 태블릿의 서버가 <code>relay/server.js</code> 를 GitHub 최신 판으로 스스로 바꾸고 다시 시작합니다(재고 조회는 몇 초만 끊깁니다). <b>cloudflared 임시 주소(<code>trycloudflare.com</code>)는 태블릿을 다시 켤 때마다 바뀌므로</b>, 주소가 바뀌면 위 칸에 새 주소를 넣고 <b>주소 저장</b>을 눌러 주세요.</p>
+            <p class="note">업데이트를 누르면 태블릿의 서버가 <code>relay/server.js</code> 를 GitHub 최신 판으로 스스로 바꾸고 다시 시작합니다(재고 조회는 몇 초만 끊깁니다). <b>이 버튼은 서버가 v2.0 이상일 때만 돕니다</b> — v1.x 는 브라우저 요청(X-Admin-Token)을 받지 못하므로, 태블릿에서 한 줄 설치를 한 번만 해 주세요. <b>cloudflared 임시 주소(<code>trycloudflare.com</code>)는 태블릿을 다시 켤 때마다 바뀌므로</b>, 주소가 바뀌면 위 칸에 새 주소를 넣고 <b>주소 저장</b>을 눌러 주세요.</p>
           </div>
         </div>
 
@@ -509,7 +509,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=28"></script>
-<script src="assets/js/app.js?v=28"></script>
+<script src="assets/js/sites.js?v=29"></script>
+<script src="assets/js/app.js?v=29"></script>
 </body>
 </html>
