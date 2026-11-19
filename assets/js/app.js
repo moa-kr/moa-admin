@@ -13,6 +13,15 @@
     ui: "moa-admin.ui"
   };
   const REMEMBER_DAYS = 90;
+  /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
+  const BUILD = "v=21";
+  /* 실제 미리보기(iframe)를 띄울 사이트별 출처 — postMessage 대상·허용 검사에 쓴다. */
+  const PREVIEW_ORIGIN = {
+    pokemoa: "https://moa-kr.github.io",
+    bokjimoa: "https://bokjimoa.onrender.com"
+  };
+  const PREVIEW_READY_MS = 12000;   // 이만큼 응답이 없으면 ‘느림 + 재시도’ 안내
+  const PREVIEW_FAIL_MS = 28000;    // 이만큼이면 임베드 거부로 보고 오류 안내
 
   /* 화면이 멈췄을 때 원인을 볼 수 있도록 스크립트 오류를 모아 둔다(운영 점검용). */
   window.__moaAdminErrors = window.__moaAdminErrors || [];
@@ -184,6 +193,8 @@
     // ③ 문구 화면에서 펼쳐 둔 묶음(기본은 모두 접힘)
     copyOpen: {},
     previewPopup: true,
+    // 오른쪽 실제 미리보기(iframe) 상태
+    preview: { site: "", ready: false, appliedAt: 0, slowTimer: 0, failTimer: 0 },
     inquiries: { loading: false, error: "", list: [], byStatus: null, total: 0, operatorEmail: "", loadedAt: "" },
     log: []
   };
@@ -785,6 +796,26 @@
       renderPreview();
     });
 
+    // 실제 미리보기(iframe) — 로드 완료·재시도·화면 크기 변화
+    const frame = previewFrame();
+    if (frame) {
+      frame.addEventListener("load", () => {
+        if (!frame.dataset.origin || frame.src === "about:blank") return;
+        frame.dataset.loaded = "1";
+        sendPreviewConfig(true);
+      });
+    }
+    const retry = $("#pv-retry");
+    if (retry) retry.addEventListener("click", retryPreview);
+    const reload = $("#preview-reload");
+    if (reload) reload.addEventListener("click", retryPreview);
+    window.addEventListener("message", handlePreviewMessage, false);
+    window.addEventListener("resize", debounce(fitPreviewFrame, 150));
+    const screen = $("#phone-screen");
+    if (screen && window.ResizeObserver) {
+      try { new ResizeObserver(() => fitPreviewFrame()).observe(screen); } catch (err) { /* 무시 */ }
+    }
+
     // 문의
     $("#inquiry-key-save").addEventListener("click", saveInquiryKey);
     $("#inquiry-key-forget").addEventListener("click", forgetInquiryKey);
@@ -1090,7 +1121,7 @@
   }
 
   /* 섹션 안쪽 내용 편집기 — 대표 문구(표제·제목·설명·링크) + 세부 문구(버튼·라벨·안내) + 본문.
-     세부 문구는 접이식 묶음(기본 펼침)으로 한 아코디언 안에 정리한다. */
+     세부 문구는 기본 ‘+’ 접힘으로 두어 누를 때만 펼쳐진다(② 화면이 길어지지 않도록). */
   function sectionEditorHtml(section, meta, open) {
     const fields = (meta && meta.fields) || [];
     const titleKey = (meta && meta.titleKey) || "";
@@ -1101,8 +1132,8 @@
       ? `<div class="sedit-grid">${primary.map((field) => sectionFieldHtml(field.key, titleKey)).join("")}</div>`
       : "";
     const detailHtml = detail.length
-      ? `<details class="sedit-more" open>
-           <summary>세부 문구 ${detail.length}개 <em>버튼 · 라벨 · 안내 문구</em></summary>
+      ? `<details class="sedit-more">
+           <summary><span class="smark" aria-hidden="true"></span>세부 문구 ${detail.length}개 <em>버튼 · 라벨 · 안내 문구 — 눌러서 펼치기</em></summary>
            <div class="sedit-grid">${detail.map((field) => sectionFieldHtml(field.key, titleKey)).join("")}</div>
          </details>`
       : "";
@@ -1206,7 +1237,7 @@
       }
     });
     box.innerHTML = `<div class="copy-toolbar">
-        <span>문구 <b>${groups.reduce((sum, g) => sum + ((g.kind === "tab" || g.kind === "sum") ? 0 : g.fields.length), 0)}</b>개 · 묶음은 기본으로 접혀 있습니다.</span>
+        <span>문구 <b>${groups.reduce((sum, g) => sum + ((g.kind === "tab" || g.kind === "sum") ? 0 : g.fields.length), 0)}</b>개 · 모든 묶음이 + 로 접혀 있어요. 왼쪽 + 를 누르면 펼쳐집니다.</span>
         <button type="button" class="btn btn-sm btn-ghost" data-copy-all="open">모두 펼치기</button>
         <button type="button" class="btn btn-sm btn-ghost" data-copy-all="close">모두 접기</button>
       </div>` + groups.map((group) => {
@@ -1316,144 +1347,182 @@
     });
   }
 
-  const schedulePreview = debounce(renderPreview, 60);
+  /* 미리보기 반영은 조금 모아서 보낸다(타이핑 중 매 글자마다 iframe 을 다시 그리지 않도록). */
+  const schedulePreview = debounce(renderPreview, 120);
 
-  /* ───────────── 미리보기 ───────────── */
-  function renderPreview() {
+  /* ───────────── 실제 사이트 미리보기(iframe + postMessage) ─────────────
+     가짜 모형 박스 대신 라이브 사이트를 390px 폭 iframe 으로 띄우고, 저장 전 draft 설정을
+     postMessage 로 보내 그 자리에서 다시 그리게 한다(새로고침 없음).
+     사이트 쪽은 site-config-loader.js v4 가 받아 적용하고 moa-preview-applied 로 응답한다. */
+  function previewFrame() { return $("#pv-frame"); }
+
+  function previewSiteId() { return state.preview.site || state.site; }
+
+  /* 미리보기 iframe 의 출처 — 사이트 주소에서 구하고, 해석할 수 없으면 기본값을 쓴다. */
+  function previewOrigin(siteId) {
+    const site = SITES[siteId || previewSiteId()];
+    try {
+      if (site && site.liveUrl) return new URL(site.liveUrl).origin;
+    } catch (err) { /* 아래 기본값 */ }
+    return PREVIEW_ORIGIN[siteId || previewSiteId()] || "";
+  }
+
+  /* 사이트 화면을 iframe 에 물린다. force 면 캐시를 비켜 새로 받는다. */
+  function mountPreviewFrame(force) {
+    const frame = previewFrame();
+    if (!frame) return;
     const site = current();
-    const cfg = config();
-    const dark = site.id === "pokemoa";
-    const accent = dark ? "#ffcb05" : "#2c5bf6";
-    const inkBg = dark ? "#101f3c" : "#ffffff";
-    const inkColor = dark ? "#ffffff" : "#101f3c";
+    const same = state.preview.site === site.id && frame.dataset.loaded === "1";
+    if (same && !force) { fitPreviewFrame(); return; }
 
-    const allTabs = sortedByOrder(cfg.navigation.tabs);
-    const tabs = allTabs.filter((t) => t.visible);
-    // 미리보기는 ② 에서 고른 탭 안쪽만 그린다(탭 안 섹션 편집과 같은 화면).
-    const activeTab = state.sectionTab[state.site];
-    const sections = sortedByOrder(cfg.navigation.sections)
-      .filter((s) => s.visible && sectionTabOf(s) === activeTab);
-    const cards = sortedByOrder(cfg.cards).filter((c) => c.visible);
+    state.preview.site = site.id;
+    state.preview.ready = false;
+    frame.dataset.loaded = "0";
+    frame.dataset.origin = previewOrigin(site.id);
+    if (frame.dataset.origin) frame.dataset.website = site.id;
 
-    const banner = cfg.banner.enabled && String(cfg.banner.text || "").trim()
-      ? `<div class="pv-banner ${esc(cfg.banner.style || "info")} ${dark ? "dark" : ""}">
-           <span>${esc(cfg.banner.text)}</span>
-           ${cfg.banner.linkLabel ? `<span class="pv-blink">${esc(cfg.banner.linkLabel)} ›</span>` : ""}
-         </div>`
-      : "";
+    showPreviewOverlay(site.id === "bokjimoa"
+      ? "복지모아 서버를 깨우는 중… (Render는 잠들어 있으면 30초쯤 걸려요)"
+      : "실제 사이트를 불러오는 중…", false);
+    startPreviewTimers();
 
-    const nav = tabs.length
-      ? `<div class="pv-nav">${tabs.map((t) => {
-        const on = t.id === activeTab;
-        return `<span style="background:${on ? accent : (dark ? "rgba(255,255,255,.08)" : "#f0f3fa")};color:${on ? (dark ? "#101f3c" : "#fff") : (dark ? "#c9d2e6" : "#4a5875")}">${esc(t.label)}</span>`;
-      }).join("")}</div>`
-      : '<div class="pv-nav"><span class="pv-empty">노출 중인 탭이 없습니다</span></div>';
+    const url = force
+      ? `${site.liveUrl}${site.liveUrl.indexOf("?") === -1 ? "?" : "&"}moa_preview=${Date.now()}`
+      : site.liveUrl;
+    try { frame.src = url; } catch (err) { showPreviewOverlay("미리보기를 열지 못했습니다.", true); }
+    fitPreviewFrame();
+  }
 
-    const statusCard = cards.length
-      ? `<div class="pv-cards">${cards.slice(0, 3).map((c) => `
-          <div class="pv-card" style="background:${dark ? "rgba(255,255,255,.06)" : "#f5f7fc"};color:${dark ? "#e8eefb" : "#101f3c"}">
-            <b>${esc(c.title)}</b><span>${esc(c.description)}</span>
-          </div>`).join("")}</div>`
-      : "";
+  /* iframe 을 화면 폭에 맞춰 축소한다(내부는 390px 기기 폭 그대로). */
+  function fitPreviewFrame() {
+    const screen = $("#phone-screen");
+    const frame = previewFrame();
+    if (!screen || !frame) return;
+    const width = screen.clientWidth || 320;
+    const height = screen.clientHeight || 620;
+    const scale = width / 390;
+    frame.style.width = "390px";
+    frame.style.transform = `scale(${scale.toFixed(4)})`;
+    frame.style.height = `${Math.max(480, Math.round(height / scale))}px`;
+  }
 
-    // 현황 카드(cards)는 두 사이트 화면에 자리가 없어 미리보기에 따로 그리지 않는다.
-    const cardBlock = "";
+  function showPreviewOverlay(text, withRetry) {
+    const box = $("#pv-overlay");
+    const label = $("#pv-overlay-text");
+    const retry = $("#pv-retry");
+    if (!box) return;
+    box.hidden = false;
+    box.classList.toggle("is-error", Boolean(withRetry));
+    if (label) label.textContent = text;
+    if (retry) retry.hidden = !withRetry;
+  }
 
-    const sectionBody = (section) => (section.body && String(section.body).trim()
-      ? `<p class="pv-sect-body">${safeHtml(section.body)}</p>` : "");
-    /* 섹션 안 문구값 — ② 에서 고친 표제·설명·링크·세부 문구가 미리보기에 바로 보이게 한다. */
-    const valueOf = (key) => {
-      const raw = getPath(config(), `copy.${key}`);
-      return raw == null ? "" : String(raw);
-    };
-    const sectionHtml = sections.map((section) => {
-      if (section.id === "status") {
-        return `<div class="pv-sect"><h2 style="color:${inkColor};--bar:${accent}">${esc(section.label)}</h2>${statusCard || '<div class="pv-empty">표시할 카드가 없습니다</div>'}</div>`;
-      }
-      if (section.id === "hero") {
-        return `<div class="pv-hero" style="background:${dark ? "linear-gradient(135deg,#18264a,#0f1b35)" : "#eef3ff"};color:${dark ? "#fff" : "#101f3c"}">
-          ${cfg.copy.heroTag ? `<span class="pv-eyebrow">${safeHtml(cfg.copy.heroTag)}</span>` : ""}
-          <h1>${safeHtml(cfg.copy.heroTitle)}</h1>
-          <p>${esc(cfg.copy.heroDescription)}</p>
-          ${cfg.copy.heroWarnTitle ? `<span class="pv-detail"><b>${esc(cfg.copy.heroWarnTitle)}</b>${esc(cfg.copy.heroWarnText || "")}</span>` : ""}
-          ${cfg.copy.ctaLabel ? `<span class="pv-cta" style="background:${accent};color:${dark ? "#101f3c" : "#fff"}">${esc(cfg.copy.ctaLabel)}</span>` : ""}
-          ${sectionBody(section)}
-        </div>`;
-      }
-      const meta = metaOf(section.id);
-      const fields = (meta && meta.fields) || [];
-      const eyebrowField = fields.find((field) => /Eyebrow$/.test(field.key));
-      const descField = fields.find((field) => /(Description|Desc|Lead)$/.test(field.key));
-      const linkField = fields.find((field) => /Link$/.test(field.key));
-      const used = [meta && meta.titleKey, eyebrowField && eyebrowField.key, descField && descField.key, linkField && linkField.key];
-      const extras = fields.filter((field) => used.indexOf(field.key) < 0).slice(0, 4);
-      const title = sectionTitleInfo(section);
-      const heading = title.kind === "copy" ? safeHtml(title.value) : esc(title.value);
-      const eyebrow = eyebrowField ? valueOf(eyebrowField.key) : "";
-      const desc = descField ? valueOf(descField.key) : "";
-      const descRich = descField && (descField.kind === "html" || descField.kind === "areaHtml");
-      return `<div class="pv-sect">
-        ${eyebrow ? `<span class="pv-eyebrow" style="color:${dark ? "#ffcb05" : "#2c5bf6"}">${esc(eyebrow)}</span>` : ""}
-        <h2 style="color:${inkColor};--bar:${accent}">${heading}</h2>
-        ${desc ? `<p class="pv-desc">${descRich ? safeHtml(desc) : esc(desc)}</p>` : ""}
-        ${linkField && valueOf(linkField.key) ? `<span class="pv-link">${esc(valueOf(linkField.key))}</span>` : ""}
-        ${extras.map((field) => `<span class="pv-detail"><b>${esc(field.label)}</b>${esc(valueOf(field.key)) || "—"}</span>`).join("")}
-        <div class="pv-row" style="background:${dark ? "rgba(255,255,255,.10)" : "#e8ecf5"};width:92%"></div>
-        <div class="pv-row" style="background:${dark ? "rgba(255,255,255,.08)" : "#eef1f7"};width:78%"></div>
-        <div class="pv-row" style="background:${dark ? "rgba(255,255,255,.06)" : "#f2f5fa"};width:85%"></div>
-        ${sectionBody(section)}
-      </div>`;
-    }).join("");
+  function hidePreviewOverlay() {
+    const box = $("#pv-overlay");
+    if (box) box.hidden = true;
+  }
 
-    const popupVisible = cfg.popup.enabled && state.previewPopup;
-    const popup = popupVisible ? `
-      <div class="pv-popup-bg">
-        <div class="pv-popup">
-          <h3>${esc(cfg.popup.title || "제목 없음")}</h3>
-          <p>${esc(cfg.popup.body || "")}</p>
-          <button type="button" class="pv-btn" style="background:${accent};color:${dark ? "#101f3c" : "#fff"}">${esc(cfg.popup.buttonText || "확인")}</button>
-          <div class="pv-dismiss">${Number(cfg.popup.dismissDays) > 0 ? `<span>${Number(cfg.popup.dismissDays)}일 동안 보지 않기</span>·` : ""}<span>닫기</span></div>
-        </div>
-      </div>` : "";
+  function clearPreviewTimers() {
+    clearTimeout(state.preview.slowTimer);
+    clearTimeout(state.preview.failTimer);
+    state.preview.slowTimer = 0;
+    state.preview.failTimer = 0;
+  }
 
-    const html = `<div class="pv" style="background:${inkBg};color:${inkColor}">
-      ${banner}
-      <div class="pv-header">
-        <span class="pv-logo" style="background:${dark ? "#0c1730" : "#eef3ff"}">
-          <i style="background:${accent}"></i><i style="background:${accent};opacity:.7"></i>
-          <i style="background:${accent};opacity:.7"></i><i style="background:${accent}"></i>
-        </span>
-        <div style="min-width:0">
-          <div class="pv-title">${esc(cfg.copy.siteTitle)}</div>
-          <div class="pv-sub" style="color:${dark ? "#8d9ab8" : "#8490a8"}">${esc(cfg.copy.subtitle)}</div>
-        </div>
-      </div>
-      ${nav}
-      <div class="pv-body">${cardBlock}${sectionHtml || (cardBlock ? "" : '<div class="pv-empty">이 탭에 노출 중인 섹션이 없습니다</div>')}</div>
-      <div class="pv-footer" style="border-top:1px solid ${dark ? "rgba(255,255,255,.1)" : "#eef1f7"};color:${dark ? "#8d9ab8" : "#8490a8"}">${esc(cfg.copy.footerText)}</div>
-      ${popup}
-    </div>`;
+  function startPreviewTimers() {
+    clearPreviewTimers();
+    state.preview.slowTimer = setTimeout(() => {
+      if (state.preview.ready) return;
+      const site = SITES[previewSiteId()];
+      showPreviewOverlay(`${site ? site.name : "사이트"}가 아직 응답하지 않아요. 서버가 잠들어 있으면 첫 로딩이 느릴 수 있습니다.`, true);
+    }, PREVIEW_READY_MS);
+    state.preview.failTimer = setTimeout(() => {
+      if (state.preview.ready) return;
+      showPreviewOverlay("미리보기가 뜨지 않았어요. 사이트가 iframe 표시를 거부했거나(X-Frame-Options·CSP) 네트워크가 막혔을 수 있습니다. ‘다시 불러오기’를 눌러 주세요.", true);
+    }, PREVIEW_FAIL_MS);
+  }
 
-    $("#phone-screen").innerHTML = html;
-    const nowTab = allTabs.find((t) => t.id === activeTab);
-    $("#preview-site").textContent = nowTab && nowTab.label ? `${current().name} · ${nowTab.label}` : current().name;
+  /* 지금 편집 중인 draft 를 사이트에 그대로 보낸다(저장 전 값). */
+  function sendPreviewConfig(force) {
+    const frame = previewFrame();
+    const siteId = previewSiteId();
+    const origin = previewOrigin(siteId);
+    if (!frame || !origin || !frame.contentWindow) return;
+    if (frame.dataset.loaded !== "1" && !force) return;
+    const payload = buildConfigForSave(siteId);
+    if (!state.previewPopup) payload.popup = Object.assign({}, payload.popup, { enabled: false });
+    const activeTab = state.sectionTab[siteId] || "";
+    try {
+      frame.contentWindow.postMessage({ type: "moa-preview-config", config: payload, activeTab, site: siteId }, origin);
+    } catch (err) { /* iframe 이 아직 준비되지 않았으면 load·ready 에서 다시 보낸다 */ }
+  }
 
-    // 팝업 기간 안내
-    const note = $("#preview-note");
-    const { startDate, endDate } = cfg.popup;
-    const today = todayISO();
-    if (cfg.popup.enabled && ((startDate && today < startDate) || (endDate && today > endDate))) {
-      note.textContent = `팝업이 노출 기간(${startDate || "제한 없음"} ~ ${endDate || "제한 없음"}) 밖이라 실제 사이트에서는 보이지 않습니다.`;
-    } else {
-      note.textContent = "화면은 실제 사이트와 세부 디자인이 조금 다를 수 있어요.";
+  function retryPreview() {
+    const frame = previewFrame();
+    if (frame) frame.dataset.loaded = "0";
+    state.preview.ready = false;
+    mountPreviewFrame(true);
+  }
+
+  /* 사이트 로더가 보내는 준비·반영 완료 신호 */
+  function handlePreviewMessage(event) {
+    const data = event.data;
+    if (!data || typeof data !== "object") return;
+    const siteId = previewSiteId();
+    const origin = previewOrigin(siteId);
+    if (origin && event.origin !== origin) return;
+    if (data.type === "moa-preview-ready") {
+      const frame = previewFrame();
+      if (frame) frame.dataset.loaded = "1";
+      state.preview.ready = true;
+      clearPreviewTimers();
+      sendPreviewConfig(true);         // 로더가 살아났으니 지금 draft 를 보낸다
+      return;
+    }
+    if (data.type === "moa-preview-applied") {
+      state.preview.ready = true;
+      state.preview.appliedAt = Date.now();
+      clearPreviewTimers();
+      hidePreviewOverlay();
+      updatePreviewNote();
     }
   }
 
+  function updatePreviewNote() {
+    const note = $("#preview-note");
+    if (!note) return;
+    const parts = ["실제 사이트를 390px 화면으로 축소했습니다. 고치는 즉시 반영돼요."];
+    if (!state.previewPopup) parts.push("지금은 팝업을 숨긴 채로 보내고 있어요.");
+    const cfg = config();
+    const { startDate, endDate } = cfg.popup || {};
+    const today = todayISO();
+    if (cfg.popup && cfg.popup.enabled && ((startDate && today < startDate) || (endDate && today > endDate))) {
+      parts.push(`팝업 기간(${startDate || "제한 없음"} ~ ${endDate || "제한 없음"}) 밖이라 방문자에게는 보이지 않습니다(미리보기에는 표시).`);
+    }
+    note.textContent = parts.join(" ");
+  }
+
+  /* ───────────── 미리보기 ───────────── */
+  function renderPreview() {
+    mountPreviewFrame(false);
+    fitPreviewFrame();
+    sendPreviewConfig(false);
+    updatePreviewNote();
+
+    const nowTab = sortedByOrder(config().navigation.tabs).find((tab) => tab.id === state.sectionTab[state.site]);
+    const head = $("#preview-site");
+    if (head) head.textContent = nowTab && nowTab.label ? `${current().name} · ${nowTab.label}` : current().name;
+    const live = $("#preview-live-link");
+    if (live) live.href = current().liveUrl;
+  }
+
   /* ───────────── 배포 ───────────── */
-  function buildConfigForSave() {
-    const cfg = clone(config());
-    cfg.site = state.site;
-    cfg.siteName = cfg.copy.siteTitle || current().name;
+  function buildConfigForSave(siteId) {
+    const id = siteId || state.site;
+    const site = SITES[id];
+    const cfg = clone(state.configs[id]);
+    cfg.site = id;
+    cfg.siteName = cfg.copy.siteTitle || site.name;
     cfg.meta = cfg.meta || {};
     cfg.meta.updatedBy = state.session && state.session.login ? `moa-admin (@${state.session.login})` : "moa-admin";
     cfg.meta.updatedAt = new Date().toISOString();
@@ -1463,11 +1532,11 @@
     // 각 탭의 섹션이 연속된 order 를 갖게 한다(사이트는 같은 탭 안에서만 정렬한다).
     cfg.navigation.tabs = renumber(sortedByOrder(cfg.navigation.tabs));
     const tabRank = new Map(cfg.navigation.tabs.map((tab, i) => [tab.id, i]));
-    const rankOf = (section) => (tabRank.has(sectionTabOf(section)) ? tabRank.get(sectionTabOf(section)) : 999);
+    const rankOf = (section) => (tabRank.has(sectionTabOf(section, id)) ? tabRank.get(sectionTabOf(section, id)) : 999);
     cfg.navigation.sections = cfg.navigation.sections.slice()
       .sort((a, b) => rankOf(a) - rankOf(b) || (a.order || 0) - (b.order || 0))
       .map((section, i) => {
-        const out = Object.assign({}, section, { order: i + 1, tab: sectionTabOf(section) });
+        const out = Object.assign({}, section, { order: i + 1, tab: sectionTabOf(section, id) });
         if (!out.body) delete out.body;
         return out;
       });
@@ -1924,6 +1993,8 @@
 
   /* ───────────── 부팅 ───────────── */
   function boot() {
+    const build = $("#build-chip");
+    if (build) build.textContent = BUILD;
     try {
       const rawLog = localStorage.getItem(LS.log);
       if (rawLog) state.log = JSON.parse(rawLog).slice(0, 20);

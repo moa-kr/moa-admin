@@ -1,4 +1,4 @@
-/* 모아 어드민 공통 사이트 설정 로더 v3
+/* 모아 어드민 공통 사이트 설정 로더 v4
    ────────────────────────────────────────────────────────────────
    moa-kr/pokemoa · moa-kr/bokjinabi 에 실제로 들어가 있는 파일과 같은 내용입니다.
    모아 어드민이 커밋하는 site-config.json 을 읽어 공지 배너 · 팝업 · 탭 순서/노출 ·
@@ -28,11 +28,21 @@
    SPA(회사복지모아)처럼 화면을 다시 그리는 사이트는 다시 그린 뒤
    document.dispatchEvent(new CustomEvent("moa:route-rendered")) 를 보내면
    섹션·문구를 그 화면 기준으로 다시 적용합니다.
+
+   v4 — 모아 어드민의 실제 미리보기(iframe) 연동
+   모아 어드민(https://moa-kr.github.io/moa-admin/)이 이 사이트를 390px iframe 으로 띄우고
+   저장 전 draft 설정을 보내면, 이 로더가 받아 화면에 바로 적용합니다(새로고침 없이).
+   - 받는 메시지: { type: "moa-preview-config", config, activeTab }  ← 허용 출처만
+   - 보내는 메시지: { type: "moa-preview-ready" } (로더 준비됨)
+                   { type: "moa-preview-applied", ok } (설정 반영 끝)
+   허용 출처는 https://moa-kr.github.io 와 로컬 테스트(localhost·127.0.0.1)뿐입니다.
+   미리보기 중에는 방문자의 ‘다시 보지 않기’ 저장소를 건드리지 않고, 팝업 기간도 무시해
+   어드민에서 만든 화면 그대로 보여 줍니다.
    ──────────────────────────────────────────────────────────────── */
 (function () {
   "use strict";
 
-  const VERSION = "3.0";
+  const VERSION = "4.0";
   const STYLE_ID = "moa-site-config-style";
   const DISMISS_PREFIX = "moa:popup:";
   const TAB_SELECTOR = "[data-tab],[data-nav]";
@@ -46,13 +56,26 @@
   // 사이트의 강조 표시(예: 복지모아 .hl)를 살리기 위해 class 만 남긴다. 그 밖의 속성(style·on*)은 지운다.
   const SAFE_ATTRS = { class: 1, "aria-hidden": 1 };
 
+  /* 모아 어드민 미리보기 연동 — 허용 출처와 메시지 이름 */
+  const PREVIEW = {
+    config: "moa-preview-config",
+    ready: "moa-preview-ready",
+    applied: "moa-preview-applied",
+    request: "moa-preview-request"
+  };
+  const PREVIEW_PARENTS = [
+    "https://moa-kr.github.io",
+    "http://localhost", "https://localhost",
+    "http://127.0.0.1", "https://127.0.0.1"
+  ];
+
   const STYLES = {
     info: { light: ["#eaf0ff", "#1b3a8f"], dark: ["#22345e", "#dbe7ff"] },
     warn: { light: ["#fff4e0", "#8a5300"], dark: ["#4a3a12", "#ffe6a8"] },
     urgent: { light: ["#fdecec", "#a01c22"], dark: ["#4a1620", "#ffd4d6"] }
   };
 
-  const state = { path: "", config: null, options: null };
+  const state = { path: "", config: null, options: null, preview: false, bannerEl: null, popupEl: null };
 
   function ensureStyle(dark) {
     if (document.getElementById(STYLE_ID)) return;
@@ -127,11 +150,19 @@
     const host = options.host || document.body;
     if (options.place === "afterbegin") host.insertBefore(el, host.firstChild);
     else host.appendChild(el);
+    state.bannerEl = el;
     return el;
+  }
+
+  /* 다시 적용하기 전에 이전에 그린 배너를 지운다(중복으로 쌓이지 않도록). */
+  function unmountBanner() {
+    if (state.bannerEl && state.bannerEl.parentNode) state.bannerEl.parentNode.removeChild(state.bannerEl);
+    state.bannerEl = null;
   }
 
   /* ───────────── 첫 방문 팝업 ───────────── */
   function popupDismissed(id) {
+    if (state.preview) return false; // 미리보기는 항상 화면 그대로 보여 준다
     try {
       const raw = localStorage.getItem(DISMISS_PREFIX + id);
       if (!raw) return false;
@@ -142,6 +173,7 @@
   }
 
   function dismissPopup(id, days) {
+    if (state.preview) return; // 미리보기에서는 방문자의 ‘다시 보지 않기’ 저장소를 건드리지 않는다
     try {
       const until = days > 0 ? Date.now() + days * 86400000 : 0;
       localStorage.setItem(DISMISS_PREFIX + id, String(until));
@@ -149,6 +181,7 @@
   }
 
   function inPeriod(popup) {
+    if (state.preview) return true; // 미리보기에서는 기간 밖이어도 그대로 보여 준다
     const today = new Date();
     const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     if (popup.startDate && iso < popup.startDate) return false;
@@ -212,7 +245,13 @@
     backdrop.appendChild(box);
     backdrop.addEventListener("click", (event) => { if (event.target === backdrop) backdrop.remove(); });
     document.body.appendChild(backdrop);
+    state.popupEl = backdrop;
     return backdrop;
+  }
+
+  function unmountPopup() {
+    if (state.popupEl && state.popupEl.parentNode) state.popupEl.parentNode.removeChild(state.popupEl);
+    state.popupEl = null;
   }
 
   /* ───────────── 탭 · 섹션 순서/노출 ───────────── */
@@ -481,6 +520,9 @@
     if (!cfg) return null;
     state.config = cfg;
     state.options = opts;
+    // 이전에 그린 배너·팝업을 지우고 새 설정으로 다시 그린다(미리보기 갱신 때 중복 방지).
+    unmountBanner();
+    unmountPopup();
     mountBanner(cfg, opts);
     mountPopup(cfg);
     if (opts.tabContainer) applyTabs(opts.tabContainer, cfg);
@@ -498,6 +540,81 @@
     applySections(opts.sectionRoot || document.body, cfg);
     applyCopy(cfg, opts.copyRoot || document.body);
     return cfg;
+  }
+
+  /* ───────────── 모아 어드민 실제 미리보기(iframe) ─────────────
+     어드민이 보낸 draft 설정을 그대로 적용한다. 탭 이동도 함께 맞춘다. */
+  function isAdminOrigin(origin) {
+    const value = String(origin || "");
+    return PREVIEW_PARENTS.some((base) => value === base || value.indexOf(`${base}:`) === 0);
+  }
+
+  function postToParent(message) {
+    if (window.parent === window) return;
+    let target = "*";
+    try {
+      const ancestors = location.ancestorOrigins;
+      if (ancestors && ancestors.length) target = ancestors[0] || "*";
+    } catch (err) { /* 지원하지 않는 브라우저는 * 로 보낸다(설정은 공개 값) */ }
+    try { window.parent.postMessage(message, target); } catch (err) { /* 무시 */ }
+  }
+
+  /* 지정한 탭을 연다 — 사이트의 탭 버튼을 눌러 보고, 패널이 그대로면 직접 맞춘다. */
+  function activateTab(id) {
+    if (!id) return false;
+    const tab = document.querySelector(`[data-tab="${id}"],[data-nav="${id}"]`);
+    let clicked = false;
+    if (tab) {
+      try { tab.click(); clicked = true; } catch (err) { /* 아래에서 직접 맞춘다 */ }
+    }
+    const panel = panelOfTabId(id);
+    if (panel && panel.hidden) forceTab(id);
+    return clicked;
+  }
+
+  function forceTab(id) {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-panel], .tab-panel"), (panel) => {
+      const pid = panel.getAttribute("data-panel") || String(panel.id || "").replace(/^panel-/, "");
+      if (!pid) return;
+      panel.hidden = pid !== id;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(TAB_SELECTOR), (el) => {
+      const on = (el.getAttribute("data-tab") || el.getAttribute("data-nav")) === id;
+      el.classList.toggle("is-active", on);
+      el.classList.toggle("active", on);
+      el.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
+  /* 미리보기 설정 적용 — 배너·팝업·탭·섹션·문구를 한 번에 다시 그린다. */
+  function applyPreview(cfg, activeTab) {
+    if (!cfg || typeof cfg !== "object") return null;
+    state.preview = true;
+    apply(cfg, state.options || {});
+    if (activeTab) activateTab(activeTab);
+    postToParent({ type: PREVIEW.applied, ok: true, at: Date.now(), tab: activeTab || "", version: VERSION });
+    return cfg;
+  }
+
+  window.addEventListener("message", (event) => {
+    if (!isAdminOrigin(event.origin)) return;
+    const data = event.data;
+    if (!data || typeof data !== "object") return;
+    if (data.type === PREVIEW.config) {
+      if (applyPreview(data.config, data.activeTab)) {
+        document.dispatchEvent(new CustomEvent("moa:preview-applied", { detail: { tab: data.activeTab || "" } }));
+      }
+      return;
+    }
+    if (data.type === PREVIEW.request) {
+      if (state.config) postToParent({ type: PREVIEW.applied, ok: true, at: Date.now(), version: VERSION, resent: true });
+      return;
+    }
+  }, false);
+
+  /* 로더가 살아 있다는 것을 어드민에 알린다(iframe 로딩 완료 안내). */
+  function announceReady() {
+    postToParent({ type: PREVIEW.ready, version: VERSION, site: (state.config && state.config.site) || "" });
   }
 
   /* ───────────── 자동 연결 ───────────── */
@@ -520,9 +637,13 @@
     };
     state.path = path;
     state.options = options;
+    announceReady();
     load(path).then((cfg) => {
       if (!cfg) return;
+      // 어드민이 보낸 draft 를 이미 적용했다면, 뒤늦게 도착한 저장본으로 덮어쓰지 않는다.
+      if (state.preview) { announceReady(); return; }
       apply(cfg, options);
+      announceReady();
       document.dispatchEvent(new CustomEvent("moa:site-config-applied", { detail: cfg }));
     });
   }
@@ -535,6 +656,8 @@
     version: VERSION,
     load,
     apply,
+    applyPreview,
+    activateTab,
     refresh,
     mountBanner,
     mountPopup,
@@ -542,6 +665,7 @@
     applySections,
     applyCopy,
     orderTabs: applyTabs,
+    preview: PREVIEW,
     state
   };
   Object.defineProperty(window.MoaSiteConfig, "config", { get: () => state.config });

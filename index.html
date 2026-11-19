@@ -10,7 +10,7 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=20">
+<link rel="stylesheet" href="assets/css/admin.css?v=21">
 </head>
 <body>
 
@@ -82,6 +82,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=21</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -214,7 +215,7 @@
       <section class="panel" data-panel="order" hidden>
         <div class="panel-head">
           <h2>탭 · 탭 안 섹션 편집</h2>
-          <p>탭을 고르면 <b>그 탭 안의 섹션</b>이 나옵니다. ⠿ 를 끌거나 ▲▼ 로 순서를 바꾸고, 스위치를 끄면 사이트에서 숨겨집니다. <b>✎</b> 를 누르면 그 섹션의 제목·부제·설명·링크는 물론 <b>안에 있는 작은 버튼·라벨·안내 문구까지 한자리에서</b> 고칠 수 있어요.</p>
+          <p>탭을 고르면 <b>그 탭 안의 섹션</b>이 나옵니다. ⠿ 를 끌거나 ▲▼ 로 순서를 바꾸고, 스위치를 끄면 사이트에서 숨겨집니다. 섹션은 <b>기본으로 한 줄로 접혀</b> 있고 <b>✎</b> 를 누를 때만 편집기가 열립니다. 편집기 안의 <b>세부 문구 N개</b>도 <code>+</code> 로 접혀 있어 누를 때만 펼쳐져요.</p>
         </div>
 
         <div class="card">
@@ -242,7 +243,7 @@
       <section class="panel" data-panel="copy" hidden>
         <div class="panel-head">
           <h2>세부 문구</h2>
-          <p>사이트에 보이는 문구를 <b>머리말 → 탭 → 섹션 → 꼬리말</b> 순서로 묶어 보여 줍니다. 고치는 즉시 저장 대기 상태가 되고, ② 의 ✎ 편집기와 <b>같은 칸이 실시간으로 함께 바뀝니다</b>. <b>저장 및 사이트 반영</b>을 누르면 실제 사이트에 적용됩니다.</p>
+          <p>사이트에 보이는 문구를 <b>머리말 → 탭 → 섹션 → 꼬리말</b> 순서로 묶어 보여 줍니다. <b>모든 묶음은 처음에 <code>+</code> 로 접혀 있고</b>, 왼쪽 <code>+</code> 를 누른 묶음만 아래로 펼쳐집니다(<code>−</code> 를 누르면 다시 접힘). 고치는 즉시 저장 대기 상태가 되고, ② 의 ✎ 편집기와 <b>같은 칸이 실시간으로 함께 바뀝니다</b>. <b>저장 및 사이트 반영</b>을 누르면 실제 사이트에 적용됩니다.</p>
         </div>
 
         <div class="card">
@@ -359,11 +360,23 @@
       </div>
       <div class="phone" id="phone">
         <div class="phone-notch"></div>
-        <div class="phone-screen" id="phone-screen"></div>
+        <div class="phone-screen" id="phone-screen">
+          <iframe id="pv-frame" class="pv-frame" title="실제 사이트 모바일 미리보기"
+                  src="about:blank" loading="eager" referrerpolicy="no-referrer"></iframe>
+          <div class="pv-overlay" id="pv-overlay">
+            <span class="pv-spinner" aria-hidden="true"></span>
+            <p id="pv-overlay-text">실제 사이트를 불러오는 중…</p>
+            <button type="button" class="btn btn-sm btn-ghost" id="pv-retry" hidden>다시 불러오기</button>
+          </div>
+        </div>
       </div>
       <div class="preview-foot">
-        <label class="check-row small"><input type="checkbox" id="preview-popup" checked><span>팝업 미리보기</span></label>
-        <span class="muted small" id="preview-note">화면은 실제 사이트와 세부 디자인이 조금 다를 수 있어요.</span>
+        <label class="check-row small"><input type="checkbox" id="preview-popup" checked><span>팝업까지 미리보기</span></label>
+        <span class="muted small" id="preview-note">실제 사이트를 390px 모바일 화면으로 축소해 보여 줍니다.</span>
+        <span class="muted small preview-links">
+          <a id="preview-live-link" href="#" target="_blank" rel="noreferrer">실제 사이트 열기 ↗</a>
+          <button type="button" class="linkbtn" id="preview-reload">미리보기 새로고침</button>
+        </span>
       </div>
     </aside>
   </main>
@@ -371,7 +384,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=18"></script>
-<script src="assets/js/app.js?v=20"></script>
+<script src="assets/js/sites.js?v=19"></script>
+<script src="assets/js/app.js?v=21"></script>
 </body>
 </html>
