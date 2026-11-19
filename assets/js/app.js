@@ -1360,7 +1360,11 @@
     (current().features || []).forEach((item) => {
       const on = getPath(cfg, `features.${item.id}`) !== false;
       $$(`[data-feature-state="${item.id}"]`).forEach((el) => { el.textContent = on ? "켜짐" : "꺼짐"; });
-      $$(`[data-feature-row="${item.id}"]`).forEach((row) => row.classList.toggle("is-off", !on));
+      $$(`[data-feature-row="${item.id}"]`).forEach((row) => {
+        row.classList.toggle("is-off", !on);
+        const sw = row.querySelector("label.switch");
+        if (sw) sw.title = on ? "켜짐 — 사이트에 보입니다" : "꺼짐 — 사이트에서 숨깁니다";
+      });
     });
 
     const note = $("#popup-period-note");
