@@ -1241,6 +1241,43 @@
       </div>`).join("");
   }
 
+  /* ───────────── 기능 스위치 ───────────── */
+  /* sites.js 의 features 목록을 초록 스위치로 그린다.
+     값은 config.features[아이디] 에 저장되고, 끄면 사이트 로더가 data-feature 요소를 숨긴다. */
+  function renderFeatures() {
+    const card = $("#feature-card");
+    const box = $("#feature-list");
+    if (!card || !box) return;
+    const list = current().features || [];
+    if (!list.length) {
+      card.hidden = true;
+      box.innerHTML = "";
+      return;
+    }
+    const cfg = config();
+    if (!cfg.features || typeof cfg.features !== "object") cfg.features = {};
+    const values = cfg.features;
+    list.forEach((item) => {
+      if (values[item.id] === undefined) values[item.id] = item.on !== false;
+    });
+    card.hidden = false;
+    box.innerHTML = list.map((item) => {
+      const on = values[item.id] !== false;
+      return `
+      <div class="frow${on ? "" : " is-off"}" data-feature-row="${esc(item.id)}">
+        <div class="fmain">
+          <strong>${esc(item.label)}</strong>
+          <div class="rid">features.${esc(item.id)}${item.note ? ` · <span class="rhint">${esc(item.note)}</span>` : ""}</div>
+        </div>
+        <label class="switch" title="${on ? "켜짐 — 사이트에 보입니다" : "꺼짐 — 사이트에서 숨깁니다"}">
+          <input type="checkbox" data-bind="features.${esc(item.id)}" ${on ? "checked" : ""} aria-label="${esc(item.label)}">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+          <span class="switch-label" data-feature-state="${esc(item.id)}">${on ? "켜짐" : "꺼짐"}</span>
+        </label>
+      </div>`;
+    }).join("");
+  }
+
   /* ───────────── 문구 입력칸 ───────────── */
   /* ③ 문구 화면 — 머리말 → 탭별(탭 머리글 · 화면 공통 · 섹션들) → 꼬리말 순서로 묶어 그린다.
      각 섹션 묶음은 ② 의 ✎ 편집기와 같은 값(copy 키)을 쓰므로 양쪽이 실시간으로 동기화된다. */
@@ -1320,6 +1357,12 @@
       btn.classList.toggle("is-active", btn.dataset.style === (cfg.banner.style || "info"));
     });
 
+    (current().features || []).forEach((item) => {
+      const on = getPath(cfg, `features.${item.id}`) !== false;
+      $$(`[data-feature-state="${item.id}"]`).forEach((el) => { el.textContent = on ? "켜짐" : "꺼짐"; });
+      $$(`[data-feature-row="${item.id}"]`).forEach((row) => row.classList.toggle("is-off", !on));
+    });
+
     const note = $("#popup-period-note");
     if (note) {
       const { startDate, endDate } = cfg.popup;
@@ -1348,6 +1391,7 @@
     renderSectionTabs();
     renderOrderList("sections");
     renderCards();
+    renderFeatures();
     renderDeployTarget();
     renderChecks();
     renderActivityLog();
@@ -1741,6 +1785,7 @@
       merged.banner = Object.assign(clone(site.defaults.banner), parsed.banner || {});
       merged.popup = Object.assign(clone(site.defaults.popup), parsed.popup || {});
       merged.cards = Array.isArray(parsed.cards) && parsed.cards.length ? parsed.cards : clone(site.defaults.cards);
+      merged.features = Object.assign(clone(site.defaults.features || {}), parsed.features || {});
       state.configs[siteId] = merged;
       const savedAt = parsed.meta && parsed.meta.updatedAt ? fmtDateTime(parsed.meta.updatedAt) : "";
       state.source[siteId] = `${label} ${String(sha).slice(0, 7)}${savedAt ? ` (${savedAt})` : ""}`;
@@ -1781,6 +1826,7 @@
         merged.banner = Object.assign(clone(site.defaults.banner), parsed.banner || {});
         merged.popup = Object.assign(clone(site.defaults.popup), parsed.popup || {});
         merged.cards = Array.isArray(parsed.cards) && parsed.cards.length ? parsed.cards : clone(site.defaults.cards);
+        merged.features = Object.assign(clone(site.defaults.features || {}), parsed.features || {});
         state.configs[state.site] = merged;
         markDirty(true);
         renderAll();

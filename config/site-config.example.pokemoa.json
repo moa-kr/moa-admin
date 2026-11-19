@@ -7,6 +7,10 @@
     "accentSoft": "#ffcb05",
     "mode": "dark"
   },
+  "features": {
+    "radius5km": true,
+    "radius20km": true
+  },
   "copy": {
     "siteTitle": "포켓몬카드모아",
     "subtitle": "POKEMON CARD MOA",

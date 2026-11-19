@@ -655,11 +655,28 @@
     return groups;
   }
 
+  /* ④ 기능 스위치 — 사이트의 data-feature 요소를 켜고 끈다(값이 없으면 켜짐). */
+  const POKEMOA_FEATURES = [
+    {
+      id: "radius5km",
+      label: "5km 반경 버튼",
+      note: "지도 반경 버튼에서 5km를 숨깁니다. 5km가 선택된 상태면 3km로 돌아갑니다.",
+      on: true
+    },
+    {
+      id: "radius20km",
+      label: "20km 반경 버튼",
+      note: "지도 반경 버튼에서 20km를 숨깁니다. 20km가 선택된 상태면 3km로 돌아갑니다.",
+      on: true
+    }
+  ];
+
   const POKEMOA = {
     schemaVersion: 1,
     site: "pokemoa",
     siteName: "포켓몬카드모아",
     theme: { accent: "#101f3c", accentSoft: "#ffcb05", mode: "dark" },
+    features: { radius5km: true, radius20km: true },
     copy: POKEMOA_COPY,
     banner: {
       enabled: false,
@@ -698,6 +715,7 @@
     site: "bokjimoa",
     siteName: "회사복지모아",
     theme: { accent: "#2c5bf6", accentSoft: "#eaf0ff", mode: "light" },
+    features: {},
     copy: BOKJIMOA_COPY,
     banner: {
       enabled: false,
@@ -742,6 +760,7 @@
       deployKind: "GitHub Pages",
       deployEta: "30초 ~ 1분",
       defaults: POKEMOA,
+      features: POKEMOA_FEATURES,
       fields: POKEMOA_FIELDS,
       sections: decorateSections(POKEMOA_SECTION_META, POKEMOA_FIELDS, POKEMOA_TAB_HEADS, POKEMOA_TAB_EXTRAS),
       tabs: POKEMOA_TABS
@@ -767,6 +786,7 @@
       deployKind: "Render (자동 배포)",
       deployEta: "1 ~ 2분",
       defaults: BOKJIMOA,
+      features: [],
       fields: BOKJIMOA_FIELDS,
       sections: decorateSections(BOKJIMOA_SECTION_META, BOKJIMOA_FIELDS, BOKJIMOA_TAB_HEADS, BOKJIMOA_TAB_EXTRAS),
       tabs: BOKJIMOA_TABS

@@ -18,6 +18,7 @@
 | `site` | `"pokemoa"` \| `"bokjimoa"` | 설정 소유 사이트 |
 | `siteName` | 문자열 | 표시 이름(보통 `copy.siteTitle`) |
 | `theme` | `{ accent, accentSoft, mode }` | 사이트 강조색·밝기(`light`/`dark`) |
+| `features` | 객체 | 기능 스위치 — `false` 인 기능은 사이트에서 숨김(아래 `features` 참고) |
 | `copy` | 객체 | 화면 문구 — 키 전체 목록은 아래 ‘문구 키 전체 목록’ 참고 |
 | `banner` | 객체 | 상단 공지 바 |
 | `popup` | 객체 | 첫 방문 팝업 |
@@ -46,6 +47,21 @@
 | `buttonText` / `buttonUrl` | 문자열 | 버튼 문구 / 이동 주소 |
 | `startDate` / `endDate` | `YYYY-MM-DD` 또는 `""` | 노출 기간. 비면 제한 없음 |
 | `dismissDays` | 0~90 | ‘N일 동안 보지 않기’. `0` 이면 이번 방문에서만 닫기 |
+
+### features
+
+사이트 기능을 켜고 끄는 스위치입니다. 값이 `false` 면 로더(**v4.2 이상**)가 그 기능의 `data-feature="플래그"` 요소를 `display:none` 으로 숨깁니다. **값이 없으면 켜짐(true)** 으로 봅니다. 어드민 ② 화면 맨 아래 **기능 스위치** 카드가 같은 값을 고칩니다.
+
+```json
+"features": { "radius5km": true, "radius20km": true }
+```
+
+| 플래그 | 사이트 | 끄면 |
+| --- | --- | --- |
+| `radius5km` | 포켓몬카드모아 | 지도 반경 버튼에서 `5km` 를 숨깁니다. 5km가 선택돼 있었으면 **3km로 돌아갑니다**(저장소에 남은 꺼진 반경 값도 3km로 정리). |
+| `radius20km` | 포켓몬카드모아 | `20km` 버튼을 숨기고, 20km가 선택돼 있었으면 **3km로 돌아갑니다**. `도심은 5km까지 지원` 안내도 함께 숨깁니다. |
+
+- 회사복지모아는 지금 정의된 기능 스위치가 없습니다(`features: {}`). 사이트에 기능을 더할 때는 `assets/js/sites.js` 의 `features` 목록(어드민 화면 정의 · `on` 기본값)과 사이트 HTML 의 `data-feature` 표식을 같은 id 로 맞춥니다.
 
 ### navigation.tabs / navigation.sections
 

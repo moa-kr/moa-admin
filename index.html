@@ -10,7 +10,7 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=23">
+<link rel="stylesheet" href="assets/css/admin.css?v=27">
 </head>
 <body>
 
@@ -82,7 +82,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=26</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=27</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -216,7 +216,7 @@
       <section class="panel" data-panel="order" hidden>
         <div class="panel-head">
           <h2>탭 · 탭 안 섹션 편집</h2>
-          <p>탭을 고르면 <b>그 탭 안의 섹션</b>이 나옵니다. ⠿ 를 끌거나 ▲▼ 로 순서를 바꾸고, 스위치를 끄면 사이트에서 숨겨집니다. 섹션은 <b>기본으로 한 줄로 접혀</b> 있고 <b>✎</b> 를 누를 때만 편집기가 열립니다. 편집기 안의 <b>세부 문구 N개</b>도 <code>+</code> 로 접혀 있어 누를 때만 펼쳐져요.</p>
+          <p>탭을 고르면 <b>그 탭 안의 섹션</b>이 나옵니다. ⠿ 를 끌거나 ▲▼ 로 순서를 바꾸고, 스위치를 끄면 사이트에서 숨겨집니다. 섹션은 <b>기본으로 한 줄로 접혀</b> 있고 <b>✎</b> 를 누를 때만 편집기가 열립니다. 편집기 안의 <b>세부 문구 N개</b>도 <code>+</code> 로 접혀 있어 누를 때만 펼쳐져요. 맨 아래 <b>기능 스위치</b>에서는 5km·20km 반경 버튼처럼 사이트 기능 자체를 켜고 끕니다.</p>
         </div>
 
         <div class="card">
@@ -237,6 +237,17 @@
             <p class="note" id="section-tab-note">탭을 고르면 그 탭 안의 섹션이 나옵니다.</p>
           </div>
           <div class="reorder" id="list-sections" data-list="sections"></div>
+        </div>
+
+        <div class="card" id="feature-card" hidden>
+          <div class="card-head">
+            <h3>기능 스위치 <span class="tag">features</span></h3>
+            <span class="muted small">끄면 사이트에서 바로 숨겨져요</span>
+          </div>
+          <div class="card-body">
+            <p class="note">초록 스위치를 끄면 그 기능이 사이트에서 숨겨집니다. 저장하기 전에도 오른쪽 미리보기에 바로 반영돼요.</p>
+            <div class="featurelist" id="feature-list"></div>
+          </div>
         </div>
       </section>
 
@@ -477,7 +488,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=26"></script>
-<script src="assets/js/app.js?v=26"></script>
+<script src="assets/js/sites.js?v=27"></script>
+<script src="assets/js/app.js?v=27"></script>
 </body>
 </html>

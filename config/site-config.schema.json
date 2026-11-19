@@ -19,6 +19,15 @@
       },
       "additionalProperties": true
     },
+    "features": {
+      "type": "object",
+      "description": "기능 스위치. false 인 기능은 사이트 로더(v4.2 이상)가 data-feature 요소를 숨깁니다. 값이 없으면 켜짐입니다.",
+      "properties": {
+        "radius5km": { "type": "boolean", "description": "포켓몬카드모아 지도 반경 버튼 5km 표시. 끄면 5km가 선택돼 있을 때 3km로 돌아갑니다." },
+        "radius20km": { "type": "boolean", "description": "포켓몬카드모아 지도 반경 버튼 20km 표시. 끄면 20km가 선택돼 있을 때 3km로 돌아갑니다." }
+      },
+      "additionalProperties": true
+    },
     "copy": {
       "type": "object",
       "description": "화면 문구. 빈 문자열이면 사이트 기본 문구를 그대로 씁니다.",
