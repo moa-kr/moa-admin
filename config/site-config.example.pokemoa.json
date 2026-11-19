@@ -46,6 +46,7 @@
     "mapChannelsTitle": "실제 재고를 확인하는 공식 채널",
     "fxTitle": "오늘의 환율",
     "marketTitle": "PSA 거래 내역 조회 (경매가·즉구가)",
+    "resellTitle": "리셀 · 해외 실거래 시세 바로가기",
     "issuesEyebrow": "최근 이슈되는 카드 이슈",
     "issuesTitle": "2026년 11월 카드 게임 소식",
     "issuesDesc": "공식 공지와 보도로 확인한 6건입니다. 날짜는 공지·보도 기준이고, 링크는 원문으로 바로 갑니다.",
@@ -209,17 +210,24 @@
         "tab": "guide"
       },
       {
+        "id": "resellLinks",
+        "label": "리셀 · 해외 실거래 시세",
+        "visible": true,
+        "order": 3,
+        "tab": "guide"
+      },
+      {
         "id": "cards",
         "label": "수록 카드와 레어도",
         "visible": true,
-        "order": 3,
+        "order": 4,
         "tab": "guide"
       },
       {
         "id": "faq",
         "label": "구매 전에 가장 많이 묻는 것들",
         "visible": true,
-        "order": 4,
+        "order": 5,
         "tab": "guide"
       },
       {

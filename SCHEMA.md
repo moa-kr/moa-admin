@@ -124,7 +124,7 @@
 - JS 가 값을 덮어쓰는 자리(실시간 시세·환율 값, 지도 조회 결과·상태, 카드 도감·비교표·이슈/발매 목록, 세트 요약, 팝수 안내)는 `data-copy` 를 붙이지 않았습니다.
 - 회사복지모아의 ‘회사 찾기’ 설명은 가운데에 회사 수가 자동으로 들어가므로 `searchDescA`(앞) + 숫자 + `searchDescB`(뒤) 로 나눠 두었습니다.
 
-**키 수**: 포켓몬카드모아 168개 · 회사복지모아 65개. 사이트 HTML(`data-copy`)·`site-config.json` 기본값·`sites.js` 필드 정의가 **같은 키 집합**입니다(정합성 테스트로 확인).
+**키 수**: 포켓몬카드모아 177개 · 회사복지모아 65개. 사이트 HTML(`data-copy`)·`site-config.json` 기본값·`sites.js` 필드 정의가 **같은 키 집합**입니다(정합성 테스트로 확인).
 
 ### 포켓몬카드모아 (탭 → 섹션 순서, ③ 문구 화면과 같은 묶음)
 
@@ -148,7 +148,8 @@
 | 시세·도감 · 탭 머리글 | 3 | `guideEyebrow` `guideTitle` `guideLead` |
 | 시세·도감 · 화면 공통 | 13 | `setSearchLabel` `setSearchBtn` `setSearchHint` `compareTitle` `calcTitle` `calcBtn` `calcDiffLabel` `calcRateLabel` `checklistTitle` `checklistSub` `fakeTitle` `fakeSub` `fakeNote` |
 | 시세·도감 · 환율 위젯 | 6 | `fxTitle` `fxUsdLabel` `fxUsdCap` `fxJpyLabel` `fxJpyCap` `fxRefresh` |
-| 시세·도감 · 시세·거래가 통합 조회 | 24 | `marketEyebrow` `marketTitle` `marketLead` `marketLabel` `marketClear` `marketGroupKr` `marketKreamName` `marketKreamSub` `marketSnkrdunkName` `marketSnkrdunkSub` `marketGroupFree` `market130Name` `market130Sub` `marketPcName` `marketPcSub` `marketEbaySoldName` `marketEbaySoldSub` `marketEbayBinName` `marketEbayBinSub` `marketGroupPsa` `marketPsaName` `marketPsaSub` `marketPsaBadge` `marketNote` |
+| 시세·도감 · PSA 거래 내역 조회 | 15 | `marketEyebrow` `marketTitle` `marketLead` `marketLabel` `marketGo` `marketClear` `marketGroupPsa` `marketPsaSearchName` `marketPsaSearchSub` `marketPsaShopName` `marketPsaShopSub` `marketPsaGuideName` `marketPsaGuideSub` `marketPsaBadge` `marketNote` |
+| 시세·도감 · 리셀 · 해외 실거래 시세 | 18 | `resellEyebrow` `resellTitle` `resellLead` `marketGroupKr` `marketKreamName` `marketKreamSub` `marketSnkrdunkName` `marketSnkrdunkSub` `marketGroupFree` `market130Name` `market130Sub` `marketPcName` `marketPcSub` `marketEbaySoldName` `marketEbaySoldSub` `marketEbayBinName` `marketEbayBinSub` `resellNote` |
 | 시세·도감 · 수록 카드와 레어도 | 3 | `cardsEyebrow` `cardsRarityNote` `cardsMore` |
 | 시세·도감 · 자주 묻는 질문 | 2 | `faqEyebrow` `faqMore` |
 | 팝수 조회 · 탭 머리글 | 3 | `trendsEyebrow` `trendsTitle` `trendsLead` |
