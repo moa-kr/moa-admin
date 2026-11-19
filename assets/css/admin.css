@@ -477,3 +477,58 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
   .card-body { padding: 13px; }
   .card-head { padding: 11px 13px; }
 }
+
+/* ───────── 📊 방문 통계 ───────── */
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 4px 0 0; }
+.stat-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 2px; }
+.stat-card span { font-size: 12px; color: var(--ink-soft); font-weight: 700; }
+.stat-card strong { font-size: 22px; letter-spacing: -.3px; line-height: 1.25; }
+.stat-card em { font-size: 11.5px; color: var(--ink-soft); font-style: normal; }
+
+.stats-controls { flex-wrap: wrap; }
+.stats-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.stats-table th, .stats-table td { padding: 9px 8px; border-bottom: 1px solid var(--line-2); text-align: left; vertical-align: middle; }
+.stats-table th { font-size: 11.5px; color: var(--ink-soft); font-weight: 800; white-space: nowrap; }
+.stats-table tbody tr:last-child td { border-bottom: 0; }
+.stats-table td.num, .stats-table th.num { text-align: right; white-space: nowrap; }
+.stats-table .cell-sub { display: block; font-size: 11px; color: var(--ink-soft); font-weight: 600; }
+.stats-table code { font-size: 11.5px; white-space: nowrap; }
+
+.mini-bar { display: block; width: 90px; height: 7px; background: #eef1f7; border-radius: 999px; overflow: hidden; }
+.mini-bar i { display: block; height: 100%; background: linear-gradient(90deg, #2c5bf6, #7f9cff); border-radius: 999px; }
+
+.bar-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+.bar-label { flex: 0 0 96px; width: 96px; font-size: 12.5px; font-weight: 700; }
+.bar-track { flex: 1; height: 10px; background: #eef1f7; border-radius: 999px; overflow: hidden; }
+.bar-track i { display: block; height: 100%; background: linear-gradient(90deg, #d6342c, #ff8a75); border-radius: 999px; }
+.bar-value { flex: 0 0 96px; width: 96px; text-align: right; font-size: 12px; color: var(--ink-soft); }
+.bar-hosts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px 106px; font-size: 11px; color: var(--ink-soft); }
+.bar-hosts span { background: #f5f7fc; border: 1px solid var(--line-2); border-radius: 999px; padding: 2px 8px; }
+
+.os-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.os-chips span { font-size: 11.5px; background: #f5f7fc; border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 9px; color: var(--ink-soft); }
+.os-chips b { color: var(--ink); margin-left: 4px; }
+
+.hour-chart { display: flex; align-items: flex-end; gap: 3px; height: 132px; padding: 6px 2px 0; }
+.hour-col { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  height: 100%; gap: 2px; min-width: 0; }
+.hour-bar { width: 100%; max-width: 22px; min-height: 2px; border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, #7f9cff, #2c5bf6); }
+.hour-tick { font-size: 9.5px; color: var(--ink-soft); height: 12px; line-height: 12px; }
+.hour-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+
+.age-card { border: 1px solid #ffd9a8; background: linear-gradient(180deg, #fffaf2, #fff); }
+.age-card .card-head h3 { color: #8a5300; }
+
+@media (max-width: 720px) {
+  .bar-label { flex-basis: 68px; width: 68px; font-size: 12px; }
+  .bar-value { flex-basis: 78px; width: 78px; font-size: 11px; }
+  .bar-hosts { margin-left: 78px; }
+  .hour-chart { height: 108px; gap: 2px; }
+  .hour-tick { font-size: 8.5px; }
+  .stat-card strong { font-size: 19px; }
+  .stats-table { font-size: 12px; }
+  .stats-table code { font-size: 10.5px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle; }
+}

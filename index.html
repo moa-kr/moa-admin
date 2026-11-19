@@ -10,7 +10,7 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=22">
+<link rel="stylesheet" href="assets/css/admin.css?v=23">
 </head>
 <body>
 
@@ -82,7 +82,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=22</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=23</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -108,6 +108,7 @@
       <button type="button" class="tab" data-tab="copy">③ 문구</button>
       <button type="button" class="tab" data-tab="inquiry" data-only-site="bokjimoa">④ 문의</button>
       <button type="button" class="tab" data-tab="deploy">⑤ 저장·배포</button>
+      <button type="button" class="tab" data-tab="stats">📊 통계</button>
     </nav>
     <div class="topbar2-right">
       <span class="dirty-chip" id="dirty-chip" hidden>저장 안 된 변경</span>
@@ -350,6 +351,98 @@
           <div class="card-body"><ul class="log" id="activity-log"></ul></div>
         </div>
       </section>
+
+      <!-- 📊 통계 -->
+      <section class="panel" data-panel="stats" hidden>
+        <div class="panel-head">
+          <h2>방문 통계</h2>
+          <p>포켓몬카드모아·회사복지모아 방문자의 <b>화면별 체류시간</b>과 <b>유입 경로·기기·접속 시간대</b>를 봅니다. IP·쿠키·개인 식별 정보는 저장하지 않고 <b>익명 세션</b>으로만 셉니다.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>조회 조건 <span class="tag">analytics</span></h3>
+            <span class="status-pill" id="stats-conn">불러오기 전</span>
+          </div>
+          <div class="card-body">
+            <div class="inline-row stats-controls">
+              <select id="stats-site" aria-label="사이트 선택">
+                <option value="all">전체 사이트</option>
+                <option value="pokemoa">포켓몬카드모아</option>
+                <option value="bokjimoa">회사복지모아</option>
+              </select>
+              <div class="seg" id="stats-period" role="group" aria-label="기간">
+                <button type="button" data-days="1">오늘</button>
+                <button type="button" data-days="7" class="is-active">7일</button>
+                <button type="button" data-days="30">30일</button>
+              </div>
+              <button type="button" class="btn btn-sm btn-ghost" id="stats-refresh">새로고침</button>
+            </div>
+            <p class="note" id="stats-msg">‘📊 통계’ 탭을 열면 최근 7일 자료를 불러옵니다.</p>
+            <div class="stat-cards" id="stats-summary" hidden></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>페이지 · 탭별 체류시간 <span class="tag">pages</span></h3>
+            <span class="muted small">조회수 순 · 평균 체류</span>
+          </div>
+          <div class="card-body">
+            <div class="stats-table-wrap">
+              <table class="stats-table" id="stats-pages">
+                <thead>
+                  <tr><th>화면</th><th>경로</th><th class="num">조회수</th><th class="num">평균 체류</th><th>체류 비중</th></tr>
+                </thead>
+                <tbody><tr><td colspan="5" class="muted small">아직 자료가 없습니다.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>유입 경로 <span class="tag">referrer</span></h3>
+            <span class="muted small">직접 접속 · 네이버 · 구글 · 카카오 등</span>
+          </div>
+          <div class="card-body" id="stats-referrers">
+            <p class="note">아직 자료가 없습니다.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>기기 · OS 비율 <span class="tag">device</span></h3>
+            <span class="muted small">모바일 · PC · 태블릿</span>
+          </div>
+          <div class="card-body" id="stats-devices">
+            <p class="note">아직 자료가 없습니다.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>시간대별 접속 분포 <span class="tag">hour</span></h3>
+            <span class="muted small">한국 시간(KST) 0시~23시</span>
+          </div>
+          <div class="card-body" id="stats-hourly">
+            <p class="note">아직 자료가 없습니다.</p>
+          </div>
+        </div>
+
+        <div class="card age-card">
+          <div class="card-head">
+            <h3>나이대는 어떻게 볼 수 있나요? <span class="tag">안내</span></h3>
+          </div>
+          <div class="card-body">
+            <p class="note">웹 표준 환경상 나이대는 자체 수집이 불가하므로 Google Analytics(GA4)의 Google 신호 데이터를 통해 추정 연령대를 확인할 수 있습니다. 사이트에 붙인 GA4 속성에서 <b>사용자 &gt; 사용자 속성 &gt; 연령</b>을 보거나, 아래 버튼으로 바로 이동해 <b>보고서 &gt; 사용자 &gt; 인구통계 세부정보</b>를 확인하세요.</p>
+            <div class="btn-row">
+              <a class="btn btn-dark btn-sm" href="https://analytics.google.com/" target="_blank" rel="noreferrer">Google Analytics 열기 ↗</a>
+              <a class="btn btn-ghost btn-sm" href="https://analytics.google.com/analytics/web/" target="_blank" rel="noreferrer">GA4 보고서 바로가기 ↗</a>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- 미리보기 -->
@@ -384,7 +477,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=23"></script>
-<script src="assets/js/app.js?v=22"></script>
+<script src="assets/js/sites.js?v=24"></script>
+<script src="assets/js/app.js?v=23"></script>
 </body>
 </html>

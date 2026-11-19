@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=22";
+  const BUILD = "v=23";
   /* 실제 미리보기(iframe)를 띄울 사이트별 출처 — postMessage 대상·허용 검사에 쓴다. */
   const PREVIEW_ORIGIN = {
     pokemoa: "https://moa-kr.github.io",
@@ -196,6 +196,8 @@
     // 오른쪽 실제 미리보기(iframe) 상태
     preview: { site: "", ready: false, appliedAt: 0, slowTimer: 0, failTimer: 0 },
     inquiries: { loading: false, error: "", list: [], byStatus: null, total: 0, operatorEmail: "", loadedAt: "" },
+    // 📊 방문 통계 — 사이트 필터·기간별로 서버에서 집계해 온다.
+    stats: { site: "all", days: 7, loading: false, error: "", data: null, loadedAt: "" },
     log: []
   };
 
@@ -639,6 +641,7 @@
     saveUi();
     applyTab();
     if (tabId === "inquiry") renderInquiries();
+    if (tabId === "stats") loadStats();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -692,6 +695,23 @@
       updateDerived();
       schedulePreview();
     });
+
+    // 방문 통계 — 사이트·기간 필터
+    const statsSite = $("#stats-site");
+    if (statsSite) statsSite.addEventListener("change", () => {
+      state.stats.site = statsSite.value;
+      loadStats();
+    });
+    const statsPeriod = $("#stats-period");
+    if (statsPeriod) statsPeriod.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-days]");
+      if (!btn) return;
+      state.stats.days = Number(btn.dataset.days) || 7;
+      $$("button[data-days]", statsPeriod).forEach((b) => b.classList.toggle("is-active", b === btn));
+      loadStats();
+    });
+    const statsRefresh = $("#stats-refresh");
+    if (statsRefresh) statsRefresh.addEventListener("click", loadStats);
 
     // 순서 편집(탭/섹션)
     ["tabs", "sections"].forEach((listName) => {
@@ -1988,6 +2008,185 @@
       btn.disabled = false;
       btn.textContent = "삭제";
       toast(`삭제하지 못했습니다: ${err.message}`, true);
+    }
+  }
+
+  /* ───────────── 📊 방문 통계 (2026-11-19) ─────────────
+     복지모아 서버가 집계한 /api/admin/analytics 를 그대로 그린다. 웹 표준 환경에서는
+     나이대를 알 수 없어, 그 부분만 GA4 안내로 남긴다. */
+  function fmtCount(value) {
+    const num = Number(value) || 0;
+    return num.toLocaleString("ko-KR");
+  }
+
+  function fmtDuration(seconds) {
+    const total = Math.max(0, Math.round(Number(seconds) || 0));
+    if (total < 60) return `${total}초`;
+    const min = Math.floor(total / 60);
+    const sec = total % 60;
+    if (min < 60) return sec ? `${min}분 ${sec}초` : `${min}분`;
+    const hour = Math.floor(min / 60);
+    const rest = min % 60;
+    return rest ? `${hour}시간 ${rest}분` : `${hour}시간`;
+  }
+
+  function syncStatsControls() {
+    const site = $("#stats-site");
+    if (site && site.value !== state.stats.site) site.value = state.stats.site;
+    $$("#stats-period button[data-days]").forEach((btn) => {
+      btn.classList.toggle("is-active", Number(btn.dataset.days) === Number(state.stats.days));
+    });
+  }
+
+  async function loadStats() {
+    const pill = $("#stats-conn");
+    const msg = $("#stats-msg");
+    if (!pill) return;
+    syncStatsControls();
+    const session = state.session || {};
+    if (session.mode === "demo" || (!session.token && !session.key)) {
+      state.stats.data = null;
+      state.stats.error = "";
+      state.stats.loading = false;
+      pill.textContent = "로그인 필요";
+      pill.className = "status-pill wait";
+      if (msg) msg.textContent = "방문 통계는 운영자 로그인(아이디·비밀번호 또는 관리자 키) 후 볼 수 있습니다. 데모 모드에서는 서버 자료를 불러오지 않습니다.";
+      renderStats();
+      return;
+    }
+    state.stats.loading = true;
+    state.stats.error = "";
+    pill.textContent = "불러오는 중…";
+    pill.className = "status-pill wait";
+    if (msg) msg.textContent = "서버에서 방문 자료를 모으는 중…";
+    renderStats();
+    try {
+      const days = Number(state.stats.days) || 7;
+      const res = await apiRequest(`/api/admin/analytics?site=${encodeURIComponent(state.stats.site)}&days=${days}`);
+      if (!res.ok || !res.data) throw new Error(res.error || `HTTP ${res.status}`);
+      state.stats.data = res.data;
+      state.stats.loadedAt = new Date().toISOString();
+      pill.textContent = "연결됨";
+      pill.className = "status-pill ok";
+      if (msg) {
+        const extra = res.data.source && res.data.source !== "db" ? ` · 저장 방식: ${res.data.source}` : "";
+        msg.textContent = `${res.data.siteLabel || "전체"} · 최근 ${res.data.days}일 · 이벤트 ${fmtCount(res.data.summary.events)}건${extra}`;
+      }
+    } catch (err) {
+      state.stats.data = null;
+      state.stats.error = err.message || "알 수 없는 오류";
+      pill.textContent = "오류";
+      pill.className = "status-pill bad";
+      if (msg) msg.textContent = `통계를 불러오지 못했습니다: ${state.stats.error}`;
+    }
+    state.stats.loading = false;
+    renderStats();
+  }
+
+  function renderStats() {
+    const summary = $("#stats-summary");
+    if (!summary) return;
+    const data = state.stats.data;
+    const pagesBody = $("#stats-pages") ? $("#stats-pages").querySelector("tbody") : null;
+    const refBox = $("#stats-referrers");
+    const devBox = $("#stats-devices");
+    const hourBox = $("#stats-hourly");
+    const emptyNote = '<p class="note">아직 자료가 없습니다. 사이트를 방문하는 사람이 생기면 여기에 쌓입니다.</p>';
+
+    if (!data || !data.summary) {
+      summary.hidden = true;
+      summary.innerHTML = "";
+      if (pagesBody) pagesBody.innerHTML = '<tr><td colspan="5" class="muted small">아직 자료가 없습니다.</td></tr>';
+      [refBox, devBox, hourBox].forEach((box) => { if (box) box.innerHTML = emptyNote; });
+      return;
+    }
+
+    const s = data.summary;
+    const peak = s.peakHour == null ? "—" : `${String(s.peakHour).padStart(2, "0")}:00`;
+    summary.hidden = false;
+    summary.innerHTML = [
+      ["총 조회수", fmtCount(s.views), `전체 이벤트 ${fmtCount(s.events)}건`],
+      ["방문자 (익명 세션)", fmtCount(s.sessions), `포케 ${fmtCount(s.sessionsBySite.pokemoa)} · 복지 ${fmtCount(s.sessionsBySite.bokjimoa)}`],
+      ["평균 체류시간", fmtDuration(s.avgDurationSec), `${fmtCount(s.pages)}개 화면`],
+      ["가장 붐비는 시간", peak, s.empty ? "자료 없음" : "한국 시간 기준"]
+    ].map(([label, value, sub]) =>
+      `<div class="stat-card"><span>${esc(label)}</span><strong>${esc(value)}</strong><em>${esc(sub)}</em></div>`
+    ).join("");
+
+    // 페이지·탭별 체류시간
+    if (pagesBody) {
+      if (!data.pages.length) {
+        pagesBody.innerHTML = '<tr><td colspan="5" class="muted small">아직 자료가 없습니다.</td></tr>';
+      } else {
+        const maxAvg = Math.max(1, ...data.pages.map((page) => Number(page.avgDurationSec) || 0));
+        pagesBody.innerHTML = data.pages.slice(0, 50).map((page) => {
+          const width = Math.max(3, Math.round(((Number(page.avgDurationSec) || 0) / maxAvg) * 100));
+          return `<tr>
+            <td><b>${esc(page.label || page.path)}</b><span class="cell-sub">${esc(page.siteLabel)}</span></td>
+            <td><code>${esc(page.path)}</code></td>
+            <td class="num">${fmtCount(page.views)}</td>
+            <td class="num">${esc(page.avgDurationText || fmtDuration(page.avgDurationSec))}</td>
+            <td><span class="mini-bar" aria-hidden="true"><i style="width:${width}%"></i></span></td>
+          </tr>`;
+        }).join("");
+      }
+    }
+
+    // 유입 경로
+    if (refBox) {
+      if (!data.referrers.length) {
+        refBox.innerHTML = emptyNote;
+      } else {
+        const maxRef = Math.max(1, ...data.referrers.map((row) => row.count));
+        refBox.innerHTML = data.referrers.map((row) => {
+          const width = Math.max(2, Math.round((row.count / maxRef) * 100));
+          const hosts = (row.hosts || []).filter((host) => host.host && host.host !== "direct").slice(0, 4);
+          const hostLine = hosts.length
+            ? `<div class="bar-hosts">${hosts.map((host) => `<span>${esc(host.host)} ${fmtCount(host.count)}</span>`).join("")}</div>`
+            : "";
+          return `<div class="bar-row"><span class="bar-label">${esc(row.label)}</span>
+            <span class="bar-track"><i style="width:${width}%"></i></span>
+            <span class="bar-value">${fmtCount(row.count)} · ${row.share}%</span></div>${hostLine}`;
+        }).join("");
+      }
+    }
+
+    // 기기 · OS
+    if (devBox) {
+      if (!data.devices.length) {
+        devBox.innerHTML = emptyNote;
+      } else {
+        const maxDev = Math.max(1, ...data.devices.map((row) => row.count));
+        const bars = data.devices.map((row) => {
+          const width = Math.max(2, Math.round((row.count / maxDev) * 100));
+          return `<div class="bar-row"><span class="bar-label">${esc(row.label)}</span>
+            <span class="bar-track"><i style="width:${width}%"></i></span>
+            <span class="bar-value">${fmtCount(row.count)} · ${row.share}%</span></div>`;
+        }).join("");
+        const osChips = data.os.length
+          ? `<div class="os-chips">${data.os.map((row) => `<span>${esc(row.name)}<b>${row.share}%</b></span>`).join("")}</div>`
+          : "";
+        devBox.innerHTML = bars + osChips;
+      }
+    }
+
+    // 시간대별 접속 분포(0~23시)
+    if (hourBox) {
+      if (!data.hourly.length) {
+        hourBox.innerHTML = emptyNote;
+      } else {
+        const maxHour = Math.max(1, ...data.hourly.map((row) => row.count));
+        hourBox.innerHTML = `<div class="hour-chart" role="img" aria-label="0시부터 23시까지 시간대별 접속 분포">
+          ${data.hourly.map((row) => {
+            const height = row.count ? Math.max(8, Math.round((row.count / maxHour) * 100)) : 3;
+            return `<div class="hour-col" title="${esc(row.label)} · ${fmtCount(row.count)}건">
+              <span class="hour-bar" style="height:${height}%"></span>
+              <span class="hour-tick">${row.hour % 3 === 0 ? row.hour : ""}</span>
+            </div>`;
+          }).join("")}
+        </div>
+        <div class="hour-legend"><span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>23시</span></div>`;
+      }
     }
   }
 
