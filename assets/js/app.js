@@ -1580,13 +1580,113 @@
       clearPreviewTimers();
       hidePreviewOverlay();
       updatePreviewNote();
+      return;
     }
+    /* 미리보기에서 고칠 곳을 눌렀을 때 — 그 문구의 입력칸으로 데려간다 */
+    if (data.type === "moa-preview-focus") {
+      focusFromPreview(data.target || data);
+    }
+  }
+
+  /* ─────────── 미리보기 클릭 → 해당 입력칸으로 이동 (2026-11-20) ───────────
+     사이트(iframe)가 보낸 { kind, key } 를 그 칸으로 옮긴다.
+       kind: copy    → ③ 문구의 그 키(없으면 ② 섹션 편집기)
+       kind: section → ② 탭·섹션의 그 섹션(편집기 펼침)
+       kind: banner/popup → ① 공지·팝업의 해당 입력 */
+  function cssKey(key) { return String(key || "").replace(/["\\]/g, ""); }
+
+  function highlightTarget(el) {
+    if (!el) return;
+    const box = el.closest(".field, .rrow, .card") || el;
+    box.classList.remove("is-jump-target");
+    void box.offsetWidth;              /* 애니메이션을 다시 시작하려면 리플로우 */
+    box.classList.add("is-jump-target");
+    clearTimeout(highlightTarget.timer);
+    highlightTarget.timer = setTimeout(() => box.classList.remove("is-jump-target"), 2600);
+    try { (el.closest(".rrow") || el).scrollIntoView({ block: "center", behavior: "smooth" }); }
+    catch (err) { try { el.scrollIntoView(); } catch (e2) {} }
+    setTimeout(() => {
+      try {
+        const field = el.matches("input, textarea, select") ? el : el.querySelector("input, textarea");
+        if (field) {
+          field.focus({ preventScroll: true });
+          if (field.select && field.tagName === "INPUT") field.select();
+        }
+      } catch (err) { /* 포커스 실패는 무시 */ }
+    }, 280);
+  }
+
+  function openCopyField(key) {
+    const input = $(`#copy-form [data-bind="copy.${cssKey(key)}"]`);
+    if (!input) return null;
+    const group = input.closest("details.copygroup");
+    if (group && !group.open) {
+      group.open = true;
+      state.copyOpen[`${state.site}:${group.dataset.groupName}`] = true;
+    }
+    return input;
+  }
+
+  function focusFromPreview(target) {
+    if (!target || typeof target !== "object") return;
+    /* 모바일(세로 배치)에서는 미리보기가 화면을 덮고 있으니 먼저 단는다 — 아래 입력칸이 보이게 */
+    const rail = $("#preview-rail");
+    if (rail && rail.classList.contains("is-open")) {
+      rail.classList.remove("is-open");
+      const toggleBtn = $("#btn-preview-toggle");
+      if (toggleBtn) toggleBtn.setAttribute("aria-pressed", "false");
+    }
+    const kind = String(target.kind || "copy");
+    const cfg = current();
+
+    if (kind === "copy" && target.key) {
+      setTab("copy");
+      const input = openCopyField(target.key);
+      if (input) { highlightTarget(input); return; }
+      /* ③ 에 없는 키(섹션 본문 전용 등)는 ② 섹션 편집기의 같은 키로 */
+      const sec = (cfg.sections || []).find((s) => (s.fields || []).some((f) => f.key === target.key));
+      if (sec) { focusSection(sec, `[data-sfield="${cssKey(target.key)}"]`); return; }
+      toast("이 문구는 어드민에 아직 등록되지 않았습니다.");
+      return;
+    }
+
+    if (kind === "section" && target.id) {
+      const sec = (cfg.sections || []).find((s) => s.id === target.id);
+      if (!sec) { toast("이 구역은 어드민의 탭·섹션 목록에 없습니다."); return; }
+      focusSection(sec, ".rlabel-input");
+      return;
+    }
+
+    if (kind === "banner" || kind === "popup") {
+      setTab("notice");
+      const sel = kind === "banner" ? '[data-bind="banner.text"]' : '[data-bind="popup.title"]';
+      highlightTarget($(sel));
+      return;
+    }
+
+    if (kind === "tab" && target.id) {
+      setTab("order");
+      const row = $(`#list-tabs [data-id="${cssKey(target.id)}"]`);
+      if (row) highlightTarget(row.querySelector(".rlabel-input"));
+    }
+  }
+
+  function focusSection(sec, innerSelector) {
+    state.sectionTab[state.site] = sec.tab || state.sectionTab[state.site];
+    state.openSections[`${state.site}:${sec.id}`] = true;
+    setTab("order");
+    renderSectionTabs();
+    renderOrderList("sections");
+    const row = $(`#list-sections [data-id="${cssKey(sec.id)}"]`);
+    if (!row) return;
+    const target = (innerSelector && row.querySelector(innerSelector)) || row;
+    highlightTarget(target);
   }
 
   function updatePreviewNote() {
     const note = $("#preview-note");
     if (!note) return;
-    const parts = ["실제 사이트를 390px 화면으로 축소했습니다. 고치는 즉시 반영돼요."];
+    const parts = ["실제 사이트를 390px 화면으로 축소했습니다. 고치는 즉시 반영돼요. 미리보기에서 고칠 곳을 누르면 해당 입력칸으로 이동합니다."];
     if (!state.previewPopup) parts.push("지금은 팝업을 숨긴 채로 보내고 있어요.");
     const cfg = config();
     const { startDate, endDate } = cfg.popup || {};

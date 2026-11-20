@@ -38,11 +38,25 @@
    허용 출처는 https://moa-kr.github.io 와 로컬 테스트(localhost·127.0.0.1)뿐입니다.
    미리보기 중에는 방문자의 ‘다시 보지 않기’ 저장소를 건드리지 않고, 팝업 기간도 무시해
    어드민에서 만든 화면 그대로 보여 줍니다.
+   v4.3 — 미리보기 클릭 → 어드민 입력칸 이동 (2026-11-20)
+   어드민 미리보기(iframe)에서 data-copy·data-section·data-moa-focus 가 붙은 곳을 누르면
+   기본 링크 이동을 막고 { type: “moa-preview-focus”, target:{ kind, key|id } } 를 부모(어드민)에
+   보냅니다. 어드민은 해당 탭을 열고 그 입력칸으로 스크롤·포커스합니다.
+   v4.2 — 기능 스위치(features)
+   site-config.json 의 features 값이 false 인 요소를 숨깁니다. 요소는 data-feature="플래그"
+   로 표시해 둡니다(포케모아: 반경 버튼 5km·20km). 지금 고른 반경이 꺼진 반경이면 3km 로
+   되돌리고, 저장소에 남은 꺼진 반경 값도 3km 로 고쳐 둡니다.
+   v4.1 — 방문 통계 수집기
+   화면을 떠날 때(탭 전환·숨김·페이지 이탈) 이전 화면의 체류 초·경로·탭과 유입 도메인·
+   기기·OS 를 복지모아 서버(/api/analytics/collect)로 보냅니다. IP·쿠키·이메일 같은
+   개인 식별 값은 보내지 않고 익명 세션 ID 만 씁니다. 어드민 미리보기(iframe·
+   ?moa_preview=)와 localhost 는 보내지 않습니다. data-track-site 로 사이트 이름을 넘길 수
+   있습니다(없으면 site-config.json 의 site 값 / 주소로 판단).
    ──────────────────────────────────────────────────────────────── */
 (function () {
   "use strict";
 
-  const VERSION = "4.0";
+  const VERSION = "4.3";
   const STYLE_ID = "moa-site-config-style";
   const DISMISS_PREFIX = "moa:popup:";
   const TAB_SELECTOR = "[data-tab],[data-nav]";
@@ -61,7 +75,8 @@
     config: "moa-preview-config",
     ready: "moa-preview-ready",
     applied: "moa-preview-applied",
-    request: "moa-preview-request"
+    request: "moa-preview-request",
+    focus: "moa-preview-focus"
   };
   const PREVIEW_PARENTS = [
     "https://moa-kr.github.io",
@@ -109,6 +124,18 @@
     document.documentElement.dataset.moaTheme = dark ? "dark" : "light";
   }
 
+  /* 숨김 클래스 규칙은 배너·팝업을 그릴 때만 주입되므로, 기능 스위치·탭/섹션 숨김이
+     배너·팝업 모두 꺼진 화면에서도 동작하도록 규칙 하나를 따로 보장한다. */
+  const HIDDEN_STYLE_ID = "moa-hidden-style";
+  const PREVIEW_STYLE_ID = "moa-preview-style";
+  function ensureHiddenStyle() {
+    if (document.getElementById(STYLE_ID) || document.getElementById(HIDDEN_STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = HIDDEN_STYLE_ID;
+    style.textContent = `.${HIDDEN_CLASS}{display:none !important}`;
+    document.head.appendChild(style);
+  }
+
   function load(path) {
     const url = path + (path.indexOf("?") === -1 ? "?" : "&") + "_moa=" + Date.now();
     return fetch(url, { cache: "no-store" })
@@ -127,6 +154,7 @@
     const el = document.createElement("div");
     el.className = "moa-banner";
     el.setAttribute("role", "status");
+    el.setAttribute("data-moa-focus", JSON.stringify({ kind: "banner" }));
     el.style.background = options.background || palette[0];
     el.style.color = options.color || palette[1];
     const text = document.createElement("span");
@@ -207,6 +235,7 @@
 
     const title = document.createElement("h3");
     title.textContent = popup.title || "";
+    title.setAttribute("data-moa-focus", JSON.stringify({ kind: "popup" }));
     const body = document.createElement("p");
     body.textContent = popup.body || "";
     box.appendChild(title);
@@ -515,9 +544,112 @@
     });
   }
 
+  /* ───────────── 기능 스위치(features) ─────────────
+     features[플래그] 가 false 면 data-feature="플래그" 요소를 숨긴다. 값이 없으면 켜짐(true). */
+  const RADIUS_FEATURES = [
+    { flag: "radius5km", radius: 5000 },
+    { flag: "radius20km", radius: 20000 }
+  ];
+  const RADIUS_FALLBACK = 3000;
+
+  function featureOn(cfg, flag) {
+    const features = cfg && cfg.features && typeof cfg.features === "object" ? cfg.features : null;
+    const value = features ? features[flag] : undefined;
+    if (value == null) return true;
+    if (typeof value === "string") return !/^(false|0|off|no)$/i.test(value.trim());
+    return Boolean(value);
+  }
+
+  function setFeatureElement(el, on) {
+    el.classList.toggle(HIDDEN_CLASS, !on);
+    if (on) {
+      el.removeAttribute("hidden");
+      el.removeAttribute("aria-hidden");
+      el.removeAttribute("tabindex");
+      return;
+    }
+    el.setAttribute("hidden", "");
+    el.setAttribute("aria-hidden", "true");
+    el.setAttribute("tabindex", "-1");
+  }
+
+  /* 지금 선택된 반경 — 지도 상태를 먼저 보고, 없으면 화면의 활성 버튼에서 읽는다. */
+  function currentRadius() {
+    if (window.PokeMoaMap && typeof window.PokeMoaMap.getState === "function") {
+      const mapState = window.PokeMoaMap.getState();
+      if (mapState && typeof mapState.radius === "number") return mapState.radius;
+    }
+    const active = document.querySelector(".radius-btn.is-active[data-radius]");
+    return active ? Number(active.getAttribute("data-radius")) : null;
+  }
+
+  function markRadiusButton(radius) {
+    Array.prototype.forEach.call(document.querySelectorAll(".radius-btn[data-radius]"), (btn) => {
+      btn.classList.toggle("is-active", Number(btn.getAttribute("data-radius")) === radius);
+    });
+  }
+
+  /* 꺼진 반경이 선택돼 있으면 3km 로 되돌린다.
+     사이트 핸들러(버튼 클릭)를 먼저 쓰고, 반응하지 않으면 지도·표시를 직접 맞춘다. */
+  function fallbackRadius(offRadii) {
+    const radius = currentRadius();
+    if (radius == null || !offRadii.some((r) => radius >= r)) return;
+    const btn = document.querySelector(`.radius-btn[data-radius="${RADIUS_FALLBACK}"]`);
+    if (btn && !btn.classList.contains(HIDDEN_CLASS)) {
+      try { btn.click(); } catch (err) { /* 아래에서 직접 맞춘다 */ }
+    }
+    const after = currentRadius();
+    if (after != null && offRadii.some((r) => after >= r)) {
+      if (window.PokeMoaMap && typeof window.PokeMoaMap.setRadius === "function") {
+        try { window.PokeMoaMap.setRadius(RADIUS_FALLBACK); } catch (err) { /* 무시 */ }
+      }
+      markRadiusButton(RADIUS_FALLBACK);
+    }
+    forgetStoredRadius(offRadii);
+  }
+
+  /* 예전 화면·직접 저장한 반경 값이 꺼진 반경이면 3km 로 고친다(km·m 표기 모두). */
+  function forgetStoredRadius(offRadii) {
+    try {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i) || "";
+        if (/radius/i.test(key)) keys.push(key);
+      }
+      keys.forEach((key) => {
+        const raw = localStorage.getItem(key);
+        const value = Number(raw);
+        if (!raw || !Number.isFinite(value) || value <= 0) return;
+        const inKm = value <= 100;
+        const meters = inKm ? value * 1000 : value;
+        if (!offRadii.some((r) => meters >= r)) return;
+        localStorage.setItem(key, String(inKm ? RADIUS_FALLBACK / 1000 : RADIUS_FALLBACK));
+      });
+    } catch (err) { /* 저장소를 못 쓰면 무시 */ }
+  }
+
+  function applyFeatures(cfg) {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-feature]"), (el) => {
+      const flag = el.getAttribute("data-feature");
+      if (flag) setFeatureElement(el, featureOn(cfg, flag));
+    });
+    const offRadii = RADIUS_FEATURES.filter((item) => !featureOn(cfg, item.flag)).map((item) => item.radius);
+    // 20km 버튼이 꺼지면 ‘도심은 5km까지 지원’ 안내도 의미가 없어 함께 숨긴다.
+    // (사이트의 syncRadiusUI 가 hidden 을 다시 풀어도 숨겨지도록 class 로도 표시한다.)
+    const note = document.getElementById("radiusNote");
+    if (note) {
+      const hideNote = offRadii.indexOf(20000) >= 0;
+      note.classList.toggle(HIDDEN_CLASS, hideNote);
+      if (hideNote) note.hidden = true;
+    }
+    if (!offRadii.length) return;
+    fallbackRadius(offRadii);
+  }
+
   function apply(cfg, options) {
     const opts = options || {};
     if (!cfg) return null;
+    ensureHiddenStyle();
     state.config = cfg;
     state.options = opts;
     // 이전에 그린 배너·팝업을 지우고 새 설정으로 다시 그린다(미리보기 갱신 때 중복 방지).
@@ -528,6 +660,7 @@
     if (opts.tabContainer) applyTabs(opts.tabContainer, cfg);
     applySections(opts.sectionRoot || document.body, cfg);
     applyCopy(cfg, opts.copyRoot || document.body);
+    applyFeatures(cfg);
     return cfg;
   }
 
@@ -539,6 +672,7 @@
     if (opts.tabContainer) applyTabs(opts.tabContainer, cfg);
     applySections(opts.sectionRoot || document.body, cfg);
     applyCopy(cfg, opts.copyRoot || document.body);
+    applyFeatures(cfg);
     return cfg;
   }
 
@@ -592,8 +726,69 @@
     state.preview = true;
     apply(cfg, state.options || {});
     if (activeTab) activateTab(activeTab);
+    enablePreviewClick();
     postToParent({ type: PREVIEW.applied, ok: true, at: Date.now(), tab: activeTab || "", version: VERSION });
     return cfg;
+  }
+
+  /* ─────────── v4.3 미리보기 클릭 → 어드민 입력칸 이동 ───────────
+     미리보기(iframe) 안에서 고칠 수 있는 요소를 누르면 그 요소가 어느 설정 값인지
+     (data-copy · data-section · data-moa-focus) 찾아 어드민에 알린다. 어드민은 해당 탭을
+     열고 그 입력칸으로 스크롤·포커스한다. 기본 링크 이동·제출은 막는다. */
+  const PREVIEW_HIT_SELECTOR = "[data-moa-focus],[data-copy-html],[data-copy],[data-section-title],[data-section]";
+
+  function previewTargetOf(node) {
+    const hit = node && node.closest ? node.closest(PREVIEW_HIT_SELECTOR) : null;
+    if (!hit) return null;
+    /* 탭 버튼·링크는 미리보기 둘러보기용이라 그대로 둔다 */
+    if (hit.matches("[data-tab],[data-nav]")) return null;
+    const raw = hit.getAttribute("data-moa-focus");
+    if (raw) {
+      try { return JSON.parse(raw); } catch (err) { return null; }
+    }
+    if (hit.hasAttribute("data-copy")) return { kind: "copy", key: hit.getAttribute("data-copy") };
+    if (hit.hasAttribute("data-copy-html")) return { kind: "copy", key: hit.getAttribute("data-copy-html") };
+    const section = hit.closest("[data-section]");
+    if (section) return { kind: "section", id: section.getAttribute("data-section") };
+    return null;
+  }
+
+  function flashPreviewHit(node) {
+    const hit = node && node.closest ? node.closest(PREVIEW_HIT_SELECTOR) : null;
+    if (!hit || !hit.classList) return;
+    hit.classList.remove("moa-preview-hit");
+    void hit.offsetWidth;
+    hit.classList.add("moa-preview-hit");
+    setTimeout(() => hit.classList.remove("moa-preview-hit"), 1200);
+  }
+
+  function onPreviewClick(event) {
+    if (!state.preview) return;
+    const target = previewTargetOf(event.target);
+    if (!target) return;
+    if (event.preventDefault) event.preventDefault();
+    if (event.stopPropagation) event.stopPropagation();
+    postToParent({ type: PREVIEW.focus, target, at: Date.now() });
+    flashPreviewHit(event.target);
+  }
+
+  function enablePreviewClick() {
+    document.documentElement.classList.add("moa-preview-mode");
+    if (!document.getElementById(PREVIEW_STYLE_ID)) {
+      const style = document.createElement("style");
+      style.id = PREVIEW_STYLE_ID;
+      const hoverSelectors = PREVIEW_HIT_SELECTOR.split(",")
+        .map((sel) => "html.moa-preview-mode " + sel.trim() + ":hover")
+        .join(",");
+      style.textContent =
+        hoverSelectors + "{cursor:pointer;outline:2px dashed rgba(240,165,0,.9);outline-offset:2px;border-radius:6px}" +
+        ".moa-preview-hit{outline:3px solid #ffcb05 !important;outline-offset:2px;background:rgba(255,203,5,.14) !important}";
+      document.head.appendChild(style);
+    }
+    if (!enablePreviewClick.bound) {
+      document.addEventListener("click", onPreviewClick, true);
+      enablePreviewClick.bound = true;
+    }
   }
 
   window.addEventListener("message", (event) => {
@@ -637,6 +832,7 @@
     };
     state.path = path;
     state.options = options;
+    startTracking(script);
     announceReady();
     load(path).then((cfg) => {
       if (!cfg) return;
@@ -648,9 +844,294 @@
     });
   }
 
+  /* ───────────── 방문 통계 (v4.1) ─────────────
+     포케모아·복지모아가 같이 쓰는 수집기입니다. 화면을 떠날 때(sendBeacon) 이전 화면의
+     체류 초와 경로·탭, 유입 도메인, 기기·OS 를 복지모아 서버(/api/analytics/collect)로
+     보냅니다. 개인을 알아볼 수 있는 값(IP·쿠키·이메일)은 보내지 않고, 세션은 브라우저가
+     만든 익명 ID 하나로만 구분합니다(탭을 닫으면 사라짐).
+     - 어드민 미리보기(iframe·?moa_preview=)와 localhost 테스트는 보내지 않습니다.
+     - 같은 화면을 다시 보는 경우(탭 숨김 → 복귀)는 체류만 더하고 조회수로 세지 않습니다. */
+  const TRACK = {
+    endpoint: "https://bokjimoa.onrender.com/api/analytics/collect",
+    sessionKey: "moa:analytics:sid",
+    maxDuration: 1800,
+    tabSelector: "[data-tab],[data-nav]"
+  };
+
+  const track = {
+    enabled: false,
+    site: "",
+    sessionId: "",
+    path: "",
+    tab: "",
+    start: 0,
+    newView: false,
+    device: "etc",
+    os: "etc",
+    referrer: "direct",
+    utm: "",
+    sent: 0,
+    skipped: ""
+  };
+  let trackTimer = 0;
+
+  function trackSiteOf(script, cfg) {
+    const normalize = (value) => {
+      const key = String(value || "").trim().toLowerCase();
+      if (key === "pokemoa") return "pokemoa";
+      if (key === "bokjimoa" || key === "bokjinabi") return "bokjimoa";
+      return "";
+    };
+    let site = normalize(script && script.getAttribute("data-track-site"));
+    if (!site && cfg && cfg.site) site = normalize(cfg.site);
+    if (!site) {
+      const configPath = String((script && script.getAttribute("data-config")) || "");
+      site = configPath.charAt(0) === "/" ? "bokjimoa" : "pokemoa";
+    }
+    return site;
+  }
+
+  /* 미리보기 iframe · 어드민 미리보기 주소 · localhost 는 통계에서 뺍나다. */
+  function trackingBlocked() {
+    try {
+      if (window.parent && window.parent !== window) return "preview-iframe";
+      const params = new URLSearchParams(location.search || "");
+      if (params.has("moa_preview")) return "preview";
+      if (location.protocol === "file:") return "local";
+      const host = String(location.hostname || "").toLowerCase();
+      if (!host || host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]") return "local";
+    } catch (err) {
+      return "unknown";
+    }
+    return "";
+  }
+
+  function newSessionId() {
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+      if (window.crypto && window.crypto.getRandomValues) {
+        const bytes = window.crypto.getRandomValues(new Uint8Array(16));
+        return Array.prototype.map.call(bytes, (b) => ("0" + b.toString(16)).slice(-2)).join("");
+      }
+    } catch (err) { /* 아래 대체값 */ }
+    return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+  }
+
+  function ensureSessionId() {
+    const valid = (value) => /^[A-Za-z0-9._-]{8,64}$/.test(String(value || ""));
+    try {
+      const saved = sessionStorage.getItem(TRACK.sessionKey);
+      if (valid(saved)) return saved;
+    } catch (err) { /* 저장소를 못 쓰면 메모리로 */ }
+    const id = newSessionId();
+    try { sessionStorage.setItem(TRACK.sessionKey, id); } catch (err) { /* 무시 */ }
+    return id;
+  }
+
+  function detectDevice() {
+    const ua = String((navigator && navigator.userAgent) || "");
+    const width = Number(window.innerWidth) || (window.screen && window.screen.width) || 0;
+    const touch = ("ontouchstart" in window) || Number(navigator && navigator.maxTouchPoints) > 1;
+    const ipad = /iPad/i.test(ua) || (/Macintosh/i.test(ua) && touch);
+    if (/Android/i.test(ua)) return /Mobile/i.test(ua) && width < 700 ? "mobile" : "tablet";
+    if (ipad) return "tablet";
+    if (/iPhone|iPod/i.test(ua) || /Mobile/i.test(ua)) return "mobile";
+    // UA 로 알 수 없는 환경(태블릿 모드·앱 내 웹뷰)은 화면 폭과 손가락 입력으로 고른다.
+    let coarse = false;
+    try { coarse = Boolean(window.matchMedia && window.matchMedia("(pointer: coarse)").matches); } catch (err) { coarse = false; }
+    if (width && width <= 640 && (coarse || touch)) return "mobile";
+    if (width && width <= 1024 && coarse) return "tablet";
+    return "desktop";
+  }
+
+  function detectOs() {
+    const ua = String((navigator && navigator.userAgent) || "");
+    if (/Android/i.test(ua)) return "Android";
+    if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
+    if (/Windows/i.test(ua)) return "Windows";
+    if (/Macintosh|Mac OS X/i.test(ua)) return "macOS";
+    return "etc";
+  }
+
+  function trackReferrer() {
+    const raw = String(document.referrer || "");
+    if (!raw) return "direct";
+    try {
+      const url = new URL(raw);
+      const host = String(url.hostname || "").replace(/^www\d*\./, "").toLowerCase();
+      if (!host || host === String(location.hostname || "").toLowerCase()) return "direct";
+      return host;
+    } catch (err) {
+      return "direct";
+    }
+  }
+
+  function trackUtmSource() {
+    try {
+      const params = new URLSearchParams(location.search || "");
+      return String(params.get("utm_source") || "").trim().toLowerCase().slice(0, 40);
+    } catch (err) {
+      return "";
+    }
+  }
+
+  /* 화면 경로 — 해시 라우터라도 검색어(?q=)는 남기지 않는다. */
+  function trackPath() {
+    const pathname = String(location.pathname || "");
+    const hash = String(location.hash || "").split("?")[0];
+    const full = pathname + hash;
+    return (full || "/").slice(0, 120);
+  }
+
+  /* 지금 열려 있는 탭의 이름 — 화면에 보이는 글자를 우선 쓰고, 없으면 해시 이름을 쓴다. */
+  function activeTabInfo() {
+    const scope = (state.options && state.options.tabContainer) || document;
+    let active = null;
+    try {
+      active = scope.querySelector('[data-tab].is-active,[data-nav].is-active,[data-tab].active,[data-nav].active');
+    } catch (err) { active = null; }
+    if (!active) {
+      try { active = document.querySelector('[data-tab].is-active,[data-nav].is-active,[data-tab].active,[data-nav].active'); } catch (err) { active = null; }
+    }
+    if (active) {
+      const label = String(active.textContent || "").replace(/\s+/g, " ").trim();
+      if (label && label.length <= 40) return { tab: label, id: active.getAttribute("data-tab") || active.getAttribute("data-nav") || "" };
+      const id = active.getAttribute("data-tab") || active.getAttribute("data-nav") || "";
+      return { tab: (id || label).slice(0, 40), id };
+    }
+    const hash = String(location.hash || "").replace(/^#\/?/, "").split("?")[0];
+    return { tab: (hash || "").slice(0, 40), id: hash || "" };
+  }
+
+  /* 이전 화면의 체류를 기록한다. is_view 가 true 인 행만 '조회수'로 센다. */
+  function trackFlush(reason) {
+    if (!track.enabled || !track.sessionId) return;
+    const now = Date.now();
+    if (!track.start) { track.start = now; return; }
+    const seconds = Math.min(TRACK.maxDuration, Math.max(0, Math.round((now - track.start) / 1000)));
+    const isView = Boolean(track.newView);
+    if (!isView && seconds < 1) { track.start = now; return; }
+    const payload = {
+      site: track.site,
+      session_id: track.sessionId,
+      page_path: track.path || trackPath(),
+      tab_name: track.tab || "",
+      duration_sec: seconds,
+      referrer_host: track.referrer,
+      utm_source: track.utm,
+      device_type: track.device,
+      os_name: track.os,
+      is_view: isView
+    };
+    track.newView = false;
+    track.start = 0;
+    track.sent += 1;
+    trackSend(payload);
+    return reason;
+  }
+
+  function trackSend(payload) {
+    const body = JSON.stringify(payload);
+    try {
+      if (navigator && typeof navigator.sendBeacon === "function") {
+        const blob = new Blob([body], { type: "text/plain;charset=UTF-8" });
+        if (navigator.sendBeacon(TRACK.endpoint, blob)) return;
+      }
+    } catch (err) { /* fetch 로 다시 시도 */ }
+    try {
+      fetch(TRACK.endpoint, {
+        method: "POST",
+        body: body,
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        mode: "cors",
+        credentials: "omit",
+        keepalive: true
+      }).catch(() => {});
+    } catch (err) { /* 통계 실패는 화면 동작을 막지 않는다 */ }
+  }
+
+  /* 탭·화면이 바뀌었는지 확인 — 바뀌었으면 이전 화면을 마감하고 새 화면을 연다. */
+  function trackScreenChanged() {
+    if (!track.enabled) return;
+    const path = trackPath();
+    const info = activeTabInfo();
+    if (path === track.path && info.tab === track.tab) return;
+    // 화면은 그대로인데 탭 이름만 뒤늦게 채워진 경우(첫 진입 때 내비 강조가 늦게 붙는 사이트) —
+    // 같은 화면으로 보고 이름만 바꾼다. 그렇지 않으면 한 번 방문이 두 번으로 세진다.
+    if (path === track.path && (!track.tab || !info.tab)) {
+      track.tab = info.tab || track.tab;
+      return;
+    }
+    trackFlush("switch");
+    track.path = path;
+    track.tab = info.tab;
+    track.newView = true;
+    track.start = Date.now();
+  }
+
+  function trackSoon() {
+    window.clearTimeout(trackTimer);
+    trackTimer = window.setTimeout(trackScreenChanged, 80);
+  }
+
+  function startTracking(script) {
+    if (track.enabled) return;
+    const blocked = trackingBlocked();
+    if (blocked) { track.skipped = blocked; return; }
+    const endpoint = (script && script.getAttribute("data-track-endpoint")) || TRACK.endpoint;
+    if (endpoint) TRACK.endpoint = endpoint;
+    track.site = trackSiteOf(script, state.config);
+    track.sessionId = ensureSessionId();
+    track.device = detectDevice();
+    track.os = detectOs();
+    track.referrer = trackReferrer();
+    track.utm = trackUtmSource();
+    track.path = trackPath();
+    track.tab = activeTabInfo().tab;
+    track.newView = true;
+    track.start = Date.now();
+    track.enabled = true;
+
+    // 탭 버튼 클릭·주소 변경·화면 다시 그리기
+    document.addEventListener("click", (event) => {
+      const el = event.target && event.target.closest ? event.target.closest(TRACK.tabSelector) : null;
+      if (el) trackSoon();
+    }, true);
+    window.addEventListener("hashchange", trackSoon);
+    window.addEventListener("popstate", trackSoon);
+    document.addEventListener("moa:route-rendered", trackSoon);
+
+    // 탭 숨김·복귀, 페이지를 떠날 때
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") trackFlush("hidden");
+      else if (track.enabled && !track.start) {
+        // 같은 화면으로 돌아왔다 — 체류만 이어 세고 조회수는 늘리지 않는다.
+        track.start = Date.now();
+        track.newView = false;
+      }
+    });
+    window.addEventListener("pagehide", () => trackFlush("pagehide"));
+
+    // 탭 강조(class)만 바뀌는 사이트를 위해 탭 영역을 지켜본다.
+    const nav = state.options && state.options.tabContainer;
+    if (nav && window.MutationObserver) {
+      try {
+        new MutationObserver(trackSoon).observe(nav, { subtree: true, attributes: true, attributeFilter: ["class"] });
+      } catch (err) { /* 관측 실패해도 클릭·hashchange 로 동작한다 */ }
+    }
+  }
+
   document.addEventListener("moa:route-rendered", () => { refresh(); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", autoInit);
   else autoInit();
+
+  window.MoaSiteAnalytics = {
+    state: track,
+    endpoint: () => TRACK.endpoint,
+    flush: trackFlush,
+    path: trackPath,
+    tab: () => activeTabInfo().tab
+  };
 
   window.MoaSiteConfig = {
     version: VERSION,
@@ -666,6 +1147,7 @@
     applyCopy,
     orderTabs: applyTabs,
     preview: PREVIEW,
+    analytics: track,
     state
   };
   Object.defineProperty(window.MoaSiteConfig, "config", { get: () => state.config });
