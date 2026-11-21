@@ -10,7 +10,7 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=33">
+<link rel="stylesheet" href="assets/css/admin.css?v=34">
 </head>
 <body>
 
@@ -82,7 +82,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=33</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=34</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -96,6 +96,8 @@
 
     <div class="topbar-right">
       <span class="user-chip" id="user-chip" hidden></span>
+      <!-- 개인 재무 바로가기 — 로그인한 뒤에만 app.js 가 hidden 을 풉니다(데모·비로그인 화면 미노출) -->
+      <a class="btn btn-sm btn-finance" id="btn-finance" href="#" target="_blank" rel="noopener noreferrer" hidden title="개인 자산·현금흐름 관리 — 새 탭에서 열립니다">💰 개인 재무 <span class="ext" aria-hidden="true">↗</span></a>
       <a class="btn btn-sm btn-ghost" id="btn-open-live" href="#" target="_blank" rel="noreferrer">사이트 열기</a>
       <button type="button" class="btn btn-sm btn-ghost" id="btn-logout">로그아웃</button>
     </div>
@@ -509,7 +511,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=33"></script>
-<script src="assets/js/app.js?v=33"></script>
+<script src="assets/js/sites.js?v=34"></script>
+<script src="assets/js/app.js?v=34"></script>
 </body>
 </html>

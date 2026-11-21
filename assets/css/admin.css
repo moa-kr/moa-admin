@@ -139,6 +139,9 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .topbar-right .btn-ghost { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.16); }
 .topbar-right .btn-ghost:hover { background: rgba(255,255,255,.18); }
+.topbar-right .btn-finance { background: rgba(255,203,5,.16); color: #ffe9a3; border-color: rgba(255,203,5,.38); font-weight: 700; }
+.topbar-right .btn-finance:hover { background: rgba(255,203,5,.28); color: #fff8dc; }
+.topbar-right .btn-finance .ext { font-size: 11px; opacity: .8; }
 .user-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #cfd8ea;
   background: rgba(255,255,255,.08); padding: 5px 10px; border-radius: 20px; }
 .user-chip img { width: 18px; height: 18px; border-radius: 50%; }

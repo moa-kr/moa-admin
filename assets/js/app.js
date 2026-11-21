@@ -14,7 +14,10 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=33";
+  const BUILD = "v=34";
+  /* 개인 재무 웹(여조원 님 전용) — 로그인한 뒤 헤더에 바로가기 버튼으로만 노출한다.
+     비로그인·데모 화면에서는 버튼 자체를 숨겨 두어 링크가 화면에 드러나지 않게 한다. */
+  const FINANCE = { url: "https://yeojo-finance.onrender.com" };
   /* 실제 미리보기(iframe)를 띄울 사이트별 출처 — postMessage 대상·허용 검사에 쓴다. */
   const PREVIEW_ORIGIN = {
     pokemoa: "https://moa-kr.github.io",
@@ -587,6 +590,15 @@
       userChip.hidden = false;
     } else {
       userChip.hidden = true;
+    }
+
+    // 개인 재무 바로가기는 실제 로그인(아이디·GitHub 토큰·관리자 키)에서만 보인다. 데모 모드에서는 숨김.
+    const financeBtn = $("#btn-finance");
+    if (financeBtn) {
+      const signedIn = session.mode === "idpw" || session.mode === "live" || session.mode === "key";
+      if (signedIn) financeBtn.href = FINANCE.url;
+      else financeBtn.removeAttribute("href");
+      financeBtn.hidden = !signedIn;
     }
     renderChecks();
   }
