@@ -14,10 +14,11 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=34";
-  /* 개인 재무 웹(여조원 님 전용) — 로그인한 뒤 헤더에 바로가기 버튼으로만 노출한다.
-     비로그인·데모 화면에서는 버튼 자체를 숨겨 두어 링크가 화면에 드러나지 않게 한다. */
-  const FINANCE = { url: "https://yeojo-finance.onrender.com" };
+  const BUILD = "v=35";
+  /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 ‘💰 개인 재무’ 탭과 헤더 버튼을 보인다.
+     자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
+     로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
+  const FINANCE_TAB = "finance";
   /* 실제 미리보기(iframe)를 띄울 사이트별 출처 — postMessage 대상·허용 검사에 쓴다. */
   const PREVIEW_ORIGIN = {
     pokemoa: "https://moa-kr.github.io",
@@ -384,7 +385,8 @@
         method: opts.method || "GET",
         headers,
         body: opts.body,
-        cache: "no-store"
+        cache: "no-store",
+        keepalive: Boolean(opts.keepalive)
       });
     } catch (err) {
       return { ok: false, status: 0, error: "복지모아 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.", data: null };
@@ -404,6 +406,7 @@
   function sessionExpired(message) {
     const session = state.session || {};
     if (session.mode !== "idpw") return;
+    if (window.MOA_FINANCE) window.MOA_FINANCE.clear();
     clearSession();
     state.session = null;
     showGate();
@@ -541,8 +544,11 @@
       const ok = window.confirm("저장하지 않은 변경이 있습니다. 그래도 로그아웃할까요?");
       if (!ok) return;
     }
+    if (window.MOA_FINANCE) window.MOA_FINANCE.clear();
     clearSession();
     state.session = null;
+    // 다시 불러오기 전에 잠금 화면 상태로 되돌려 둔다(개인 재무 탭·버튼이 남지 않도록).
+    updateSessionUi();
     location.reload();
   }
 
@@ -564,6 +570,13 @@
     updateSessionUi();
     bindUi();
     renderAll();
+    // 개인 재무 표는 로그인한 뒤에만 의미가 있다. 모듈을 한 번 붙이고, 그 탭으로 열렸거나
+    // 로그인 직후라면 서버 자료를 바로 불러온다(finance.js 가 인증 헤더를 붙여 부른다).
+    if (window.MOA_FINANCE) {
+      window.MOA_FINANCE.init({ request: (path, opts) => apiRequest(path, opts) });
+      if (signedIn() && state.tab === FINANCE_TAB) window.MOA_FINANCE.enter();
+      if (!signedIn()) window.MOA_FINANCE.clear();
+    }
     // ‘⑤ 저장·배포’로 열렸으면 태블릿 중계 서버 버전을 먼저 조용히 확인한다
     // (복지모아 설정 불러오기를 기다리지 않도록 pullConfig 앞에서 부른다).
     if (state.tab === "deploy" && state.site === "pokemoa") checkRelay(true);
@@ -592,15 +605,20 @@
       userChip.hidden = true;
     }
 
-    // 개인 재무 바로가기는 실제 로그인(아이디·GitHub 토큰·관리자 키)에서만 보인다. 데모 모드에서는 숨김.
-    const financeBtn = $("#btn-finance");
-    if (financeBtn) {
-      const signedIn = session.mode === "idpw" || session.mode === "live" || session.mode === "key";
-      if (signedIn) financeBtn.href = FINANCE.url;
-      else financeBtn.removeAttribute("href");
-      financeBtn.hidden = !signedIn;
+    // 개인 재무 탭·바로가기는 실제 로그인(아이디·GitHub 토큰·관리자 키)에서만 보인다. 데모 모드에서는 숨김.
+    const authed = signedIn();
+    $$('[data-auth-only]').forEach((el) => { el.hidden = !authed; });
+    if (!authed && state.tab === FINANCE_TAB) {
+      state.tab = "notice";
+      applyTab();
     }
+    if (!authed && window.MOA_FINANCE) window.MOA_FINANCE.clear();
     renderChecks();
+  }
+
+  function signedIn() {
+    const mode = (state.session || {}).mode;
+    return mode === "idpw" || mode === "live" || mode === "key";
   }
 
   function isDirty() { return Object.keys(SITES).some((id) => state.dirty[id]); }
@@ -651,14 +669,20 @@
 
   function applyTab() {
     if (state.tab === "inquiry" && state.site !== "bokjimoa") state.tab = "notice";
+    if (state.tab === FINANCE_TAB && !signedIn()) state.tab = "notice";
     $$(".tab").forEach((btn) => btn.classList.toggle("is-active", btn.dataset.tab === state.tab));
     $$(".panel").forEach((panel) => { panel.hidden = panel.dataset.panel !== state.tab; });
+    // 개인 재무 표는 넓게 쓴다(모바일 미리보기 레일을 접는다).
+    const layout = $(".layout");
+    if (layout) layout.classList.toggle("is-wide", state.tab === FINANCE_TAB);
   }
 
   function setTab(tabId) {
+    if (tabId === FINANCE_TAB && !signedIn()) tabId = "notice";
     state.tab = tabId;
     saveUi();
     applyTab();
+    if (tabId === FINANCE_TAB && window.MOA_FINANCE) window.MOA_FINANCE.enter();
     if (tabId === "inquiry") renderInquiries();
     if (tabId === "stats") loadStats();
     if (tabId === "deploy") {
@@ -707,6 +731,15 @@
     $$(".site-btn").forEach((btn) => btn.addEventListener("click", () => setSite(btn.dataset.site)));
     // 탭 전환
     $$(".tab").forEach((btn) => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
+    // 헤더의 ‘💰 개인 재무’ 버튼은 같은 화면 안의 개인 재무 탭을 연다(새 탭·외부 주소 아님).
+    const financeBtn = $("#btn-finance");
+    if (financeBtn) {
+      financeBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        if (!signedIn()) { gateError("개인 재무는 로그인한 뒤에 열립니다."); return; }
+        setTab(FINANCE_TAB);
+      });
+    }
 
     // 배너 스타일
     const styleBox = $("#banner-style");

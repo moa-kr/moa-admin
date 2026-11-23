@@ -1,0 +1,197 @@
+/* 모아 어드민 — 💰 개인 재무 표(2026-11-23)
+   표·요약 카드·자산 비율 막대만 담당한다. 모든 선택자는 #finance-root 안으로 한정해
+   어드민 화면(admin.css)의 카드·입력 스타일과 부딪히지 않게 한다. */
+
+#finance-root {
+  --fin-brand: #2c5bf6;
+  --fin-pos: #0a9e6c;
+  --fin-pos-soft: #e8f7f0;
+  --fin-neg: #e5484d;
+  --fin-neg-soft: #fdecea;
+  --fin-warn: #92400e;
+  --fin-warn-soft: #fffbeb;
+  --fin-line: #e3e7ef;
+  --fin-line2: #eef1f7;
+  --fin-muted: #5b6784;
+  --fin-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ───────── 상단 상태·도구 ───────── */
+#finance-root .fin-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 10px 14px; background: #fff; border: 1px solid var(--fin-line);
+  border-radius: 14px; margin-bottom: 14px;
+}
+#finance-root .fin-bar .fin-note { margin-left: auto; font-size: 12px; color: var(--fin-muted); }
+#finance-root .fin-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 700; color: var(--ink);
+  background: #f4f6fb; border: 1px solid var(--fin-line); border-radius: 999px; padding: 5px 11px;
+}
+#finance-root .fin-chip .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--fin-pos);
+}
+#finance-root .fin-chip.busy .dot { background: #f59e0b; }
+#finance-root .fin-chip.err { color: var(--fin-neg); border-color: #f3c8ca; background: var(--fin-neg-soft); }
+#finance-root .fin-chip.err .dot { background: var(--fin-neg); }
+#finance-root .fin-chip.busy { color: #92400e; background: var(--fin-warn-soft); border-color: #f2dfb6; }
+
+#finance-root .fin-warn {
+  display: none; margin: 0 0 12px; padding: 10px 13px; border-radius: 12px;
+  background: var(--fin-warn-soft); border: 1px solid #f2dfb6; color: var(--fin-warn);
+  font-size: 12.5px; font-weight: 600;
+}
+#finance-root .fin-warn.show { display: block; }
+
+/* ───────── KPI 4칸 ───────── */
+#finance-root .fin-kpis {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px;
+}
+#finance-root .fin-kpi {
+  background: #fff; border: 1px solid var(--fin-line); border-radius: 14px; padding: 13px 14px;
+  box-shadow: 0 1px 2px rgba(16, 31, 60, .04);
+}
+#finance-root .fin-kpi .k-label { font-size: 12px; font-weight: 700; color: var(--fin-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+#finance-root .fin-kpi .k-value { margin-top: 6px; font-size: 21px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+#finance-root .fin-kpi .k-value .unit { font-size: 12px; font-weight: 700; color: var(--fin-muted); margin-left: 3px; }
+#finance-root .fin-kpi .k-sub { margin-top: 3px; font-size: 11.5px; color: var(--fin-muted); }
+#finance-root .fin-kpi .pos { color: var(--fin-pos); }
+#finance-root .fin-kpi .neg { color: var(--fin-neg); }
+#finance-root .fin-kpi.tone-asset { border-left: 3px solid var(--fin-brand); }
+#finance-root .fin-kpi.tone-debt { border-left: 3px solid #f59e0b; }
+#finance-root .fin-kpi.tone-pos { border-left: 3px solid var(--fin-pos); }
+#finance-root .fin-kpi.tone-neg { border-left: 3px solid var(--fin-neg); }
+
+/* ───────── 다가오는 출금 ───────── */
+#finance-root .fin-upcoming { margin-bottom: 14px; }
+#finance-root .fin-due-list { display: flex; gap: 10px; overflow-x: auto; padding: 12px 14px; }
+#finance-root .fin-due-card {
+  flex: 1 1 190px; min-width: 190px; border: 1px solid var(--fin-line); border-radius: 12px;
+  padding: 10px 12px; background: #fbfcff;
+}
+#finance-root .fin-due-card.is-next { border-color: #bfd0ff; background: #f5f8ff; }
+#finance-root .fin-due-card.urgent { border-color: #f6c9a8; background: #fff8f1; }
+#finance-root .fin-due-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#finance-root .fin-due-date { font-weight: 800; font-size: 13.5px; }
+#finance-root .fin-dday { font-size: 11.5px; font-weight: 800; color: var(--fin-brand); background: #eef2ff; border-radius: 999px; padding: 2px 8px; }
+#finance-root .fin-due-card.urgent .fin-dday { color: var(--fin-warn); background: #fdebd3; }
+#finance-root .fin-due-parts { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 12px; color: #334155; }
+#finance-root .fin-due-parts b { font-weight: 700; }
+#finance-root .fin-due-parts .plus { color: #94a3b8; font-weight: 700; }
+#finance-root .fin-due-total { margin-top: 5px; font-size: 12px; font-weight: 800; color: var(--fin-neg); }
+#finance-root .fin-due-empty { padding: 14px; margin: 0; font-size: 12.5px; color: var(--fin-muted); }
+#finance-root .fin-upcoming-foot { padding: 0 14px 12px; font-size: 12px; color: var(--fin-muted); }
+#finance-root .fin-upcoming-foot b { color: var(--ink); }
+
+/* ───────── 공통 카드 ───────── */
+#finance-root .fin-card {
+  background: #fff; border: 1px solid var(--fin-line); border-radius: 14px; margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(16, 31, 60, .04);
+}
+#finance-root .fin-card-head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 12px 14px; border-bottom: 1px solid var(--fin-line2);
+}
+#finance-root .fin-card-head h3 { font-size: 14.5px; }
+#finance-root .fin-card-head .count {
+  font-size: 11.5px; font-weight: 700; color: var(--fin-muted); background: #f4f6fb;
+  border-radius: 999px; padding: 2px 8px;
+}
+#finance-root .fin-card-head .hint { margin-left: auto; font-size: 11.5px; color: #94a3b8; }
+#finance-root .fin-table-scroll { overflow-x: auto; }
+#finance-root table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+#finance-root thead th {
+  text-align: left; font-size: 11.5px; font-weight: 700; color: var(--fin-muted);
+  padding: 8px 10px; background: #f8fafd; border-bottom: 1px solid var(--fin-line); white-space: nowrap;
+}
+#finance-root tbody td { padding: 5px 8px; border-bottom: 1px solid var(--fin-line2); vertical-align: middle; }
+#finance-root tfoot td { padding: 9px 10px; font-weight: 800; background: #fbfcff; border-top: 1px solid var(--fin-line); }
+#finance-root tfoot td.label { color: var(--fin-muted); font-weight: 700; font-size: 12px; }
+#finance-root td.num, #finance-root th.num { text-align: right; }
+#finance-root td.num input { text-align: right; }
+#finance-root .t-pos { color: var(--fin-pos); }
+#finance-root .t-out { color: var(--ink); }
+#finance-root input, #finance-root select {
+  width: 100%; min-width: 0; font: inherit; font-size: 13px; color: var(--ink);
+  background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 7px 8px;
+  outline: none; transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+}
+#finance-root input:hover, #finance-root select:hover { border-color: var(--fin-line); background: #fff; }
+#finance-root input:focus, #finance-root select:focus {
+  border-color: var(--fin-brand); background: #fff; box-shadow: 0 0 0 3px rgba(44, 91, 246, .13);
+}
+#finance-root input::placeholder { color: #a9b1c3; }
+#finance-root input.mono { font-family: var(--fin-mono); font-size: 12.5px; }
+#finance-root select.type-sel {
+  width: auto; min-width: 62px; font-weight: 800; font-size: 12px; text-align: center; padding: 5px 6px;
+  border: 1px solid transparent; border-radius: 999px; cursor: pointer;
+}
+#finance-root select.type-sel.in { color: var(--fin-pos); background: var(--fin-pos-soft); }
+#finance-root select.type-sel.out { color: var(--fin-neg); background: var(--fin-neg-soft); }
+#finance-root select.status-sel {
+  width: auto; min-width: 58px; font-weight: 800; font-size: 12px; text-align: center; padding: 5px 6px;
+  border-radius: 999px; cursor: pointer; border: 1px solid transparent;
+}
+#finance-root select.status-sel.ok { color: #14532d; background: #dcfce7; }
+#finance-root select.status-sel.wait { color: var(--fin-warn); background: var(--fin-warn-soft); }
+#finance-root button.del {
+  border: 1px solid transparent; background: #fff; color: #9aa3b8; border-radius: 8px;
+  width: 26px; height: 26px; line-height: 1; cursor: pointer; font-size: 12px;
+}
+#finance-root button.del:hover { color: var(--fin-neg); border-color: #f3c8ca; background: var(--fin-neg-soft); }
+#finance-root .fin-row-add { padding: 8px 12px; }
+#finance-root .fin-row-add .btn { padding: 6px 11px; font-size: 12.5px; }
+#finance-root .fin-empty { padding: 16px 14px; font-size: 12.5px; color: var(--fin-muted); text-align: center; }
+
+/* ───────── 합계 바 ───────── */
+#finance-root .fin-sum-bar {
+  display: flex; flex-wrap: wrap; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--fin-line2);
+  background: #fbfcff;
+}
+#finance-root .fin-sum-cell { flex: 1 1 150px; }
+#finance-root .fin-sum-cell .sum-label { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--fin-muted); }
+#finance-root .fin-sum-cell .sum-value { display: block; margin-top: 3px; font-size: 16px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+#finance-root .fin-sum-cell .sum-value.pos { color: var(--fin-pos); }
+#finance-root .fin-sum-cell .sum-value.neg { color: var(--fin-neg); }
+#finance-root .fin-sum-cell .sum-value.flat { color: var(--ink); }
+#finance-root .fin-sum-cell .sum-note { display: block; margin-top: 2px; font-size: 11px; color: #94a3b8; }
+#finance-root .fin-sum-badge {
+  font-style: normal; font-size: 10.5px; font-weight: 800; border-radius: 999px; padding: 1px 7px;
+  background: #f1f5f9; color: #475569;
+}
+#finance-root .fin-sum-badge.pos { background: var(--fin-pos-soft); color: var(--fin-pos); }
+#finance-root .fin-sum-badge.neg { background: var(--fin-neg-soft); color: var(--fin-neg); }
+
+/* ───────── 자산 구성 막대 ───────── */
+#finance-root .fin-comp { padding: 12px 14px 4px; }
+#finance-root .fin-comp-bar {
+  display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: #eef2f7;
+}
+#finance-root .fin-comp-bar span { display: block; height: 100%; }
+#finance-root .fin-comp-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 9px 0 6px; font-size: 11.5px; color: #334155; }
+#finance-root .fin-comp-legend i {
+  display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; vertical-align: -1px;
+}
+#finance-root .fin-comp-legend b { font-weight: 800; }
+#finance-root .fin-comp-legend .muted { color: var(--fin-muted); }
+
+/* ───────── 토스트 ───────── */
+#finance-root .fin-toast {
+  position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px);
+  display: flex; align-items: center; gap: 10px; max-width: min(92vw, 460px);
+  background: #0f172a; color: #fff; border-radius: 12px; padding: 11px 15px;
+  font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .16s ease, transform .16s ease; z-index: 90;
+}
+#finance-root .fin-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#finance-root .fin-toast button {
+  border: 0; background: #fff; color: #0f172a; font: inherit; font-weight: 800; font-size: 12px;
+  border-radius: 8px; padding: 4px 9px; cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+  #finance-root .fin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  #finance-root .fin-kpis { grid-template-columns: minmax(0, 1fr); }
+  #finance-root .fin-bar .fin-note { margin-left: 0; }
+}
