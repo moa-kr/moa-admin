@@ -654,16 +654,18 @@
      서버(복지모아 POST /api/admin/stock-quotes)가 네이버 금융 공개 시세를 읽어 준다.
      받은 현재가로 평가금액·자산 합계·순자산·부채비율이 즉시 다시 계산되고, 0.5초 뒤 DB 에 저장된다. */
   let quoting = false;
-  function holdingCodes() {
-    const codes = [];
+  const MAX_QUOTE_CODES = 40; /* 서버 한도와 같다 */
+  function holdingCodeList() {
+    const out = [];
     HOLDING_TABLES.forEach((table) => {
       (state[table] || []).forEach((r) => {
         const code = codeOfRow(r);
-        if (code && codes.indexOf(code) < 0) codes.push(code);
+        if (code && out.indexOf(code) < 0) out.push(code);
       });
     });
-    return codes;
+    return out;
   }
+  function holdingCodes() { return holdingCodeList().slice(0, MAX_QUOTE_CODES); }
   function setQuoting(on) {
     quoting = on;
     $$("[data-fin-quotes]").forEach((btn) => {
@@ -674,7 +676,8 @@
   async function refreshQuotes() {
     if (!loaded) { ensureLoaded(); return; }
     if (!request || quoting) return;
-    const codes = holdingCodes();
+    const allCodes = holdingCodeList();
+    const codes = allCodes.slice(0, MAX_QUOTE_CODES);
     if (!codes.length) {
       toast("종목코드가 있는 행이 없습니다. 종목명과 6자리 종목코드를 먼저 넣어 주세요.");
       return;
@@ -719,6 +722,7 @@
     const parts = [];
     if (updated) parts.push("현재가 " + updated + "종목 반영");
     if (missing.length) parts.push("못 찾은 코드 " + missing.join("·"));
+    if (allCodes.length > codes.length) parts.push("한 번에 " + MAX_QUOTE_CODES + "종목까지만 조회(나머지 " + (allCodes.length - codes.length) + "종목은 다음에)");
     toast(parts.join(" · ") || "바뀐 시세가 없습니다.");
     showWarn(missing.length ? "일부 종목의 시세를 찾지 못했습니다(" + missing.join(", ") + "). 종목코드 6자리를 확인해 주세요." : "");
   }
