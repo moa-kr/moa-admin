@@ -25,7 +25,7 @@
     assets: ["name", "buy", "qty", "price", "avg", "total", "memo"],
     dc: ["year", "amount"]
   };
-  const EMPTY_COLS = { fixed: 5, income: 3, cards: 3, nextCards: 3, debts: 10, assets: 9, dc: 3 };
+  const EMPTY_COLS = { fixed: 6, income: 3, cards: 3, nextCards: 3, debts: 10, assets: 9, dc: 3 };
   const EMPTY_HINT = {
     fixed: "‘＋ 행 추가’로 월세·보험·카드 대금처럼 매달 나가는 돈을 넣으면 이체일별 소계와 미납 잔금이 자동으로 잡힙니다.",
     income: "‘＋ 행 추가’로 월급·OT·기타 수입을 넣으면 위 리포트의 이달 적자/흑자가 바로 바뀝니다.",
