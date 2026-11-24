@@ -76,6 +76,9 @@
 ### 3. 앱 설치(PWA) · 탭 순서
 
 - `manifest.webmanifest`(display standalone·theme #d6342c·192/512 아이콘+maskable), `sw.js`(화면 이동만 네트워크 우선, 실패 시 마지막 화면/안내), `icons/`, `assets/js/pwa.js`.
+- **maskable 아이콘은 full-bleed**(2026-11-25) — `icons/icon-maskable-192.png`·`icon-maskable-512.png` 는 캔버스 끝까지 `#d6342c` 가 꽉 차고 투명 픽셀이 없습니다.
+  둥근 사각형 바깥을 투명으로 두면 안드로이드 런처 마스킹 때 그 여백이 흰색으로 채워져 **홈 화면 아이콘에 흰 테두리**가 생깁니다.
+  가운데 4칸 그리드는 기존 비율(안전 영역 안쪽) 그대로이고, manifest 경로에는 `?v=2` 로 캐시를 비켜 갑니다(생성: `work/pwa-icons/gen_maskable.py`).
 - 상단 바에 **📲 앱 설치** 버튼 — `beforeinstallprompt` 가 왔을 때만 나타나고, 누르면 설치 다이얼로그가 뜹니다.
   이미 `standalone` 으로 열려 있거나 설치가 끝나면 숨김(아이폰 사파리는 ‘공유 → 홈 화면에 추가’ 안내).
 - 상단 탭 순서: **👥 가입자·글 → ① 공지·팝업 → ② 탭·섹션 순서 → ③ 문구 → ④ 문의 → ⑤ 저장·배포 → 📊 통계 → 💰 개인 재무**.

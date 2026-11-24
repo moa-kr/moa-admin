@@ -1,4 +1,4 @@
-/* 모아 어드민 서비스 워커(2026-11-25 v=47)
+/* 모아 어드민 서비스 워커(2026-11-25 v=47 · maskable 아이콘 full-bleed 교체)
  *
  * 하는 일은 하나다 — 폰 홈 화면에 설치한 어드민이 인터넷이 잠깐 끊겨도 '연결 없음' 안내로 열리게 하고,
  * 그 밖의 모든 요청은 브라우저 기본 동작(fetch pass-through)에 맡긴다. 저장(PUT)·로그인 요청은 건드리지 않는다.
@@ -6,7 +6,7 @@
  *  - 그 밖의 요청: 가로채지 않는다(스크립트·아이콘·복지모아 API 모두 항상 최신·실시간).
  * 캐시에는 어드민 화면 한 장만 들어간다(개인 재무 표·토큰·아이디는 서비스 워커가 저장하지 않는다).
  */
-const CACHE = "moa-admin-shell-v1";
+const CACHE = "moa-admin-shell-v2";
 const SHELL = new URL("./", self.location.href).href;
 const OFFLINE_HTML =
   "<!doctype html><html lang=\"ko\"><head><meta charset=\"utf-8\">" +
