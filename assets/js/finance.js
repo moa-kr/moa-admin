@@ -338,7 +338,7 @@
     if (!state.assets.length) { body.innerHTML = emptyRow("assets"); const c = $("#fin-as-count"); if (c) c.textContent = "0개"; return; }
     body.innerHTML = state.assets.map((r) =>
       '<tr data-id="' + esc(r.id) + '">' +
-        '<td>' + textInput("assets", r, "name", "종목 (예: 셀트리온)") + '</td>' +
+        '<td>' + textInput("assets", r, "name", "종목 (예: 국내주식 A)") + '</td>' +
         '<td class="num">' + moneyInput("assets", r, "buy") + '</td>' +
         '<td class="num">' + countInput("assets", r, "qty", "0") + '</td>' +
         '<td class="num">' + moneyInput("assets", r, "price") + '</td>' +
