@@ -1027,7 +1027,11 @@
       }
       return;
     }
-    if (!opts.force && updatedAt && payload.updatedAt && payload.updatedAt === updatedAt && loaded) return;
+    if (!opts.force && updatedAt && payload.updatedAt && payload.updatedAt === updatedAt && loaded) {
+      /* 서버 자료가 그대로여도, 탭을 켜 둔 채 25일이 지났을 수 있으니 차감 여부만 다시 본다. */
+      maybeDeductDebts();
+      return;
+    }
     state = normalize(payload.data);
     loaded = true;
     dirty = false;
