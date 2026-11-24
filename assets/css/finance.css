@@ -122,6 +122,8 @@
 #finance-root .fin-table-scroll { overflow-x: auto; }
 #finance-root table { width: 100%; border-collapse: collapse; font-size: 13px; }
 #finance-root table.fin-wide { min-width: 940px; }
+/* 고정지출 표는 다섯 칸뿐이라 전체 폭까지 늘리지 않고 엑셀처럼 한 덩어리로 둔다. */
+#finance-root table.fin-fixed { max-width: 920px; }
 #finance-root thead th {
   text-align: left; font-size: 11.5px; font-weight: 700; color: var(--fin-muted);
   padding: 8px 10px; background: #f8fafd; border-bottom: 1px solid var(--fin-line); white-space: nowrap;
