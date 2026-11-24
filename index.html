@@ -10,8 +10,8 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=43">
-<link rel="stylesheet" href="assets/css/finance.css?v=43">
+<link rel="stylesheet" href="assets/css/admin.css?v=44">
+<link rel="stylesheet" href="assets/css/finance.css?v=44">
 </head>
 <body>
 
@@ -83,7 +83,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=43</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=44</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -112,6 +112,7 @@
       <button type="button" class="tab" data-tab="inquiry" data-only-site="bokjimoa">④ 문의</button>
       <button type="button" class="tab" data-tab="deploy">⑤ 저장·배포</button>
       <button type="button" class="tab" data-tab="stats">📊 통계</button>
+      <button type="button" class="tab" data-tab="people">👥 가입자·글</button>
       <button type="button" class="tab" data-tab="finance" data-auth-only hidden>💰 개인 재무</button>
     </nav>
     <div class="topbar2-right">
@@ -597,6 +598,100 @@
           </div>
         </div>
       </section>
+      <!-- 👥 가입자·글 — 회사복지모아에 새로 가입한 사람과 사용자가 직접 올린 글·팁을 본다.
+           비밀번호·솔트·카카오 ID 원문은 서버가 아예 내려주지 않는다(연동 여부만). 로그인 필요. -->
+      <section class="panel" data-panel="people" hidden>
+        <div class="panel-head">
+          <h2>가입자 · 새로 쓴 글</h2>
+          <p>회사복지모아에 <b>새로 가입한 사람</b>과 <b>사용자가 직접 올린 복지 정보·한 줄 팁</b>을 한 화면에서 봅니다. 최신 가입·작성 순이며, 비밀번호 같은 인증 정보는 서버가 보내지 않습니다.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>조회 <span class="tag">admin</span></h3>
+            <span class="status-pill" id="people-conn">불러오기 전</span>
+          </div>
+          <div class="card-body">
+            <div class="inline-row stats-controls">
+              <input type="search" id="people-filter" placeholder="이메일·회사로 찾기" aria-label="가입자 찾기" spellcheck="false" autocomplete="off">
+              <button type="button" class="btn btn-sm btn-ghost" id="people-refresh">새로고침</button>
+            </div>
+            <p class="note" id="people-msg">‘👥 가입자·글’ 탭을 열면 최신 목록을 불러옵니다.</p>
+            <div class="stat-cards" id="people-summary" hidden></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>가입자 <span class="tag">users</span></h3>
+            <span class="muted small" id="people-users-count"></span>
+          </div>
+          <div class="card-body">
+            <div class="stats-table-wrap">
+              <table class="stats-table" id="people-users">
+                <thead>
+                  <tr><th class="pick"><input type="checkbox" id="people-checkall" aria-label="가입자 전체 선택"></th><th>이메일</th><th>회사</th><th>인증</th><th>카카오</th><th>상태</th><th>가입일</th></tr>
+                </thead>
+                <tbody><tr><td colspan="7" class="muted small">아직 불러오지 않았습니다.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>회원 제재 <span class="tag">moderation</span></h3>
+            <span class="muted small" id="people-picked">선택 0명</span>
+          </div>
+          <div class="card-body">
+            <div class="inline-row stats-controls people-mod-row">
+              <input type="text" id="people-reason" placeholder="사유(선택) — 예: 광고성 게시물" maxlength="120" aria-label="제재 사유">
+              <button type="button" class="btn btn-sm btn-ghost" data-moderate="suspend3">3일 정지</button>
+              <button type="button" class="btn btn-sm btn-ghost" data-moderate="suspend7">7일 정지</button>
+              <button type="button" class="btn btn-sm btn-ghost" data-moderate="suspend30">30일(1달) 정지</button>
+              <button type="button" class="btn btn-sm btn-danger" data-moderate="ban">영구 차단</button>
+              <button type="button" class="btn btn-sm btn-dark" data-moderate="clear">정지·차단 해제</button>
+            </div>
+            <p class="note" id="people-mod-msg">가입자 목록에서 회원을 체크한 뒤 누르면 됩니다. 정지 기간이 끝나면 자동으로 해제되고, 대상 회원은 로그인·글·팁 쓰기에서 사유와 해제 예정일을 안내받습니다.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>새로 올린 복지 정보 <span class="tag">welfare_items</span></h3>
+            <span class="muted small" id="people-items-count"></span>
+          </div>
+          <div class="card-body">
+            <div class="stats-table-wrap">
+              <table class="stats-table" id="people-items">
+                <thead>
+                  <tr><th>제목</th><th>회사</th><th>분류</th><th>작성자</th><th>상태</th><th>관리</th><th>작성일</th></tr>
+                </thead>
+                <tbody><tr><td colspan="7" class="muted small">아직 불러오지 않았습니다.</td></tr></tbody>
+              </table>
+            </div>
+            <p class="note" id="people-items-note" hidden></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>한 줄 팁 <span class="tag">welfare_tips</span></h3>
+            <span class="muted small" id="people-tips-count"></span>
+          </div>
+          <div class="card-body">
+            <div class="stats-table-wrap">
+              <table class="stats-table" id="people-tips">
+                <thead>
+                  <tr><th>내용</th><th>대상 복지</th><th>작성자</th><th>작성일</th></tr>
+                </thead>
+                <tbody><tr><td colspan="4" class="muted small">아직 불러오지 않았습니다.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- 💰 개인 재무 — 로그인한 운영자에게만 보인다. 아래 표는 모두 빈 상태에서 시작하고,
            로그인 뒤 서버(GET /api/admin/personal-finance)에서 실제 자료를 받아 그린다.
            공개 저장소 코드에는 어떤 개인 수치도 두지 않는다. -->
@@ -889,8 +984,8 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=43"></script>
-<script src="assets/js/finance.js?v=43"></script>
-<script src="assets/js/app.js?v=43"></script>
+<script src="assets/js/sites.js?v=44"></script>
+<script src="assets/js/finance.js?v=44"></script>
+<script src="assets/js/app.js?v=44"></script>
 </body>
 </html>

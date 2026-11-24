@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=43";
+  const BUILD = "v=44";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 ‘💰 개인 재무’ 탭과 헤더 버튼을 보인다.
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -200,6 +200,8 @@
     // 오른쪽 실제 미리보기(iframe) 상태
     preview: { site: "", ready: false, appliedAt: 0, slowTimer: 0, failTimer: 0 },
     inquiries: { loading: false, error: "", list: [], byStatus: null, total: 0, operatorEmail: "", loadedAt: "" },
+    // 👥 가입자·글 — 복지모아 서버의 가입자 목록과 사용자 작성 글·팁
+    people: { loading: false, error: "", users: null, subs: null, filter: "", selected: [], loadedAt: "" },
     // 🔌 태블릿 중계 서버 상태 — 마지막으로 본 /health 결과
     relay: { online: false, version: "", at: 0 },
     // 📊 방문 통계 — 사이트 필터·기간별로 서버에서 집계해 온다.
@@ -587,8 +589,9 @@
     if (Object.keys(SITES).some((id) => state.dirty[id])) {
       toast("저장하지 않은 편집 내용을 불러왔습니다.");
     }
-    // 마지막으로 보던 탭이 ‘📊 통계’면 바로 자료를 불러온다(빈 화면으로 열리지 않도록).
+    // 마지막으로 보던 탭이 ‘📊 통계’·‘👥 가입자·글’이면 바로 자료를 불러온다(빈 화면으로 열리지 않도록).
     if (state.tab === "stats") loadStats();
+    if (state.tab === "people") loadPeople();
   }
 
   function updateSessionUi() {
@@ -685,6 +688,7 @@
     if (tabId === FINANCE_TAB && window.MOA_FINANCE) window.MOA_FINANCE.enter();
     if (tabId === "inquiry") renderInquiries();
     if (tabId === "stats") loadStats();
+    if (tabId === "people") loadPeople();
     if (tabId === "deploy") {
       renderRelayCard();
       if (state.site === "pokemoa") checkRelay(true);
@@ -912,6 +916,28 @@
     $("#inquiry-refresh").addEventListener("click", loadInquiries);
     $("#inquiry-status").addEventListener("change", loadInquiries);
     $("#inquiry-list").addEventListener("click", handleInquiryClick);
+
+    // 👥 가입자·글 — 조회·찾기(찾기는 이미 받은 목록을 화면에서만 거른다)
+    const peopleRefresh = $("#people-refresh");
+    if (peopleRefresh) peopleRefresh.addEventListener("click", loadPeople);
+    const peopleFilter = $("#people-filter");
+    if (peopleFilter) {
+      peopleFilter.addEventListener("input", () => {
+        state.people.filter = peopleFilter.value;
+        renderPeople();
+      });
+    }
+    const peopleUsers = $("#people-users");
+    if (peopleUsers) {
+      peopleUsers.addEventListener("change", handlePeopleUsersChange);
+    }
+    const peopleCheckAll = $("#people-checkall");
+    if (peopleCheckAll) peopleCheckAll.addEventListener("change", handlePeopleCheckAll);
+    const peopleItems = $("#people-items");
+    if (peopleItems) peopleItems.addEventListener("click", handlePeopleItemsClick);
+    $$("[data-moderate]").forEach((btn) => {
+      btn.addEventListener("click", () => moderatePeople(btn.dataset.moderate));
+    });
 
     // 🔌 태블릿 중계 서버
     const relayCheck = $("#relay-check");
@@ -2277,6 +2303,302 @@
       btn.textContent = "삭제";
       toast(`삭제하지 못했습니다: ${err.message}`, true);
     }
+  }
+
+  /* ───────────── 👥 가입자·글 (2026-11-24) ─────────────
+     복지모아 서버의 GET /api/admin/users · GET /api/admin/submissions 를 그대로 그린다.
+     서버가 비밀번호·솔트·카카오 ID 원문을 보내지 않으므로 화면에도 인증 여부만 남는다. */
+  function peopleFilterText() {
+    return String(state.people.filter || "").trim().toLowerCase();
+  }
+
+  /* 체크한 회원 — 화면을 다시 그려도 선택이 유지되도록 id 배열로만 들고 있는다. */
+  function peopleSelection() {
+    return Array.isArray(state.people.selected) ? state.people.selected : [];
+  }
+  function syncPeopleSelectionUi() {
+    const picked = peopleSelection();
+    const label = $("#people-picked");
+    if (label) label.textContent = `선택 ${picked.length}명`;
+    const all = $("#people-checkall");
+    const boxes = $$("#people-users .people-check");
+    if (all) {
+      all.checked = boxes.length > 0 && picked.length === boxes.length;
+      all.indeterminate = picked.length > 0 && picked.length < boxes.length;
+    }
+  }
+
+  const PEOPLE_ACTION_LABEL = {
+    suspend3: "3일 정지", suspend7: "7일 정지", suspend30: "30일(1달) 정지", ban: "영구 차단", clear: "정지·차단 해제"
+  };
+
+  async function moderatePeople(action) {
+    const ids = peopleSelection();
+    if (!Object.prototype.hasOwnProperty.call(PEOPLE_ACTION_LABEL, action)) return;
+    const msg = $("#people-mod-msg");
+    if (!ids.length) {
+      toast("가입자 목록에서 회원을 먼저 체크해 주세요.", true);
+      if (msg) msg.textContent = "가입자 목록에서 회원을 먼저 체크해 주세요.";
+      return;
+    }
+    const label = PEOPLE_ACTION_LABEL[action];
+    const reasonInput = $("#people-reason");
+    const reason = reasonInput ? reasonInput.value.trim() : "";
+    if (!window.confirm(`${ids.length}명에게 ‘${label}’을(를) 적용할까요?`)) return;
+    const buttons = $$("[data-moderate]");
+    buttons.forEach((btn) => { btn.disabled = true; });
+    if (msg) msg.textContent = `${label} 적용 중…`;
+    try {
+      const res = await apiRequest("/api/admin/users/moderate", {
+        method: "POST",
+        json: true,
+        body: JSON.stringify({ ids, action, reason })
+      });
+      if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`);
+      const data = res.data || {};
+      addLog(`회원 ${label} — ${data.affected || ids.length}명`);
+      toast(`${data.affected || ids.length}명에게 ‘${label}’을(를) 적용했습니다.`);
+      if (msg) msg.textContent = `${label} 완료 — 정지 ${fmtCount(data.suspended)}명 · 영구 차단 ${fmtCount(data.banned)}명`;
+      if (reasonInput) reasonInput.value = "";
+      state.people.selected = [];
+      await loadPeople();
+    } catch (err) {
+      if (msg) msg.textContent = `적용하지 못했습니다: ${err.message}`;
+      toast(`적용하지 못했습니다: ${err.message}`, true);
+    } finally {
+      buttons.forEach((btn) => { btn.disabled = false; });
+    }
+  }
+
+  async function moderateItem(action, id, next, button) {
+    if (!id) return;
+    if (action === "delete" && !window.confirm(`복지 항목 #${id} 를 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (button) button.disabled = true;
+    try {
+      let res;
+      if (action === "delete") {
+        res = await apiRequest(`/api/admin/welfare/${id}`, { method: "DELETE" });
+      } else {
+        const patch = action === "verify" ? { isVerified: next === "true" } : { isHidden: next === "true" };
+        res = await apiRequest(`/api/admin/welfare/${id}`, { method: "PATCH", json: true, body: JSON.stringify(patch) });
+      }
+      if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`);
+      addLog(`글 #${id} ${action === "delete" ? "삭제" : (action === "verify" ? "검증 상태 변경" : "숨김 상태 변경")}`);
+      toast(action === "delete" ? `글 #${id} 를 삭제했습니다.` : `글 #${id} 상태를 바꿨습니다.`);
+      await loadPeople();
+    } catch (err) {
+      if (button) button.disabled = false;
+      toast(`적용하지 못했습니다: ${err.message}`, true);
+    }
+  }
+
+  function handlePeopleUsersChange(event) {
+    const box = event.target.closest("input.people-check");
+    if (!box) return;
+    const id = Number(box.dataset.id);
+    if (!id) return;
+    const picked = peopleSelection().slice();
+    const index = picked.indexOf(id);
+    if (box.checked && index === -1) picked.push(id);
+    if (!box.checked && index !== -1) picked.splice(index, 1);
+    state.people.selected = picked;
+    syncPeopleSelectionUi();
+  }
+
+  function handlePeopleCheckAll(event) {
+    const on = Boolean(event.target.checked);
+    state.people.selected = on
+      ? $$("#people-users .people-check").map((box) => Number(box.dataset.id)).filter(Boolean)
+      : [];
+    $$("#people-users .people-check").forEach((box) => { box.checked = on; });
+    syncPeopleSelectionUi();
+  }
+
+  function handlePeopleItemsClick(event) {
+    const btn = event.target.closest("button[data-item-action]");
+    if (!btn) return;
+    moderateItem(btn.dataset.itemAction, Number(btn.dataset.id), btn.dataset.next, btn);
+  }
+
+  async function loadPeople() {
+    const pill = $("#people-conn");
+    const msg = $("#people-msg");
+    if (!pill || !msg) return;
+    if (!signedIn()) {
+      state.people.loading = false;
+      state.people.users = null;
+      state.people.subs = null;
+      pill.textContent = "로그인 필요";
+      pill.className = "status-pill wait";
+      msg.textContent = "아이디로 로그인하면 가입자와 새로 올라온 글을 서버에서 불러옵니다.";
+      renderPeople();
+      return;
+    }
+    if (state.people.loading) return;
+    state.people.loading = true;
+    pill.textContent = "불러오는 중";
+    pill.className = "status-pill wait";
+    msg.textContent = "불러오는 중…";
+    const [usersRes, subsRes] = await Promise.all([
+      apiRequest("/api/admin/users?limit=500"),
+      apiRequest("/api/admin/submissions?limit=100")
+    ]);
+    if (!usersRes.ok || !subsRes.ok) {
+      state.people.loading = false;
+      state.people.users = null;
+      state.people.subs = null;
+      state.people.error = usersRes.error || subsRes.error || "불러오지 못했습니다.";
+      const status = usersRes.status || subsRes.status || 0;
+      pill.textContent = status === 401 || status === 403 ? "인증 필요" : "오류";
+      pill.className = "status-pill bad";
+      msg.textContent = status === 401 || status === 403
+        ? "로그인이 필요합니다. 아이디로 로그인한 뒤 새로고침해 주세요."
+        : `불러오지 못했습니다: ${state.people.error}`;
+      renderPeople();
+      return;
+    }
+    state.people.loading = false;
+    state.people.error = "";
+    state.people.users = usersRes.data || null;
+    state.people.subs = subsRes.data || null;
+    state.people.loadedAt = new Date().toISOString();
+    // 목록에서 사라진 회원은 선택에서도 뺀다(제재 직후 새로고침 대비).
+    const alive = new Set((usersRes.data && usersRes.data.users || []).map((user) => Number(user.id)));
+    state.people.selected = peopleSelection().filter((id) => alive.has(Number(id)));
+    pill.textContent = "연결됨";
+    pill.className = "status-pill ok";
+    const u = state.people.users || {};
+    const s = state.people.subs || {};
+    msg.textContent = `가입자 ${fmtCount(u.total)}명 · 새로 쓴 복지 정보 ${fmtCount(s.itemTotal)}건 · 한 줄 팁 ${fmtCount(s.tipTotal)}건`;
+    renderPeople();
+  }
+
+  function peopleCards() {
+    const u = state.people.users || {};
+    const s = state.people.subs || {};
+    const total = Number(u.total) || 0;
+    const verified = Number(u.verified) || 0;
+    const rate = total ? Math.round((verified / total) * 100) : 0;
+    return [
+      { label: "가입자", value: total, sub: u.lastSignupAt ? `마지막 가입 ${fmtDateTime(u.lastSignupAt)}` : "아직 가입자 없음" },
+      { label: "인증 완료", value: verified, sub: `미인증 ${fmtCount(u.unverified)}명 · ${rate}%` },
+      { label: "카카오 연동", value: Number(u.kakaoLinked) || 0, sub: "선택 연동" },
+      { label: "최근 7일 신규", value: Number(u.newLast7Days) || 0, sub: `30일 ${fmtCount(u.newLast30Days)}명` },
+      { label: "사용자 복지 글", value: Number(s.itemTotal) || 0, sub: `시스템·자동 ${fmtCount(s.systemItemTotal)}건 제외` },
+      { label: "한 줄 팁", value: Number(s.tipTotal) || 0, sub: s.latestAt ? `최근 ${fmtDateTime(s.latestAt)}` : "아직 없음" }
+    ];
+  }
+
+  function renderPeople() {
+    const summary = $("#people-summary");
+    const usersBody = $("#people-users");
+    if (!summary || !usersBody) return;
+    const u = state.people.users;
+    const s = state.people.subs;
+
+    if (u) {
+      summary.innerHTML = peopleCards().map((card) => `
+        <div class="stat-card">
+          <span>${esc(card.label)}</span>
+          <strong>${esc(fmtCount(card.value))}</strong>
+          <em>${esc(card.sub)}</em>
+        </div>`).join("");
+      summary.hidden = false;
+    } else {
+      summary.hidden = true;
+      summary.innerHTML = "";
+    }
+
+    const usersTbody = $("#people-users tbody");
+    const itemsTbody = $("#people-items tbody");
+    const tipsTbody = $("#people-tips tbody");
+    const usersCount = $("#people-users-count");
+    const itemsCount = $("#people-items-count");
+    const tipsCount = $("#people-tips-count");
+
+    if (!u || !s) {
+      const note = state.people.error ? esc(state.people.error) : (signedIn() ? "‘새로고침’을 눌러 불러와 주세요." : "아이디로 로그인하면 불러옵니다.");
+      usersTbody.innerHTML = `<tr><td colspan="7" class="muted small">${note}</td></tr>`;
+      itemsTbody.innerHTML = `<tr><td colspan="7" class="muted small">${note}</td></tr>`;
+      tipsTbody.innerHTML = `<tr><td colspan="4" class="muted small">${note}</td></tr>`;
+      [usersCount, itemsCount, tipsCount].forEach((el) => { if (el) el.textContent = ""; });
+      syncPeopleSelectionUi();
+      return;
+    }
+
+    const needle = peopleFilterText();
+    const allUsers = (u.users || []).slice().sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    const users = needle
+      ? allUsers.filter((row) => `${row.email || ""} ${row.company || ""} ${row.kakaoNickname || ""}`.toLowerCase().includes(needle))
+      : allUsers;
+    if (usersCount) usersCount.textContent = needle
+      ? `${fmtCount(users.length)} / ${fmtCount(u.total)}명`
+      : `${fmtCount(u.total)}명 (최근 ${fmtCount(allUsers.length)}명 표시)`;
+    const picked = peopleSelection();
+    usersTbody.innerHTML = users.length
+      ? users.map((row) => {
+        const id = Number(row.id);
+        const statusCell = row.status === "banned"
+          ? `<span class="badge done">영구 차단</span>${row.banReason ? `<span class="cell-sub">${esc(row.banReason)}</span>` : ""}`
+          : row.status === "suspended"
+            ? `<span class="badge read">정지</span><span class="cell-sub">~ ${esc(fmtDateTime(row.suspendedUntil))}</span>${row.banReason ? `<span class="cell-sub">${esc(row.banReason)}</span>` : ""}`
+            : '<span class="badge new">정상</span>';
+        return `
+        <tr>
+          <td class="pick"><input type="checkbox" class="people-check" data-id="${id}"${picked.includes(id) ? " checked" : ""} aria-label="${esc(row.email)} 선택"></td>
+          <td><b>${esc(row.email)}</b>${id ? `<span class="cell-sub">#${id}</span>` : ""}</td>
+          <td>${esc(row.company || "-")}</td>
+          <td>${row.verified ? '<span class="badge new">인증</span>' : '<span class="badge">미인증</span>'}</td>
+          <td>${row.kakaoLinked ? `<span class="badge read">연동</span>${row.kakaoNickname ? `<span class="cell-sub">${esc(row.kakaoNickname)}</span>` : ""}` : "<span class=\"muted\">—</span>"}</td>
+          <td>${statusCell}</td>
+          <td>${esc(fmtDateTime(row.createdAt))}</td>
+        </tr>`;
+      }).join("")
+      : `<tr><td colspan="7" class="muted small">${needle ? "조건에 맞는 가입자가 없습니다." : "아직 가입자가 없습니다."}</td></tr>`;
+    syncPeopleSelectionUi();
+
+    const items = s.items || [];
+    if (itemsCount) itemsCount.textContent = `${fmtCount(s.itemTotal)}건`;
+    itemsTbody.innerHTML = items.length
+      ? items.map((row) => {
+        const id = Number(row.id);
+        const flagCell = `${row.isVerified ? '<span class="badge new">✓ 검증</span>' : '<span class="badge">미검증</span>'}${row.isHidden ? '<span class="badge done">숨김</span>' : ""}`;
+        return `
+        <tr>
+          <td><b>${esc(row.title || "(제목 없음)")}</b>${row.detail ? `<span class="cell-sub">${esc(String(row.detail).slice(0, 70))}${String(row.detail).length > 70 ? "…" : ""}</span>` : ""}</td>
+          <td>${esc(row.company || "-")}</td>
+          <td>${esc(row.category || "-")}${row.jobType ? `<span class="cell-sub">${esc(row.jobType)}</span>` : ""}</td>
+          <td>${row.authorEmail ? esc(row.authorEmail) : "<span class=\"muted\">작성자 없음</span>"}${row.authorCompany ? `<span class="cell-sub">${esc(row.authorCompany)}</span>` : ""}</td>
+          <td>${flagCell}</td>
+          <td class="row-actions">
+            <button type="button" class="btn btn-sm btn-ghost" data-item-action="verify" data-id="${id}" data-next="${row.isVerified ? "false" : "true"}" title="운영자가 확인했으면 검증 배지를 붙입니다">${row.isVerified ? "검증 해제" : "✓ 검증"}</button>
+            <button type="button" class="btn btn-sm btn-ghost" data-item-action="hide" data-id="${id}" data-next="${row.isHidden ? "false" : "true"}">${row.isHidden ? "숨김 해제" : "숨김"}</button>
+            <button type="button" class="btn btn-sm btn-danger" data-item-action="delete" data-id="${id}">삭제</button>
+          </td>
+          <td>${esc(fmtDateTime(row.createdAt))}</td>
+        </tr>`;
+      }).join("")
+      : '<tr><td colspan="7" class="muted small">사용자가 직접 올린 복지 정보가 아직 없습니다.</td></tr>';
+    const itemsNote = $("#people-items-note");
+    if (itemsNote) {
+      const systemCount = Number(s.systemItemTotal) || 0;
+      itemsNote.textContent = systemCount
+        ? `시스템·자동 수집 항목 ${fmtCount(systemCount)}건은 사용자 작성 글이 아니라 목록에서 뺐습니다.`
+        : "";
+      itemsNote.hidden = !systemCount;
+    }
+
+    const tips = s.tips || [];
+    if (tipsCount) tipsCount.textContent = `${fmtCount(s.tipTotal)}건`;
+    tipsTbody.innerHTML = tips.length
+      ? tips.map((row) => `
+        <tr>
+          <td>${esc(row.body || "")}</td>
+          <td>${esc(row.welfareTitle || "-")}${row.welfareCompany ? `<span class="cell-sub">${esc(row.welfareCompany)}</span>` : ""}</td>
+          <td>${row.authorEmail ? esc(row.authorEmail) : "<span class=\"muted\">작성자 없음</span>"}${row.authorCompany ? `<span class="cell-sub">${esc(row.authorCompany)}</span>` : ""}</td>
+          <td>${esc(fmtDateTime(row.createdAt))}</td>
+        </tr>`).join("")
+      : '<tr><td colspan="4" class="muted small">한 줄 팁이 아직 없습니다.</td></tr>';
   }
 
   /* ───────────── 📊 방문 통계 (2026-11-19) ─────────────
