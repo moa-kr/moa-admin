@@ -21,7 +21,8 @@
 | `features` | 객체 | 기능 스위치 — `false` 인 기능은 사이트에서 숨김(아래 `features` 참고) |
 | `copy` | 객체 | 화면 문구 — 키 전체 목록은 아래 ‘문구 키 전체 목록’ 참고 |
 | `banner` | 객체 | 상단 공지 바 |
-| `popup` | 객체 | 첫 방문 팝업 |
+| `popup` | 객체 | 첫 방문 팝업(두 사이트 공통) |
+| `figurePopup` | 객체 | 포켓몬카드모아의 「팜사이즈 원더 안내」 팝업·플로팅 버튼 |
 | `navigation` | `{ tabs[], sections[] }` | 탭·섹션의 순서와 노출 |
 | `cards` | 배열 | 현황 카드(제목·설명) |
 | `meta` | `{ updatedBy, updatedAt, note }` | 마지막 수정 정보(어드민이 자동 기록) |
@@ -47,6 +48,35 @@
 | `buttonText` / `buttonUrl` | 문자열 | 버튼 문구 / 이동 주소 |
 | `startDate` / `endDate` | `YYYY-MM-DD` 또는 `""` | 노출 기간. 비면 제한 없음 |
 | `dismissDays` | 0~90 | ‘N일 동안 보지 않기’. `0` 이면 이번 방문에서만 닫기 |
+
+### figurePopup (포켓몬카드모아 전용)
+
+`assets/js/figure.js` 가 그리는 「팜사이즈 원더 안내」 안내 팝업과, 닫은 뒤 오른쪽 아래에 남는
+‘다시 보기’ 버튼을 어드민 ① **팝업 관리** 카드에서 그대로 고칩니다. 값이 없으면 지금까지의 화면
+(켜짐 · 첫 방문 자동 열기 · 다시 보기 버튼)을 그대로 씁니다.
+
+| 필드 | 형식 | 설명 |
+| --- | --- | --- |
+| `enabled` | boolean | `false` 면 팝업과 ‘다시 보기’ 버튼을 **모두** 그리지 않습니다. |
+| `autoOpen` | boolean | 첫 방문에 자동으로 열지. `false` 면 ‘다시 보기’ 버튼으로만 엽니다. |
+| `floating` | boolean | 닫은 뒤 오른쪽 아래 ‘다시 보기’ 버튼을 남길지. |
+| `floatingLabel` | 문자열(≤20) | ‘다시 보기’ 버튼 문구 |
+| `badge` | 문자열(≤30) | 이미지 위 배지. 비우면 배지를 그리지 않습니다. |
+| `eyebrow` | 문자열(≤40) | 제목 위 작은 줄. 비우면 그리지 않습니다. |
+| `title` / `body` | 문자열 | 제목(≤60) / 본문(≤400, 줄바꿈 유지) |
+| `buttonLabel` | 문자열(≤20) | 주 버튼 문구 |
+| `buttonAction` | `stock` \| `tab` \| `url` \| `close` | `stock`=지도에서 피규어 재고 찾기 · `tab`=아래 `buttonValue` 의 탭 열기 · `url`=주소 열기 · `close`=닫기만 |
+| `buttonValue` | 문자열(≤200) | `tab` 이면 탭 id(`map`·`home`·`schedule`·`guide`·`trends`), `url` 이면 `https://…` |
+| `dismissToday` | boolean | ‘오늘 하루 보지 않기’ 체크박스를 보일지 |
+| `startDate` / `endDate` | `YYYY-MM-DD` 또는 `""` | 노출 기간. 비면 제한 없음 |
+
+```json
+"figurePopup": { "enabled": true, "autoOpen": true, "floating": true,
+  "floatingLabel": "팜사이즈 원더 안내", "badge": "GS25 NEW · 2026.11.20",
+  "eyebrow": "GS25 신상 · 총 20종 랜덤", "title": "포켓몬스터 팜사이즈 원더 피규어",
+  "body": "손바닥에 쏙 들어오는 …", "buttonLabel": "바로 재고 찾기",
+  "buttonAction": "stock", "buttonValue": "", "dismissToday": true }
+```
 
 ### features
 

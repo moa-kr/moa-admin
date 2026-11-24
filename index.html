@@ -10,8 +10,8 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=36">
-<link rel="stylesheet" href="assets/css/finance.css?v=36">
+<link rel="stylesheet" href="assets/css/admin.css?v=37">
+<link rel="stylesheet" href="assets/css/finance.css?v=37">
 </head>
 <body>
 
@@ -83,7 +83,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=36</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=37</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -127,8 +127,8 @@
       <!-- ① 공지·팝업 -->
       <section class="panel" data-panel="notice">
         <div class="panel-head">
-          <h2>공지 배너 · 팝업</h2>
-          <p>사이트 위쪽 공지 바와 첫 방문 팝업을 켜고 끕니다. 오른쪽 미리보기에 바로 반영돼요.</p>
+          <h2>공지 배너 · 팝업 관리</h2>
+          <p>사이트 위쪽 공지 바와 첫 방문 팝업을 켜고 끄고, 뜨는 문구·버튼을 직접 고칩니다. 오른쪽 미리보기에 바로 반영돼요.</p>
         </div>
 
         <div class="card">
@@ -166,7 +166,100 @@
           </div>
         </div>
 
-        <div class="card">
+        <!-- 포켓몬카드모아에 실제로 뜨는 안내 팝업 — figure.js 의 figurePopup 설정 -->
+        <div class="card" data-only-site="pokemoa">
+          <div class="card-head">
+            <h3>팝업 관리 · 팜사이즈 원더 안내 <span class="tag">figurePopup</span></h3>
+            <label class="switch">
+              <input type="checkbox" data-bind="figurePopup.enabled" id="figure-popup-enabled">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span class="switch-label" id="figure-popup-state">켜짐</span>
+            </label>
+          </div>
+          <div class="card-body">
+            <p class="note">포케모아 화면에 실제로 뜨는 <b>「팜사이즈 원더 안내」 팝업</b>과 오른쪽 아래 <b>‘다시 보기’ 버튼</b>을 여기서 제어합니다. 스위치를 끄면 팝업과 버튼이 모두 사라집니다. 저장 전에도 오른쪽 미리보기에 그대로 반영돼요.</p>
+            <div class="grid-3">
+              <div class="field">
+                <span class="field-label">첫 방문 자동 열기</span>
+                <label class="switch">
+                  <input type="checkbox" data-bind="figurePopup.autoOpen" id="figure-popup-auto">
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                  <span class="switch-label" id="figure-popup-auto-state">켜짐</span>
+                </label>
+              </div>
+              <div class="field">
+                <span class="field-label">닫은 뒤 ‘다시 보기’ 버튼</span>
+                <label class="switch">
+                  <input type="checkbox" data-bind="figurePopup.floating" id="figure-popup-floating">
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                  <span class="switch-label" id="figure-popup-floating-state">켜짐</span>
+                </label>
+              </div>
+              <div class="field">
+                <span class="field-label">‘오늘 하루 보지 않기’</span>
+                <label class="switch">
+                  <input type="checkbox" data-bind="figurePopup.dismissToday" id="figure-popup-today">
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                  <span class="switch-label" id="figure-popup-today-state">켜짐</span>
+                </label>
+              </div>
+            </div>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">이미지 위 배지</span>
+                <input type="text" data-bind="figurePopup.badge" maxlength="30" placeholder="예) GS25 NEW · 2026.11.20">
+              </label>
+              <label class="field">
+                <span class="field-label">제목 위 작은 줄</span>
+                <input type="text" data-bind="figurePopup.eyebrow" maxlength="40" placeholder="예) GS25 신상 · 총 20종 랜덤">
+              </label>
+            </div>
+            <label class="field">
+              <span class="field-label">팝업 제목</span>
+              <input type="text" data-bind="figurePopup.title" maxlength="60" placeholder="포켓몬스터 팜사이즈 원더 피규어">
+            </label>
+            <label class="field">
+              <span class="field-label">팝업 본문 <em>줄바꿈 그대로 노출</em></span>
+              <textarea data-bind="figurePopup.body" rows="4" maxlength="400" placeholder="여러 줄로 쓸 수 있어요."></textarea>
+            </label>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">버튼 문구</span>
+                <input type="text" data-bind="figurePopup.buttonLabel" maxlength="20" placeholder="바로 재고 찾기">
+              </label>
+              <label class="field">
+                <span class="field-label">‘다시 보기’ 버튼 문구</span>
+                <input type="text" data-bind="figurePopup.floatingLabel" maxlength="20" placeholder="팜사이즈 원더 안내">
+              </label>
+            </div>
+            <div class="field">
+              <span class="field-label">버튼을 누르면</span>
+              <div class="seg" id="figure-popup-action">
+                <button type="button" data-figure-action="stock">재고 찾기(지도)</button>
+                <button type="button" data-figure-action="tab">탭 열기</button>
+                <button type="button" data-figure-action="url">링크 열기</button>
+                <button type="button" data-figure-action="close">닫기만</button>
+              </div>
+            </div>
+            <label class="field">
+              <span class="field-label">버튼 대상 <span class="opt">탭 열기 · 링크 열기일 때</span></span>
+              <input type="text" data-bind="figurePopup.buttonValue" maxlength="200" placeholder="탭 id(map · home · schedule · guide · trends) 또는 https://…">
+            </label>
+            <div class="grid-2">
+              <label class="field">
+                <span class="field-label">시작일 <span class="opt">선택</span></span>
+                <input type="date" data-bind="figurePopup.startDate">
+              </label>
+              <label class="field">
+                <span class="field-label">종료일 <span class="opt">선택</span></span>
+                <input type="date" data-bind="figurePopup.endDate">
+              </label>
+            </div>
+            <p class="note" id="figure-popup-note">기간을 비우면 항상 노출됩니다. ‘다시 보기’ 버튼을 끄고 자동 열기도 끄면 방문자는 팝업을 볼 수 없습니다(사실상 끄기).</p>
+          </div>
+        </div>
+
+        <div class="card" data-only-site="bokjimoa">
           <div class="card-head">
             <h3>첫 방문 팝업 <span class="tag">popup</span></h3>
             <label class="switch">
@@ -681,8 +774,8 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=36"></script>
-<script src="assets/js/finance.js?v=36"></script>
-<script src="assets/js/app.js?v=36"></script>
+<script src="assets/js/sites.js?v=37"></script>
+<script src="assets/js/finance.js?v=37"></script>
+<script src="assets/js/app.js?v=37"></script>
 </body>
 </html>

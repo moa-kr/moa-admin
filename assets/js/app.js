@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=36";
+  const BUILD = "v=37";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 ‘💰 개인 재무’ 탭과 헤더 버튼을 보인다.
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -741,6 +741,20 @@
       });
     }
 
+    // 포케모아 팝업 버튼 동작(재고 찾기 · 탭 열기 · 링크 열기 · 닫기만)
+    const figureAction = $("#figure-popup-action");
+    if (figureAction) {
+      figureAction.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-figure-action]");
+        if (!btn) return;
+        if (!config().figurePopup) config().figurePopup = {};
+        config().figurePopup.buttonAction = btn.dataset.figureAction;
+        markDirty(true);
+        updateDerived();
+        schedulePreview();
+      });
+    }
+
     // 배너 스타일
     const styleBox = $("#banner-style");
     styleBox.addEventListener("click", (event) => {
@@ -1422,6 +1436,23 @@
     setState("#banner-state", Boolean(cfg.banner.enabled));
     setState("#popup-state", Boolean(cfg.popup.enabled));
 
+    // 포케모아 「팜사이즈 원더 안내」 팝업 — 스위치 4개와 버튼 동작 표시
+    const figure = cfg.figurePopup || {};
+    setState("#figure-popup-state", figure.enabled !== false);
+    setState("#figure-popup-auto-state", figure.autoOpen !== false);
+    setState("#figure-popup-floating-state", figure.floating !== false);
+    setState("#figure-popup-today-state", figure.dismissToday !== false);
+    $$("#figure-popup-action button").forEach((btn) => {
+      btn.classList.toggle("is-active", (btn.dataset.figureAction || "stock") === (figure.buttonAction || "stock"));
+    });
+    const figureNote = $("#figure-popup-note");
+    if (figureNote) {
+      const { startDate, endDate } = figure;
+      figureNote.textContent = startDate || endDate
+        ? `노출 기간: ${startDate || "제한 없음"} ~ ${endDate || "제한 없음"} · 기간 밖에는 팝업과 ‘다시 보기’ 버튼이 모두 숨습니다.`
+        : "기간을 비우면 항상 노출됩니다. ‘다시 보기’ 버튼을 끄고 자동 열기도 끄면 방문자는 팝업을 볼 수 없습니다(사실상 끄기).";
+    }
+
     $$("#banner-style button").forEach((btn) => {
       btn.classList.toggle("is-active", btn.dataset.style === (cfg.banner.style || "info"));
     });
@@ -1454,6 +1485,8 @@
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-selected", on ? "true" : "false");
     });
+    // 이 사이트에만 쓰는 칸(예: 포케모아의 팜사이즈 팝업 카드, 복지모아의 문의 탭)
+    $$("[data-only-site]").forEach((el) => { el.hidden = el.dataset.onlySite !== state.site; });
     const inquiryTab = $('.tab[data-tab="inquiry"]');
     if (inquiryTab) inquiryTab.hidden = state.site !== "bokjimoa";
     applyTab();
@@ -1590,7 +1623,10 @@
     if (!frame || !origin || !frame.contentWindow) return;
     if (frame.dataset.loaded !== "1" && !force) return;
     const payload = buildConfigForSave(siteId);
-    if (!state.previewPopup) payload.popup = Object.assign({}, payload.popup, { enabled: false });
+    if (!state.previewPopup) {
+      payload.popup = Object.assign({}, payload.popup, { enabled: false });
+      if (payload.figurePopup) payload.figurePopup = Object.assign({}, payload.figurePopup, { enabled: false });
+    }
     const activeTab = state.sectionTab[siteId] || "";
     try {
       frame.contentWindow.postMessage({ type: "moa-preview-config", config: payload, activeTab, site: siteId }, origin);
@@ -1702,10 +1738,14 @@
       return;
     }
 
-    if (kind === "banner" || kind === "popup") {
+    if (kind === "banner" || kind === "popup" || kind === "figurePopup") {
       setTab("notice");
-      const sel = kind === "banner" ? '[data-bind="banner.text"]' : '[data-bind="popup.title"]';
-      highlightTarget($(sel));
+      const sel = kind === "banner"
+        ? '[data-bind="banner.text"]'
+        : kind === "popup"
+          ? '[data-bind="popup.title"]'
+          : `[data-bind="figurePopup.${cssKey(target.key || "title")}"]`;
+      highlightTarget($(sel) || (kind === "figurePopup" ? $('[data-bind="figurePopup.title"]') : null));
       return;
     }
 
@@ -1768,6 +1808,9 @@
     cfg.meta.updatedAt = new Date().toISOString();
     cfg.banner.updatedAt = cfg.banner.enabled ? cfg.meta.updatedAt : cfg.banner.updatedAt || null;
     cfg.popup.updatedAt = cfg.popup.enabled ? cfg.meta.updatedAt : cfg.popup.updatedAt || null;
+    if (cfg.figurePopup && typeof cfg.figurePopup === "object") {
+      cfg.figurePopup.updatedAt = cfg.figurePopup.enabled ? cfg.meta.updatedAt : cfg.figurePopup.updatedAt || null;
+    }
     // 순서 필드를 항상 1부터 정리해 둔다. 섹션은 ‘탭 순서 → 탭 안 순서’로 늘어놓아
     // 각 탭의 섹션이 연속된 order 를 갖게 한다(사이트는 같은 탭 안에서만 정렬한다).
     cfg.navigation.tabs = renumber(sortedByOrder(cfg.navigation.tabs));
@@ -1958,6 +2001,8 @@
       merged.copy = Object.assign(clone(site.defaults.copy), parsed.copy || {});
       merged.banner = Object.assign(clone(site.defaults.banner), parsed.banner || {});
       merged.popup = Object.assign(clone(site.defaults.popup), parsed.popup || {});
+      // figurePopup 은 포케모아에만 있는 팝업 설정이다(복지모아 defaults 에는 없음).
+      merged.figurePopup = Object.assign(clone(site.defaults.figurePopup || {}), parsed.figurePopup || {});
       merged.cards = Array.isArray(parsed.cards) && parsed.cards.length ? parsed.cards : clone(site.defaults.cards);
       merged.features = Object.assign(clone(site.defaults.features || {}), parsed.features || {});
       state.configs[siteId] = merged;
@@ -1999,6 +2044,7 @@
         merged.copy = Object.assign(clone(site.defaults.copy), parsed.copy || {});
         merged.banner = Object.assign(clone(site.defaults.banner), parsed.banner || {});
         merged.popup = Object.assign(clone(site.defaults.popup), parsed.popup || {});
+        merged.figurePopup = Object.assign(clone(site.defaults.figurePopup || {}), parsed.figurePopup || {});
         merged.cards = Array.isArray(parsed.cards) && parsed.cards.length ? parsed.cards : clone(site.defaults.cards);
         merged.features = Object.assign(clone(site.defaults.features || {}), parsed.features || {});
         state.configs[state.site] = merged;
