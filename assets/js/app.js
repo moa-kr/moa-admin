@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=38";
+  const BUILD = "v=41";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 ‘💰 개인 재무’ 탭과 헤더 버튼을 보인다.
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */

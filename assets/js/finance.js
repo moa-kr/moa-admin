@@ -407,6 +407,11 @@
     if (qty > 0 && price > 0) return Math.round(qty * price);
     return Math.round(num(row.total));
   }
+  /* 평가액(합계)이 있는 행만 손익을 계산한다. 평가하지 않은 행(전액 손실 처리 등)은 ‘–’. */
+  function assetValued(row) {
+    if (String(row.total || "").trim() !== "") return true;
+    return qtyNum(row.qty) > 0 && num(row.price) > 0;
+  }
   function assetAvgOf(row) {
     if (row.manualAvg && String(row.avg || "").trim() !== "") return Math.round(num(row.avg));
     const qty = qtyNum(row.qty);
@@ -534,14 +539,17 @@
     /* 자산 */
     setText("#fin-as-total", won(t.assetTotal));
     setText("#fin-as-buy", won(t.assetBuy));
-    setText("#fin-as-pl", signedWon(t.assetTotal - t.assetBuy));
-    setClass("#fin-as-pl", "num " + (t.assetTotal - t.assetBuy > 0 ? "t-pos" : (t.assetTotal - t.assetBuy < 0 ? "t-neg" : "")));
+    let plTotal = 0;
     state.assets.forEach((r) => {
       const value = t.assetValues[r.id] || 0;
+      const valued = assetValued(r);
       const pl = value - num(r.buy);
-      setCalc("as-weight:" + r.id, t.assetTotal > 0 ? (value / t.assetTotal * 100).toFixed(1) + "%" : "0.0%");
-      setCalc("as-pl:" + r.id, (Math.abs(num(r.buy)) > 0 || value !== 0) ? ((pl < 0 ? "−" : "") + comma(Math.abs(pl)) + "원") : "–");
+      if (valued) plTotal += pl;
+      setCalc("as-weight:" + r.id, valued && t.assetTotal > 0 ? (value / t.assetTotal * 100).toFixed(1) + "%" : "0.0%");
+      setCalc("as-pl:" + r.id, valued ? ((pl < 0 ? "−" : "") + comma(Math.abs(pl)) + "원") : "–");
     });
+    setText("#fin-as-pl", signedWon(plTotal));
+    setClass("#fin-as-pl", "num " + (plTotal > 0 ? "t-pos" : (plTotal < 0 ? "t-neg" : "")));
     renderComposition(t.assetTotal);
 
     /* DC */
@@ -937,11 +945,15 @@
     line([]);
     line(["⑤ 자산"]);
     line(["종목", "매입금액(원)", "수량", "시세(원)", "평균단가(원)", "비중(%)", "손실/수익(원)", "합계(원)"]);
+    let csvPl = 0;
     state.assets.forEach((r) => {
       const value = assetTotalOf(r);
-      line([r.name, num(r.buy), qtyNum(r.qty), num(r.price), assetAvgOf(r), t.assetTotal > 0 ? (value / t.assetTotal * 100).toFixed(1) : "0.0", value - num(r.buy), value]);
+      const valued = assetValued(r);
+      const pl = valued ? value - num(r.buy) : "";
+      if (valued) csvPl += value - num(r.buy);
+      line([r.name, num(r.buy), qtyNum(r.qty), num(r.price), assetAvgOf(r), valued && t.assetTotal > 0 ? (value / t.assetTotal * 100).toFixed(1) : "0.0", pl, value]);
     });
-    line(["자산 총합", t.assetBuy, "", "", "", "100.0", t.assetTotal - t.assetBuy, t.assetTotal]);
+    line(["자산 총합", t.assetBuy, "", "", "", "100.0", csvPl, t.assetTotal]);
     line([]);
     line(["⑥ 초과근로"]);
     line(["초과근로 시간", num(state.overtime.hours)]);
