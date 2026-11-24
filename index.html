@@ -10,8 +10,8 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=44">
-<link rel="stylesheet" href="assets/css/finance.css?v=44">
+<link rel="stylesheet" href="assets/css/admin.css?v=45">
+<link rel="stylesheet" href="assets/css/finance.css?v=45">
 </head>
 <body>
 
@@ -83,7 +83,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=44</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=45</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -698,7 +698,7 @@
       <section class="panel" data-panel="finance" hidden>
         <div class="panel-head">
           <h2>개인 재무</h2>
-          <p>엑셀 가계부 그대로 — <b>고정지출·수입·카드·부채·자산·초과근로·퇴직금 DC</b>를 표로 관리하고, 표를 고칠 때마다 <b>자동 분석 리포트</b>가 바로 다시 계산됩니다. 고친 내용은 <b>관리자 계정에 묶인 클라우드(복지모아 PostgreSQL)</b>에 저장되어 폰·PC 어디서 열어도 같습니다.</p>
+          <p>엑셀 가계부 그대로 — <b>고정지출·수입·카드·부채·자산·초과근로·퇴직금 DC</b>를 표로 관리하고, 표를 고칠 때마다 <b>자동 분석 리포트</b>가 바로 다시 계산됩니다. <b>③ 카드 금액은 ② 의 같은 카드 행으로, ⑥ 초과근로 합계는 ③ 수입의 OT 로 자동으로 이어집니다.</b> 고친 내용은 <b>관리자 계정에 묶인 클라우드(복지모아 PostgreSQL)</b>에 저장되어 폰·PC 어디서 열어도 같습니다.</p>
         </div>
 
         <div id="finance-root">
@@ -756,18 +756,26 @@
             <div class="fin-insights" id="fin-insights"></div>
           </div>
 
-          <!-- ② 월 고정지출 · 이체 -->
+          <!-- ② 월 고정지출 · 이체 — 이체일 그룹의 소계 줄이 항목 위에 오고, 정렬 방식과 행 순서(↑↓)를 직접 고른다. -->
           <div class="fin-card">
             <div class="fin-card-head">
               <h3>② 월 고정지출 · 이체</h3><span class="count" id="fin-fx-count">0개</span>
-              <span class="hint">납입여부를 눌러 O / 미납 전환 · 이체일별 자동 소계</span>
+              <span class="hint hint-inline">납입여부를 눌러 O / 미납 전환 · 이체일 소계가 그룹 위에 표시</span>
+              <label class="fin-sort"><span>정렬</span>
+                <select id="fin-fx-sort" aria-label="고정지출 정렬 방식">
+                  <option value="manual">직접 순서 (내가 정한 순서)</option>
+                  <option value="day-asc">이체일 오름차순 (1일→31일)</option>
+                  <option value="day-desc">이체일 내림차순 (31일→1일)</option>
+                  <option value="payday">월급일(20일) 기준</option>
+                </select>
+              </label>
             </div>
             <div class="fin-table-scroll">
               <table class="fin-fixed">
                 <thead>
                   <tr>
                     <th style="width:250px">종목</th><th class="num" style="width:150px">금액(원)</th>
-                    <th style="width:80px">이체일</th><th style="width:110px">납입여부</th><th style="width:40px"></th>
+                    <th style="width:80px">이체일</th><th style="width:110px">납입여부</th><th style="width:58px">순서</th><th style="width:40px"></th>
                   </tr>
                 </thead>
                 <tbody id="fin-fx-body"></tbody>
@@ -777,18 +785,19 @@
                     <td class="num t-out" id="fin-fx-total">0원</td>
                     <td class="label">잔금</td>
                     <td class="num t-neg" id="fin-fx-unpaid">0원</td>
-                    <td></td>
+                    <td colspan="2"></td>
                   </tr>
                   <tr>
                     <td class="label">이달 적자/흑자</td>
                     <td class="num" id="fin-fx-flow">0원</td>
                     <td class="label">수입</td>
                     <td class="num t-pos" id="fin-fx-income">0원</td>
-                    <td></td>
+                    <td colspan="2"></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
+            <p class="fin-mini-note" id="fin-fx-link"></p>
             <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="fixed">＋ 행 추가</button></div>
           </div>
 
@@ -806,6 +815,7 @@
                 </table>
               </div>
               <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="income">＋ 행 추가</button></div>
+              <p class="fin-mini-note" id="fin-in-link"></p>
             </div>
 
             <div class="fin-card">
@@ -824,16 +834,25 @@
 
             <div class="fin-card">
               <div class="fin-card-head">
-                <h3>③ 다음 달 카드 예정액</h3><span class="count" id="fin-nc-count">0개</span>
+                <h3>⑥ 초과근로 시뮬레이션</h3>
+                <span class="hint">합계가 ③ 수입의 OT 로 자동 반영</span>
               </div>
               <div class="fin-table-scroll">
                 <table>
-                  <thead><tr><th>카드사</th><th class="num" style="width:120px">금액(원)</th><th style="width:36px"></th></tr></thead>
-                  <tbody id="fin-nc-body"></tbody>
-                  <tfoot><tr><td class="label">예정액 합계</td><td class="num t-out" id="fin-nc-total">0원</td><td></td></tr></tfoot>
+                  <tbody id="fin-ot-body">
+                    <tr><td class="ot-label"><span class="req-star">*</span> 초과근로 시간</td><td class="num"><input class="num" inputmode="decimal" data-t="overtime" data-k="hours" placeholder="0"></td></tr>
+                    <tr><td class="ot-label"><span class="req-star">*</span> 8시간초과 시간</td><td class="num"><input class="num" inputmode="decimal" data-t="overtime" data-k="over8" placeholder="0"></td></tr>
+                    <tr><td class="ot-label"><span class="req-star">*</span> 야간 가산 시간</td><td class="num"><input class="num" inputmode="decimal" data-t="overtime" data-k="night" placeholder="0"></td></tr>
+                    <tr><td class="ot-label">통상 시급(원)</td><td class="num"><input class="num" inputmode="numeric" data-t="overtime" data-k="wage" placeholder="0"></td></tr>
+                    <tr class="fin-sep"><td class="ot-label">기본 초과임금</td><td class="num calc" data-calc="ot:base">0원</td></tr>
+                    <tr><td class="ot-label">연장근로 가산분 <span class="ot-x">×0.5</span></td><td class="num calc" data-calc="ot:ext">0원</td></tr>
+                    <tr><td class="ot-label">8시간 초과 가산분 <span class="ot-x">×0.5</span></td><td class="num calc" data-calc="ot:over8">0원</td></tr>
+                    <tr><td class="ot-label">야간가산분 <span class="ot-x">×0.5</span></td><td class="num calc" data-calc="ot:night">0원</td></tr>
+                    <tr class="fin-total-row"><td class="ot-label">합계</td><td class="num calc" data-calc="ot:total">0원</td></tr>
+                  </tbody>
                 </table>
               </div>
-              <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="nextCards">＋ 행 추가</button></div>
+              <p class="fin-mini-note">기본 = 시급 × 초과근로, 연장가산 = 시급 × 0.5 × 초과근로, 8시간초과가산 = 시급 × 0.5 × 8시간초과, 야간가산 = 시급 × 0.5 × 야간</p>
             </div>
           </div>
 
@@ -841,14 +860,15 @@
           <div class="fin-card">
             <div class="fin-card-head">
               <h3>④ 부채(대출)</h3><span class="count" id="fin-dt-count">0개</span>
-              <span class="hint">이자·남은개월을 비우면 잔금×금리·만기로 자동 계산</span>
+              <span class="hint hint-inline">이자·남은개월을 비우면 잔금×금리·만기로 자동 계산</span>
+              <span class="fin-deduct" id="fin-dt-deduct">📅 25일 원금 자동 차감 · 아직 없음</span>
             </div>
             <div class="fin-table-scroll">
               <table class="fin-wide">
                 <thead>
                   <tr>
                     <th style="width:180px">종목</th><th class="num" style="width:130px">잔금(원)</th><th class="num" style="width:80px">금리(%)</th>
-                    <th class="num" style="width:120px">원금+이자</th><th class="num" style="width:110px">원금</th><th class="num" style="width:110px">이자</th>
+                    <th class="num" style="width:120px">원금+이자</th><th class="num" style="width:110px">원금</th><th class="num" style="width:110px"><span class="req-star">*</span> 이자</th>
                     <th style="width:120px">만기</th><th class="num" style="width:80px">남은개월</th><th>비고</th><th style="width:36px"></th>
                   </tr>
                 </thead>
@@ -866,6 +886,7 @@
                 </tfoot>
               </table>
             </div>
+            <p class="fin-mini-note">매월 25일(한국 시간)이 지난 뒤 처음 열 때, <b>원금</b> 칸 금액만큼 잔금이 줄고 남은개월이 1 줄어듭니다(한 달에 한 번 · 원금이 비어 있는 행은 건너뜀). 이자가 매달 달라지니 잔금은 직접 맞춰 주세요.</p>
             <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="debts">＋ 행 추가</button></div>
           </div>
 
@@ -906,29 +927,20 @@
             <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="assets">＋ 행 추가</button></div>
           </div>
 
-          <!-- ⑥ 초과근로 시뮬레이션 · 퇴직금 DC -->
+          <!-- ⑥ 다음 달 카드 예정액 · 퇴직금 DC -->
           <div class="fin-grid2">
             <div class="fin-card">
               <div class="fin-card-head">
-                <h3>⑥ 초과근로 시뮬레이션</h3>
-                <span class="hint">시간·시급을 넣으면 가산분까지 자동</span>
+                <h3>③ 다음 달 카드 예정액</h3><span class="count" id="fin-nc-count">0개</span>
               </div>
               <div class="fin-table-scroll">
                 <table>
-                  <tbody id="fin-ot-body">
-                    <tr><td class="ot-label">초과근로 시간</td><td class="num"><input class="num" inputmode="decimal" data-t="overtime" data-k="hours" placeholder="0"></td></tr>
-                    <tr><td class="ot-label">8시간초과 시간</td><td class="num"><input class="num" inputmode="decimal" data-t="overtime" data-k="over8" placeholder="0"></td></tr>
-                    <tr><td class="ot-label">야간 가산 시간</td><td class="num"><input class="num" inputmode="decimal" data-t="overtime" data-k="night" placeholder="0"></td></tr>
-                    <tr><td class="ot-label">통상 시급(원)</td><td class="num"><input class="num" inputmode="numeric" data-t="overtime" data-k="wage" placeholder="0"></td></tr>
-                    <tr class="fin-sep"><td class="ot-label">기본 초과임금</td><td class="num calc" data-calc="ot:base">0원</td></tr>
-                    <tr><td class="ot-label">연장근로 가산분 <span class="ot-x">×0.5</span></td><td class="num calc" data-calc="ot:ext">0원</td></tr>
-                    <tr><td class="ot-label">8시간 초과 가산분 <span class="ot-x">×0.5</span></td><td class="num calc" data-calc="ot:over8">0원</td></tr>
-                    <tr><td class="ot-label">야간가산분 <span class="ot-x">×0.5</span></td><td class="num calc" data-calc="ot:night">0원</td></tr>
-                    <tr class="fin-total-row"><td class="ot-label">합계</td><td class="num calc" data-calc="ot:total">0원</td></tr>
-                  </tbody>
+                  <thead><tr><th>카드사</th><th class="num" style="width:120px">금액(원)</th><th style="width:36px"></th></tr></thead>
+                  <tbody id="fin-nc-body"></tbody>
+                  <tfoot><tr><td class="label">예정액 합계</td><td class="num t-out" id="fin-nc-total">0원</td><td></td></tr></tfoot>
                 </table>
               </div>
-              <p class="fin-mini-note">기본 = 시급 × 초과근로, 연장가산 = 시급 × 0.5 × 초과근로, 8시간초과가산 = 시급 × 0.5 × 8시간초과, 야간가산 = 시급 × 0.5 × 야간</p>
+              <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="nextCards">＋ 행 추가</button></div>
             </div>
 
             <div class="fin-card">
@@ -947,7 +959,7 @@
             </div>
           </div>
 
-          <p class="note" style="margin:4px 2px">모든 칸을 눌러 바로 고칠 수 있고, 고치면 <b>0.5초 뒤 자동으로 서버에 저장</b>됩니다. 행을 지우면 6초 동안 <b>실행취소</b>가 뜹니다. 엑셀로 보려면 <b>📊 CSV 내보내기</b>를 쓰세요.</p>
+          <p class="note" style="margin:4px 2px">모든 칸을 눌러 바로 고칠 수 있고, 고치면 <b>0.5초 뒤 자동으로 서버에 저장</b>됩니다. 행을 지우면 6초 동안 <b>실행취소</b>가 뜨고, <span class="req-star">*</span> 표시는 <b>매달 직접 고치는 칸</b>입니다. 엑셀로 보려면 <b>📊 CSV 내보내기</b>를 쓰세요.</p>
         </div>
         <input type="file" id="fin-file" accept=".json,application/json" hidden>
         <div class="fin-toast" id="fin-toast" role="status" aria-live="polite"><span id="fin-toast-msg"></span><button id="fin-toast-undo" type="button" hidden>실행취소</button></div>
@@ -984,8 +996,8 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=44"></script>
-<script src="assets/js/finance.js?v=44"></script>
-<script src="assets/js/app.js?v=44"></script>
+<script src="assets/js/sites.js?v=45"></script>
+<script src="assets/js/finance.js?v=45"></script>
+<script src="assets/js/app.js?v=45"></script>
 </body>
 </html>

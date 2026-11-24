@@ -11,6 +11,11 @@
 
   const PATH = "/api/admin/personal-finance";
   const VERSION = 2;
+  /* ② 고정지출 정렬 — 값은 meta.fixedSort 로 서버에 함께 저장된다(기본: 지금 순서 그대로). */
+  const SORTS = ["manual", "day-asc", "day-desc", "payday"];
+  const SORT_LABEL = { manual: "직접 순서", "day-asc": "이체일 오름차순", "day-desc": "이체일 내림차순", payday: "월급일(20일) 기준" };
+  const DEFAULT_SORT = "manual";
+  const PAYDAY = 20;
   const FIELDS = {
     fixed: ["name", "amount", "day", "paid"],
     income: ["name", "amount"],
@@ -93,6 +98,19 @@
     const m = String(text === null || text === undefined ? "" : text).match(/\d{1,2}/);
     return m ? parseInt(m[0], 10) : 0;
   }
+  function dayOf(row) {
+    const d = dayNum(row && row.day);
+    return d > 0 ? Math.min(d, 31) : 0;
+  }
+  /* 이름 비교용 열쇠 — 띄어쓰기·괄호·‘카드’ 글자를 빼고 대문자로. (‘카드 현대’ ↔ ‘현대카드’) */
+  function nameKey(name) {
+    return String(name === null || name === undefined ? "" : name)
+      .replace(/[\s()\[\]{}·.,\-_\/]/g, "").replace(/카드/g, "").toUpperCase();
+  }
+  function isOtIncome(row) {
+    const key = nameKey(row && row.name);
+    return key === "OT" || key.indexOf("OT") === 0 || key.indexOf("초과") >= 0;
+  }
   function monthsUntil(text) {
     const m = /^(\d{4})-(\d{1,2})/.exec(String(text || "").trim());
     if (!m) return 0;
@@ -103,7 +121,7 @@
 
   /* ───────── 상태 ───────── */
   function emptyState() {
-    return { version: VERSION, meta: { asOf: "" }, fixed: [], income: [], cards: [], nextCards: [], debts: [], assets: [], dc: [], overtime: { hours: "", over8: "", night: "", wage: "" } };
+    return { version: VERSION, meta: { asOf: "", fixedSort: DEFAULT_SORT, lastDebtDeductedMonth: "" }, fixed: [], income: [], cards: [], nextCards: [], debts: [], assets: [], dc: [], overtime: { hours: "", over8: "", night: "", wage: "" } };
   }
   function normalizeRow(table, row) {
     const item = { id: row && row.id ? String(row.id) : uid() };
@@ -171,6 +189,10 @@
     const base = legacy ? upgradeLegacy(source) : emptyState();
     const out = emptyState();
     out.meta.asOf = source.meta && source.meta.asOf ? String(source.meta.asOf) : base.meta.asOf;
+    const sort = source.meta && source.meta.fixedSort ? String(source.meta.fixedSort) : base.meta.fixedSort;
+    out.meta.fixedSort = SORTS.indexOf(sort) >= 0 ? sort : DEFAULT_SORT;
+    const deducted = source.meta && source.meta.lastDebtDeductedMonth ? String(source.meta.lastDebtDeductedMonth).trim() : "";
+    out.meta.lastDebtDeductedMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(deducted) ? deducted : "";
     Object.keys(FIELDS).forEach((table) => {
       const list = Array.isArray(source[table]) ? source[table] : base[table];
       out[table] = (Array.isArray(list) ? list : []).map((row) => normalizeRow(table, row));
@@ -259,51 +281,152 @@
   }
 
   /* ───────── 표 그리기 ───────── */
+  function isPaidRow(r) {
+    const paid = String(r.paid || "").trim();
+    return paid !== "" && paid !== "미납";
+  }
+  /* 같은 이체일을 하나로 묶는 열쇠 — ‘25’·‘025’·‘25일’을 모두 25 로 본다. */
+  function dayKeyOf(row) {
+    const d = dayOf(row);
+    return d ? String(d) : String((row && row.day) || "").trim();
+  }
+  /* 화면에 보여 줄 고정지출 순서 — 같은 이체일은 항상 한 덩어리로 모으고,
+     직접 순서면 ‘날짜가 처음 나온 차례’를 그대로 그룹 순서로 쓴다. */
+  function displayFixed() {
+    const list = state.fixed.slice();
+    const sort = state.meta && SORTS.indexOf(state.meta.fixedSort) >= 0 ? state.meta.fixedSort : DEFAULT_SORT;
+    if (sort === "manual") {
+      const days = [];
+      list.forEach((r) => { const key = dayKeyOf(r); if (days.indexOf(key) < 0) days.push(key); });
+      return list.sort((a, b) => days.indexOf(dayKeyOf(a)) - days.indexOf(dayKeyOf(b)));
+    }
+    const rank = (r) => {
+      const d = dayOf(r);
+      if (!d) return -1;                      // 이체일 미지정은 언제나 맨 아래
+      if (sort === "payday") return (d - PAYDAY + 31) % 31;  // 20 → 0, 21 → 1 … 19 → 30
+      return d;
+    };
+    list.sort((a, b) => {
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra < 0 && rb < 0) return 0;
+      if (ra < 0) return 1;
+      if (rb < 0) return -1;
+      return sort === "day-desc" ? rb - ra : ra - rb;
+    });
+    return list;
+  }
+  function cardLinkKeys() {
+    const keys = new Set();
+    state.cards.forEach((c) => { const key = nameKey(c.name); if (key) keys.add(key); });
+    return keys;
+  }
   function renderFixed() {
     const body = $("#fin-fx-body");
     if (!body) return;
-    if (!state.fixed.length) { body.innerHTML = emptyRow("fixed"); return; }
-    const rows = [];
-    let groupDay = null;
-    let groupSum = 0;
-    let groupUnpaid = 0;
-    let groupCount = 0;
-    const flush = () => {
-      if (groupDay === null) return;
-      rows.push('<tr class="fin-sub"><td>' + esc(groupDay || "이체일 미지정") + (groupDay && /\d/.test(groupDay) ? "일" : "") + ' 합 <span class="fin-sub-count">' + groupCount + '건</span></td>' +
-        '<td class="num">' + won(groupSum) + '</td>' +
-        '<td class="label">잔금</td>' +
-        '<td class="num ' + (groupUnpaid ? "t-neg" : "muted") + '">' + won(groupUnpaid) + '</td>' +
-        '<td></td></tr>');
-    };
-    state.fixed.forEach((r) => {
-      const day = String(r.day || "").trim();
-      if (day !== groupDay) { flush(); groupDay = day; groupSum = 0; groupUnpaid = 0; groupCount = 0; }
-      groupSum += num(r.amount);
-      groupCount += 1;
-      const paid = String(r.paid || "").trim();
-      const isPaid = paid !== "" && paid !== "미납";
-      if (!isPaid) groupUnpaid += num(r.amount);
-      rows.push('<tr data-id="' + esc(r.id) + '">' +
-        '<td>' + textInput("fixed", r, "name", "항목 (예: 주택담보)") + '</td>' +
-        '<td class="num">' + moneyInput("fixed", r, "amount") + '</td>' +
-        '<td>' + textInput("fixed", r, "day", "20", ' class="mono day"') + '</td>' +
-        '<td class="center"><button type="button" class="paid-toggle ' + (isPaid ? "on" : "off") + '" data-fin-paid="' + esc(r.id) + '" title="눌러서 O / 미납 전환">' + (isPaid ? "O" : "미납") + '</button></td>' +
-        delCell("fixed", r) + '</tr>');
+    if (!state.fixed.length) { body.innerHTML = emptyRow("fixed"); updateLinkNotes(); return; }
+    const order = displayFixed();
+    const groups = [];
+    order.forEach((r) => {
+      const day = dayKeyOf(r);
+      const last = groups[groups.length - 1];
+      if (last && last.day === day) last.rows.push(r);
+      else groups.push({ day, rows: [r] });
     });
-    flush();
-    body.innerHTML = rows.join("");
+    const linked = cardLinkKeys();
+    const html = [];
+    groups.forEach((group) => {
+      let sum = 0;
+      let unpaid = 0;
+      group.rows.forEach((r) => {
+        sum += num(r.amount);
+        if (!isPaidRow(r)) unpaid += num(r.amount);
+      });
+      const dayText = group.day === "" ? "이체일 미지정" : (/^\d+$/.test(group.day) ? Number(group.day) + "일" : group.day);
+      /* 그룹 소계 줄은 항목 위(그룹 머리)에 둔다. */
+      html.push('<tr class="fin-sub">' +
+        '<td>📅 ' + esc(dayText) + ' <span class="fin-sub-count">' + group.rows.length + '건</span></td>' +
+        '<td class="num">' + won(sum) + '</td>' +
+        '<td></td>' +
+        '<td class="num ' + (unpaid ? "t-neg fin-sub-unpaid" : "muted") + '">' + (unpaid ? "잔금 " + won(unpaid) : "완납") + '</td>' +
+        '<td colspan="2"></td></tr>');
+      group.rows.forEach((r) => {
+        const index = order.indexOf(r);
+        const key = dayKeyOf(r);
+        const canUp = index > 0 && dayKeyOf(order[index - 1]) === key;
+        const canDown = index < order.length - 1 && dayKeyOf(order[index + 1]) === key;
+        const cardTag = linked.has(nameKey(r.name)) ? '<span class="fin-link-dot" title="③ 이번 달 카드 금액을 따라갑니다">③↔</span>' : "";
+        html.push('<tr data-id="' + esc(r.id) + '">' +
+          '<td><div class="fin-name-cell">' + textInput("fixed", r, "name", "항목 (예: 주택담보)") + cardTag + '</div></td>' +
+          '<td class="num">' + moneyInput("fixed", r, "amount") + '</td>' +
+          '<td>' + textInput("fixed", r, "day", "20", ' class="mono day"') + '</td>' +
+          '<td class="center"><button type="button" class="paid-toggle ' + (isPaidRow(r) ? "on" : "off") + '" data-fin-paid="' + esc(r.id) + '" title="눌러서 O / 미납 전환">' + (isPaidRow(r) ? "O" : "미납") + '</button></td>' +
+          '<td class="center fin-move">' +
+            '<button type="button" class="mv" data-fin-move="up" data-f="' + esc(r.id) + '" title="같은 이체일 안에서 위로" aria-label="위로 이동"' + (canUp ? "" : " disabled") + '>↑</button>' +
+            '<button type="button" class="mv" data-fin-move="down" data-f="' + esc(r.id) + '" title="같은 이체일 안에서 아래로" aria-label="아래로 이동"' + (canDown ? "" : " disabled") + '>↓</button>' +
+          '</td>' +
+          delCell("fixed", r) + '</tr>');
+      });
+    });
+    body.innerHTML = html.join("");
     const count = $("#fin-fx-count");
     if (count) count.textContent = state.fixed.length + "개";
+    updateLinkNotes();
   }
 
+  /* 정렬 선택칸과 연동 안내 문구 */
+  function renderSortSelect() {
+    const el = $("#fin-fx-sort");
+    if (!el || document.activeElement === el) return;
+    el.value = SORTS.indexOf(state.meta.fixedSort) >= 0 ? state.meta.fixedSort : DEFAULT_SORT;
+  }
+  function updateLinkNotes() {
+    const fxNote = $("#fin-fx-link");
+    if (fxNote) {
+      const keys = cardLinkKeys();
+      const matched = state.fixed.filter((r) => keys.has(nameKey(r.name)));
+      if (!matched.length) {
+        fxNote.innerHTML = "🔗 ③ 이번 달 카드와 <b>이름이 같은 행</b>이 있으면 그 금액이 여기로 자동 반영됩니다(예: ③ ‘카드 현대’ → ② ‘카드 현대’).";
+      } else {
+        fxNote.innerHTML = "🔗 ③ 이번 달 카드 금액을 따라가는 행 <b>" + matched.length + "개</b> — " + matched.map((r) => esc(r.name || "(이름 없음)")).join(" · ") + " (③에서 고치면 이 표도 함께 바뀝니다)";
+      }
+    }
+    const inNote = $("#fin-in-link");
+    if (!inNote) return;
+    const total = overtimeTotalRounded();
+    const target = state.income.filter(isOtIncome)[0] || null;
+    if (!total && !target) {
+      inNote.innerHTML = "🔗 ⑥ 초과근로에 시간·시급을 넣으면 그 <b>합계(반올림 원)</b>가 여기 <b>OT</b> 항목에 자동으로 들어갑니다.";
+    } else if (!total) {
+      inNote.innerHTML = "🔗 ⑥ 초과근로 시간·시급을 넣으면 OT 항목이 자동으로 맞춰집니다. (지금 OT 금액은 직접 적은 값입니다)";
+    } else if (!target) {
+      inNote.innerHTML = "🔗 ⑥ 초과근로 합계 <b>" + won(total) + "</b> — 초과근로 시간·시급을 고치면 OT 행이 자동으로 생깁니다.";
+    } else if (num(target.amount) === total) {
+      inNote.innerHTML = "🔗 ⑥ 초과근로 합계 <b>" + won(total) + "</b> — OT 항목과 같습니다 (자동 반영 중).";
+    } else {
+      inNote.innerHTML = "🔗 ⑥ 초과근로 합계 <b>" + won(total) + "</b> · OT 항목 <b>" + won(num(target.amount)) + "</b> — 명세서 숫자로 직접 고친 값입니다. 초과근로 시간·시급을 다시 바꾸면 자동으로 맞춰집니다.";
+    }
+  }
+
+  /* 매달 직접 고치는 줄에 붙는 붉은 * — 공개 코드에 개인 항목명을 적지 않고 규칙으로 고른다.
+     · 카드: 카드사 금액은 매달 청구액으로 바뀌므로 모든 행
+     · 수입: 금액이 적힌 행(월급·OT·날짜 수입 등) — 빈 ‘기타’ 행은 표시하지 않는다 */
+  function starRow(table, row) {
+    if (table === "cards") return true;
+    if (table === "income") {
+      return isOtIncome(row) || String(row.amount === null || row.amount === undefined ? "" : row.amount).trim() !== "";
+    }
+    return false;
+  }
   function renderSimple(table, bodySel, countSel, namePh) {
     const body = $(bodySel);
     if (!body) return;
     if (!state[table].length) { body.innerHTML = emptyRow(table); return; }
     body.innerHTML = state[table].map((r) =>
       '<tr data-id="' + esc(r.id) + '">' +
-        '<td>' + textInput(table, r, "name", namePh) + '</td>' +
+        '<td><div class="fin-name-cell">' +
+          (starRow(table, r) ? '<span class="req-star" title="매달 직접 고치는 칸">*</span>' : "") +
+          textInput(table, r, "name", namePh) + '</div></td>' +
         '<td class="num">' + moneyInput(table, r, "amount") + '</td>' +
         delCell(table, r) + '</tr>'
     ).join("");
@@ -392,6 +515,8 @@
     renderDC();
     renderOvertimeInputs();
     renderAsOf();
+    renderSortSelect();
+    updateDebtBadge();
     sync();
   }
 
@@ -418,6 +543,7 @@
     if (qty > 0) return Math.round(num(row.buy) / qty);
     return Math.round(num(row.avg));
   }
+  function overtimeTotalRounded() { return Math.round(overtimeTotals().total); }
   function overtimeTotals() {
     const ot = state.overtime || {};
     const wage = num(ot.wage);
@@ -561,6 +687,9 @@
     setCalc("ot:over8", won(t.ot.over8));
     setCalc("ot:night", won(t.ot.night));
     setCalc("ot:total", won(t.ot.total));
+
+    /* 연동 안내 */
+    updateLinkNotes();
 
     /* 리포트 */
     setText("#fin-kpi-assets", comma(t.assetTotal));
@@ -734,6 +863,97 @@
     }
   }
 
+  /* ───────── 매월 25일(한국 시간) 부채 원금 자동 차감 ─────────
+     부장님 요청(2026-11-24): 매월 25일이 지난 뒤 처음 열 때, 각 부채 행의 ‘원금’만큼
+     잔금을 줄이고(최소 0) 남은개월이 양수면 1 줄인다. 한 달에 한 번만 실행되고,
+     마지막 차감 월(meta.lastDebtDeductedMonth)은 DB 에 함께 저장된다.
+     원리금균등이라 이자가 매달 달라지므로 잔금 정합성은 부장님이 직접 맞춘다. */
+  const DEDUCT_DAY = 25;
+  function seoulNow() {
+    const now = new Date();
+    return new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 9 * 3600000);
+  }
+  function ymOf(date) { return date.getFullYear() + "-" + pad2(date.getMonth() + 1); }
+  function prevYm(ym) {
+    const m = /^(\d{4})-(\d{2})$/.exec(String(ym || ""));
+    if (!m) return "";
+    let year = Number(m[1]);
+    let month = Number(m[2]) - 1;
+    if (month < 1) { month = 12; year -= 1; }
+    return year + "-" + pad2(month);
+  }
+  /* 오늘(한국 시간) 기준으로 차감돼야 할 달 — 25일 전이면 지난달, 25일부터는 이번 달. */
+  function dueDeductMonth(today) {
+    const d = today || seoulNow();
+    const thisYm = ymOf(d);
+    return d.getDate() >= DEDUCT_DAY ? thisYm : prevYm(thisYm);
+  }
+  /* 저장된 마지막 차감 월. 값이 없으면(이 기능을 붙이기 전 저장분) ‘지난달’로 본다 —
+     그래서 오늘(11-24)에는 차감되지 않고, 내일 11-25에 처음 열 때 11월분이 한 번 차감된다. */
+  function lastDeducted(today) {
+    const stored = state.meta && state.meta.lastDebtDeductedMonth ? String(state.meta.lastDebtDeductedMonth).trim() : "";
+    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(stored)) return stored;
+    return prevYm(ymOf(today || seoulNow()));
+  }
+  function planDebtDeduction(today) {
+    const due = dueDeductMonth(today);
+    if (!due || due <= lastDeducted(today)) return { due: "", changes: [] };
+    const changes = [];
+    state.debts.forEach((r) => {
+      const balance = num(r.balance);
+      if (balance <= 0) return;
+      /* 원금 칸이 비어 있으면 (원금+이자 − 이자) = 0 이므로 그 행은 건너뛴다. */
+      const principal = String(r.principal || "").trim() !== "" ? num(r.principal) : 0;
+      if (principal <= 0) return;
+      changes.push({ row: r, before: { balance: r.balance, months: r.months }, balance: Math.max(0, Math.round(balance - principal)) });
+    });
+    return { due, changes };
+  }
+  function applyDebtDeduction(plan) {
+    plan.changes.forEach((c) => {
+      c.row.balance = String(c.balance);
+      const months = num(c.row.months);
+      if (String(c.row.months || "").trim() !== "" && months > 0) c.row.months = String(months - 1);
+    });
+    state.meta.lastDebtDeductedMonth = plan.due;
+  }
+  function maybeDeductDebts(today) {
+    if (!loaded || destroyed) return false;
+    const plan = planDebtDeduction(today);
+    if (!plan.due) return false;
+    if (!plan.changes.length) {
+      /* 이번 달에 줄 부채가 없어도 ‘이번 달은 처리됨’으로 둔다 — 월 중간에 새 부채를 넣어도
+         예상치 못하게 차감되지 않도록. */
+      state.meta.lastDebtDeductedMonth = plan.due;
+      updateDebtBadge();
+      scheduleSave();
+      return false;
+    }
+    const snapshot = plan.changes.map((c) => ({ row: c.row, balance: c.before.balance, months: c.before.months }));
+    applyDebtDeduction(plan);
+    renderDebts();
+    sync();
+    updateDebtBadge();
+    scheduleSave();
+    toast("📅 25일 원금 자동 차감 반영(" + plan.due + ") — 부채 " + plan.changes.length + "건 잔금 차감", () => {
+      snapshot.forEach((s) => { s.row.balance = s.balance; s.row.months = s.months; });
+      renderDebts();
+      sync();
+      updateDebtBadge();
+      scheduleSave();
+      toast("자동 차감을 되돌렸습니다. 이번 달은 다시 차감하지 않습니다.");
+    });
+    return true;
+  }
+  function updateDebtBadge() {
+    const el = $("#fin-dt-deduct");
+    if (!el) return;
+    const last = state.meta && state.meta.lastDebtDeductedMonth ? String(state.meta.lastDebtDeductedMonth) : "";
+    el.textContent = "📅 25일 원금 자동 차감" + (last ? " · 최근 " + last : " · 아직 없음");
+    el.title = "매월 25일(한국 시간)이 지난 뒤 처음 열 때 원금 칸 금액만큼 잔금이 줄고 남은개월이 1 줄어듭니다. 한 달에 한 번만 실행됩니다. 원금이 비어 있는 행은 건너뜁니다." +
+      (last ? "\n최근 자동 차감: " + last : "");
+  }
+
   /* ───────── 서버 저장 ───────── */
   function scheduleSave() {
     if (!loaded) return;
@@ -816,6 +1036,8 @@
     setStamp(updatedAt);
     setChip("클라우드 동기화됨 " + hhmm(updatedAt));
     showWarn("");
+    /* 25일이 지났는데 이번 달 차감 전이면 여기서 한 번만 실행된다. */
+    maybeDeductDebts();
   }
 
   /* ───────── 행 편집 ───────── */
@@ -877,6 +1099,66 @@
     sync();
     scheduleSave();
   }
+
+  /* ───────── 연동: ③ 카드 → ② 고정지출 / ⑥ 초과근로 → ③ 수입 OT ───────── */
+  /* ③ 이번 달 카드의 한 행 금액을 ② 의 이름이 같은 행(예: 카드 현대)에 그대로 옮긴다. */
+  function pushCardToFixed(cardRow) {
+    if (!ensureLoaded()) return false;
+    const key = nameKey(cardRow && cardRow.name);
+    if (!key) return false;
+    const targets = state.fixed.filter((r) => nameKey(r.name) === key);
+    if (!targets.length) return false;
+    let changed = false;
+    const next = cardRow.amount === null || cardRow.amount === undefined ? "" : String(cardRow.amount);
+    targets.forEach((r) => {
+      const now = r.amount === null || r.amount === undefined ? "" : String(r.amount);
+      if (now !== next) { r.amount = next; changed = true; }
+    });
+    if (changed) renderFixed();
+    return changed;
+  }
+  /* ⑥ 초과근로 합계(반올림 원)를 ③ 수입의 OT 행에 넣는다. OT 행이 없으면 새로 만든다. */
+  function syncOvertimeToIncome() {
+    if (!ensureLoaded()) return false;
+    const total = overtimeTotalRounded();
+    const target = state.income.filter(isOtIncome)[0] || null;
+    if (!target) {
+      if (total <= 0) return false;
+      const row = normalizeRow("income", { name: "OT", amount: String(total) });
+      state.income.push(row);
+      RENDER.income();
+      return true;
+    }
+    target.amount = total > 0 ? String(total) : "";
+    setInputValue("income", target.id, "amount", target.amount);
+    return true;
+  }
+
+  /* ───────── 고정지출 행 순서(↑ ↓) ───────── */
+  /* 화면에 보이는 순서 그대로를 저장 순서로 굳힌 뒤 한 칸 옮긴다. 정렬 중이었다면 ‘직접 순서’로 바뀐다. */
+  function moveFixed(id, dir) {
+    if (!ensureLoaded()) return;
+    const order = displayFixed();
+    let index = -1;
+    for (let i = 0; i < order.length; i += 1) if (order[i].id === id) { index = i; break; }
+    if (index < 0) return;
+    const target = dir === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= order.length) return;
+    /* 이체일이 다른 그룹과는 자리를 바꾸지 않는다(그룹 소계가 갈라지지 않게). */
+    if (dayKeyOf(order[target]) !== dayKeyOf(order[index])) return;
+    const next = order.slice();
+    const moved = next.splice(index, 1)[0];
+    next.splice(target, 0, moved);
+    const switched = state.meta.fixedSort !== "manual";
+    state.fixed = next;
+    state.meta.fixedSort = "manual";
+    renderFixed();
+    renderSortSelect();
+    sync();
+    scheduleSave();
+    if (switched) toast("‘직접 순서’로 바꿔 이 행을 옮겼습니다. 이제 ↑ ↓ 로 순서를 바꿀 수 있어요.");
+  }
+
 
   /* ───────── 내보내기 · 불러오기 ───────── */
   function download(name, text, mime) {
@@ -1025,6 +1307,7 @@
       const id = el.getAttribute("data-f");
       if (table === "overtime") {
         state.overtime[key] = el.value;
+        syncOvertimeToIncome();
         sync();
         scheduleSave();
         return;
@@ -1033,6 +1316,8 @@
       if (!row) return;
       row[key] = el.value;
       autofill(table, row, key);
+      /* ③ 이번 달 카드 금액을 고치면 ② 의 이름이 같은 카드 행도 함께 바뀐다. */
+      if (table === "cards" && (key === "amount" || key === "name")) pushCardToFixed(row);
       sync();
       scheduleSave();
     });
@@ -1042,6 +1327,23 @@
       if (!el || !el.getAttribute) return;
       if (el.id === "fin-asof") {
         state.meta.asOf = el.value || "";
+        sync();
+        scheduleSave();
+        return;
+      }
+      if (el.id === "fin-fx-sort") {
+        const value = el.value;
+        state.meta.fixedSort = SORTS.indexOf(value) >= 0 ? value : DEFAULT_SORT;
+        renderFixed();
+        renderSortSelect();
+        sync();
+        scheduleSave();
+        toast("정렬을 ‘" + SORT_LABEL[state.meta.fixedSort] + "’로 바꿨습니다. 행을 옮기면 ‘직접 순서’로 바뀝니다.");
+        return;
+      }
+      if (el.getAttribute("data-t") === "fixed" && el.getAttribute("data-k") === "day") {
+        /* 이체일을 고치면 그 날짜 그룹으로 바로 다시 묶는다. */
+        renderFixed();
         sync();
         scheduleSave();
         return;
@@ -1070,6 +1372,7 @@
       if (value === "") {
         if (key === "rate" || key === "qty" || key === "months") el.value = "";
         else el.value = "";
+        if (table === "cards" && key === "amount") { if (pushCardToFixed(row)) renderFixed(); }
         return;
       }
       if (key === "rate") {
@@ -1084,6 +1387,7 @@
         row[key] = el.value;
       }
       autofill(table, row, key);
+      if (table === "cards" && key === "amount") { if (pushCardToFixed(row)) renderFixed(); }
       sync();
       scheduleSave();
     });
@@ -1093,6 +1397,8 @@
       if (!target || !target.closest) return;
       const addBtn = target.closest("[data-fin-add]");
       if (addBtn) { event.preventDefault(); addRow(addBtn.getAttribute("data-fin-add")); return; }
+      const moveBtn = target.closest("[data-fin-move]");
+      if (moveBtn && !moveBtn.disabled) { event.preventDefault(); moveFixed(moveBtn.getAttribute("data-f"), moveBtn.getAttribute("data-fin-move")); return; }
       const paidBtn = target.closest("[data-fin-paid]");
       if (paidBtn) { event.preventDefault(); togglePaid(paidBtn.getAttribute("data-fin-paid")); return; }
       const delBtn = target.closest("[data-fin-del]");
@@ -1193,6 +1499,15 @@
     /* 로그아웃·세션 만료 — 화면과 메모리의 개인 자료를 지운다. */
     clear,
     isLoaded() { return loaded; },
-    _debug: { get state() { return state; }, totals, normalize }
+    _debug: {
+      get state() { return state; },
+      totals,
+      normalize,
+      due: dueDeductMonth,
+      lastDeducted,
+      planDebtDeduction,
+      deduct: maybeDeductDebts,
+      displayFixed
+    }
   };
 })();
