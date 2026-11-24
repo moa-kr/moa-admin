@@ -1500,6 +1500,14 @@
       if (!request || dirty) return;
       await load({});
     },
+    /* 위쪽 ‘저장’ 버튼 — 0.5초 자동 저장을 기다리지 않고 지금 바로 서버에 저장한다. */
+    saveNow() {
+      if (!loaded) { ensureLoaded(); return false; }
+      clearTimeout(saveTimer);
+      clearTimeout(retryTimer);
+      push();
+      return true;
+    },
     /* 로그아웃·세션 만료 — 화면과 메모리의 개인 자료를 지운다. */
     clear,
     isLoaded() { return loaded; },

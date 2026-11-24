@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=45";
+  const BUILD = "v=46";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 ‘💰 개인 재무’ 탭과 헤더 버튼을 보인다.
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -678,6 +678,14 @@
     // 개인 재무 표는 넓게 쓴다(모바일 미리보기 레일을 접는다).
     const layout = $(".layout");
     if (layout) layout.classList.toggle("is-wide", state.tab === FINANCE_TAB);
+    // 위쪽 오른쪽 저장 버튼 — 💰 개인 재무 탭에서는 개인 표를 저장하는 버튼이므로 문구를 ‘저장’으로 바꾼다.
+    // 다른 탭(공지·문구·⑤ 저장·배포 등)의 ‘저장 및 사이트 반영’은 그대로 둔다.
+    const saveTop = $("#btn-save-top");
+    if (saveTop) {
+      const onFinance = state.tab === FINANCE_TAB;
+      saveTop.textContent = onFinance ? "저장" : "저장 및 사이트 반영";
+      saveTop.title = onFinance ? "개인 재무 표를 지금 서버(클라우드)에 저장합니다." : "";
+    }
   }
 
   function setTab(tabId) {
@@ -863,7 +871,15 @@
 
     // 상단 저장 / 배포 탭 저장
     $("#btn-save").addEventListener("click", saveToGitHub);
-    $("#btn-save-top").addEventListener("click", () => { setTab("deploy"); saveToGitHub(); });
+    $("#btn-save-top").addEventListener("click", () => {
+      // 💰 개인 재무 탭의 ‘저장’ 은 사이트 설정이 아니라 개인 재무 표를 지금 바로 저장한다(0.5초 자동 저장 대기를 건너뜀).
+      if (state.tab === FINANCE_TAB) {
+        if (window.MOA_FINANCE) window.MOA_FINANCE.saveNow();
+        return;
+      }
+      setTab("deploy");
+      saveToGitHub();
+    });
     $("#btn-pull").addEventListener("click", () => pullConfig(state.site, false));
     $("#btn-export").addEventListener("click", exportJson);
     $("#file-import").addEventListener("change", importJson);
