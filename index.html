@@ -10,8 +10,8 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=38">
-<link rel="stylesheet" href="assets/css/finance.css?v=38">
+<link rel="stylesheet" href="assets/css/admin.css?v=39">
+<link rel="stylesheet" href="assets/css/finance.css?v=39">
 </head>
 <body>
 
@@ -83,7 +83,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=38</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=39</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -603,12 +603,13 @@
       <section class="panel" data-panel="finance" hidden>
         <div class="panel-head">
           <h2>개인 재무</h2>
-          <p>월 현금흐름·대출·카드 결제 예정·보유 자산을 표로 관리합니다. 고친 내용은 <b>관리자 계정에 묶인 클라우드(복지모아 PostgreSQL)</b>에 저장되어 폰·PC 어디서 열어도 같습니다.</p>
+          <p>엑셀 가계부 그대로 — <b>고정지출·수입·카드·부채·자산·초과근로·퇴직금 DC</b>를 표로 관리하고, 표를 고칠 때마다 <b>자동 분석 리포트</b>가 바로 다시 계산됩니다. 고친 내용은 <b>관리자 계정에 묶인 클라우드(복지모아 PostgreSQL)</b>에 저장되어 폰·PC 어디서 열어도 같습니다.</p>
         </div>
 
         <div id="finance-root">
           <div class="fin-bar">
             <span class="fin-chip" id="fin-sync"><span class="dot"></span><span id="fin-sync-text">로그인하면 불러옵니다</span></span>
+            <label class="fin-asof">기준일 <input type="date" id="fin-asof"></label>
             <button type="button" class="btn btn-sm btn-ghost" id="fin-json">💾 JSON 백업</button>
             <button type="button" class="btn btn-sm btn-ghost" id="fin-load">📂 백업 불러오기</button>
             <button type="button" class="btn btn-sm btn-ghost" id="fin-csv">📊 CSV 내보내기</button>
@@ -619,135 +620,190 @@
 
           <div class="fin-warn" id="fin-warn"></div>
 
-          <div class="fin-kpis">
-            <div class="fin-kpi tone-asset">
-              <div class="k-label">총 자산</div>
-              <div class="k-value"><span id="fin-kpi-assets">0</span><span class="unit">원</span></div>
-              <div class="k-sub" id="fin-kpi-assets-sub">—</div>
-            </div>
-            <div class="fin-kpi tone-debt">
-              <div class="k-label">총 부채</div>
-              <div class="k-value"><span id="fin-kpi-debt">0</span><span class="unit">원</span></div>
-              <div class="k-sub" id="fin-kpi-debt-sub">—</div>
-            </div>
-            <div class="fin-kpi tone-pos" id="fin-kpi-net-card">
-              <div class="k-label">순자산 <span class="muted" style="font-weight:600;font-size:11px">자산 − 부채</span></div>
-              <div class="k-value" id="fin-kpi-net-wrap"><span id="fin-kpi-net">0</span><span class="unit">원</span></div>
-              <div class="k-sub" id="fin-kpi-net-sub">—</div>
-            </div>
-            <div class="fin-kpi tone-neg" id="fin-kpi-flow-card">
-              <div class="k-label">월 순현금흐름 <em class="fin-sum-badge" id="fin-kpi-flow-badge">—</em></div>
-              <div class="k-value" id="fin-kpi-flow-wrap"><span id="fin-kpi-flow">0</span><span class="unit">원</span></div>
-              <div class="k-sub" id="fin-kpi-flow-sub">—</div>
-            </div>
-          </div>
-
-          <div class="fin-card fin-upcoming">
+          <!-- ① 실시간 자동 분석 리포트 -->
+          <div class="fin-card fin-report">
             <div class="fin-card-head">
-              <h3>⏰ 다가오는 주요 출금</h3>
-              <span class="hint" id="fin-upcoming-sum"></span>
+              <h3>📈 실시간 자동 분석</h3>
+              <span class="hint">표를 고치면 즉시 다시 계산됩니다</span>
             </div>
-            <div class="fin-due-list" id="fin-upcoming-body"></div>
-            <div class="fin-upcoming-foot" id="fin-upcoming-foot"></div>
+            <div class="fin-kpis">
+              <div class="fin-kpi tone-asset">
+                <div class="k-label">총자산</div>
+                <div class="k-value"><span id="fin-kpi-assets">0</span><span class="unit">원</span></div>
+                <div class="k-sub" id="fin-kpi-assets-sub">—</div>
+              </div>
+              <div class="fin-kpi tone-debt">
+                <div class="k-label">총부채</div>
+                <div class="k-value"><span id="fin-kpi-debt">0</span><span class="unit">원</span></div>
+                <div class="k-sub" id="fin-kpi-debt-sub">—</div>
+              </div>
+              <div class="fin-kpi tone-pos" id="fin-kpi-net-card">
+                <div class="k-label">순자산 <span class="muted" style="font-weight:600;font-size:11px">자산 − 부채</span></div>
+                <div class="k-value" id="fin-kpi-net-wrap"><span id="fin-kpi-net">0</span><span class="unit">원</span></div>
+                <div class="k-sub" id="fin-kpi-net-sub">—</div>
+              </div>
+              <div class="fin-kpi tone-neg" id="fin-kpi-flow-card">
+                <div class="k-label">이달 수입 − 지출 <em class="fin-sum-badge" id="fin-kpi-flow-badge">—</em></div>
+                <div class="k-value" id="fin-kpi-flow-wrap"><span id="fin-kpi-flow">0</span><span class="unit">원</span></div>
+                <div class="k-sub" id="fin-kpi-flow-sub">—</div>
+              </div>
+              <div class="fin-kpi tone-warn">
+                <div class="k-label">남은 미납 지출</div>
+                <div class="k-value"><span id="fin-kpi-unpaid">0</span><span class="unit">원</span></div>
+                <div class="k-sub" id="fin-kpi-unpaid-sub">—</div>
+              </div>
+              <div class="fin-kpi tone-interest">
+                <div class="k-label">월 이자 부담</div>
+                <div class="k-value"><span id="fin-kpi-interest">0</span><span class="unit">원</span></div>
+                <div class="k-sub" id="fin-kpi-interest-sub">—</div>
+              </div>
+            </div>
+            <div class="fin-insights" id="fin-insights"></div>
           </div>
 
+          <!-- ② 월 고정지출 · 이체 -->
           <div class="fin-card">
             <div class="fin-card-head">
-              <h3>① 월 현금흐름</h3><span class="count" id="fin-cf-count">0개</span>
-              <span class="hint">구분을 눌러 수입/지출 전환</span>
+              <h3>② 월 고정지출 · 이체</h3><span class="count" id="fin-fx-count">0개</span>
+              <span class="hint">납입여부를 눌러 O / 미납 전환 · 이체일별 자동 소계</span>
             </div>
             <div class="fin-table-scroll">
               <table>
                 <thead>
                   <tr>
-                    <th style="width:70px">구분</th><th style="width:280px">항목</th><th class="num" style="width:150px">금액(원)</th><th>메모</th><th style="width:40px"></th>
+                    <th style="width:250px">종목</th><th class="num" style="width:150px">금액(원)</th>
+                    <th style="width:80px">이체일</th><th style="width:110px">납입여부</th><th style="width:40px"></th>
                   </tr>
                 </thead>
-                <tbody id="fin-cf-body"></tbody>
-              </table>
-            </div>
-            <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="cashflow">＋ 행 추가</button></div>
-            <div class="fin-sum-bar">
-              <div class="fin-sum-cell"><span class="sum-label">수입 합계</span><strong class="sum-value pos" id="fin-cf-inc">0원</strong></div>
-              <div class="fin-sum-cell"><span class="sum-label">지출 합계</span><strong class="sum-value neg" id="fin-cf-exp">0원</strong></div>
-              <div class="fin-sum-cell"><span class="sum-label">월 순현금흐름 <em class="fin-sum-badge" id="fin-cf-badge">균형</em></span><strong class="sum-value flat" id="fin-cf-net">0원</strong><span class="sum-note" id="fin-cf-note"></span></div>
-            </div>
-          </div>
-
-          <div class="fin-card">
-            <div class="fin-card-head">
-              <h3>② 대출 현황</h3><span class="count" id="fin-ln-count">0개</span>
-              <span class="hint">금리는 연이율(%), 결제일은 매월 며칠인지</span>
-            </div>
-            <div class="fin-table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width:120px">기관명</th><th style="width:150px">대출종류</th><th class="num" style="width:130px">남은 원금(원)</th><th class="num" style="width:90px">연 금리(%)</th><th class="num" style="width:120px">월 납입액(원)</th><th style="width:70px">결제일</th><th style="width:150px">상환방식/만기</th><th>비고</th><th style="width:40px"></th>
-                  </tr>
-                </thead>
-                <tbody id="fin-ln-body"></tbody>
+                <tbody id="fin-fx-body"></tbody>
                 <tfoot>
                   <tr>
-                    <td class="label" colspan="2">합계</td>
-                    <td class="num t-out" id="fin-ln-principal">0원</td>
-                    <td class="num" id="fin-ln-rate">0.00%</td>
-                    <td class="num t-out" id="fin-ln-monthly">0원</td>
+                    <td class="label">총합</td>
+                    <td class="num t-out" id="fin-fx-total">0원</td>
+                    <td class="label">잔금</td>
+                    <td class="num t-neg" id="fin-fx-unpaid">0원</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td class="label">이달 적자/흑자</td>
+                    <td class="num" id="fin-fx-flow">0원</td>
+                    <td class="label">수입</td>
+                    <td class="num t-pos" id="fin-fx-income">0원</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="fixed">＋ 행 추가</button></div>
+          </div>
+
+          <!-- ③ 수입 · 이번 달 카드 · 다음 달 카드 예정액 -->
+          <div class="fin-grid3">
+            <div class="fin-card">
+              <div class="fin-card-head">
+                <h3>③ 이번 달 수입</h3><span class="count" id="fin-in-count">0개</span>
+              </div>
+              <div class="fin-table-scroll">
+                <table>
+                  <thead><tr><th>종목</th><th class="num" style="width:120px">금액(원)</th><th style="width:36px"></th></tr></thead>
+                  <tbody id="fin-in-body"></tbody>
+                  <tfoot><tr><td class="label">수입 합계</td><td class="num t-pos" id="fin-in-total">0원</td><td></td></tr></tfoot>
+                </table>
+              </div>
+              <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="income">＋ 행 추가</button></div>
+            </div>
+
+            <div class="fin-card">
+              <div class="fin-card-head">
+                <h3>③ 이번 달 카드</h3><span class="count" id="fin-cd-count">0개</span>
+              </div>
+              <div class="fin-table-scroll">
+                <table>
+                  <thead><tr><th>카드사</th><th class="num" style="width:120px">금액(원)</th><th style="width:36px"></th></tr></thead>
+                  <tbody id="fin-cd-body"></tbody>
+                  <tfoot><tr><td class="label">카드 합계</td><td class="num t-out" id="fin-cd-total">0원</td><td></td></tr></tfoot>
+                </table>
+              </div>
+              <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="cards">＋ 행 추가</button></div>
+            </div>
+
+            <div class="fin-card">
+              <div class="fin-card-head">
+                <h3>③ 다음 달 카드 예정액</h3><span class="count" id="fin-nc-count">0개</span>
+              </div>
+              <div class="fin-table-scroll">
+                <table>
+                  <thead><tr><th>카드사</th><th class="num" style="width:120px">금액(원)</th><th style="width:36px"></th></tr></thead>
+                  <tbody id="fin-nc-body"></tbody>
+                  <tfoot><tr><td class="label">예정액 합계</td><td class="num t-out" id="fin-nc-total">0원</td><td></td></tr></tfoot>
+                </table>
+              </div>
+              <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="nextCards">＋ 행 추가</button></div>
+            </div>
+          </div>
+
+          <!-- ④ 부채(대출) -->
+          <div class="fin-card">
+            <div class="fin-card-head">
+              <h3>④ 부채(대출)</h3><span class="count" id="fin-dt-count">0개</span>
+              <span class="hint">이자·남은개월을 비우면 잔금×금리·만기로 자동 계산</span>
+            </div>
+            <div class="fin-table-scroll">
+              <table class="fin-wide">
+                <thead>
+                  <tr>
+                    <th style="width:180px">종목</th><th class="num" style="width:130px">잔금(원)</th><th class="num" style="width:80px">금리(%)</th>
+                    <th class="num" style="width:120px">원금+이자</th><th class="num" style="width:110px">원금</th><th class="num" style="width:110px">이자</th>
+                    <th style="width:120px">만기</th><th class="num" style="width:80px">남은개월</th><th>비고</th><th style="width:36px"></th>
+                  </tr>
+                </thead>
+                <tbody id="fin-dt-body"></tbody>
+                <tfoot>
+                  <tr>
+                    <td class="label">부채 합계</td>
+                    <td class="num t-out" id="fin-dt-balance">0원</td>
+                    <td class="num" id="fin-dt-rate">0.00%</td>
+                    <td class="num t-out" id="fin-dt-pay">0원</td>
+                    <td class="num" id="fin-dt-principal">0원</td>
+                    <td class="num t-neg" id="fin-dt-interest">0원</td>
                     <td colspan="4"></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
-            <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="loans">＋ 행 추가</button></div>
+            <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="debts">＋ 행 추가</button></div>
           </div>
 
+          <!-- ⑤ 자산 -->
           <div class="fin-card">
             <div class="fin-card-head">
-              <h3>③ 카드 결제 예정</h3><span class="count" id="fin-cd-count">0개</span>
-              <span class="hint">날짜를 달력으로 선택 · 확정/예정 전환</span>
-            </div>
-            <div class="fin-table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width:180px">카드사</th><th style="width:140px">결제일</th><th style="width:80px">구분</th><th class="num" style="width:140px">금액(원)</th><th>메모</th><th style="width:40px"></th>
-                  </tr>
-                </thead>
-                <tbody id="fin-cd-body"></tbody>
-                <tfoot>
-                  <tr>
-                    <td class="label" colspan="3">총 예정 결제액</td>
-                    <td class="num t-out" id="fin-cd-total">0원</td>
-                    <td colspan="2"></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-            <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="cards">＋ 행 추가</button></div>
-          </div>
-
-          <div class="fin-card">
-            <div class="fin-card-head">
-              <h3>④ 보유 자산</h3><span class="count" id="fin-as-count">0개</span>
-              <span class="hint">수량 × 단가 → 총 평가액 자동</span>
+              <h3>⑤ 자산</h3><span class="count" id="fin-as-count">0개</span>
+              <span class="hint">수량 × 시세 → 합계, 합계 − 매입 → 손실/수익, 비중 자동</span>
             </div>
             <div class="fin-comp">
               <div class="fin-comp-bar" id="fin-comp-bar"></div>
               <div class="fin-comp-legend" id="fin-comp-legend"></div>
             </div>
             <div class="fin-table-scroll">
-              <table>
+              <table class="fin-wide">
                 <thead>
                   <tr>
-                    <th style="width:110px">분류</th><th>자산명</th><th style="width:90px">수량/단위</th><th class="num" style="width:130px">단가·평가액(원)</th><th class="num" style="width:130px">총 평가액(원)</th><th>비고</th><th style="width:40px"></th>
+                    <th style="width:190px">종목</th><th class="num" style="width:130px">매입금액(원)</th><th class="num" style="width:80px">수량</th>
+                    <th class="num" style="width:120px">시세(원)</th><th class="num" style="width:110px">평균단가</th>
+                    <th class="num" style="width:80px">비중</th><th class="num" style="width:130px">손실/수익</th><th class="num" style="width:130px">합계(원)</th>
+                    <th style="width:36px"></th>
                   </tr>
                 </thead>
                 <tbody id="fin-as-body"></tbody>
                 <tfoot>
                   <tr>
-                    <td class="label" colspan="4">총 자산</td>
+                    <td class="label">자산 총합</td>
+                    <td class="num" id="fin-as-buy">0원</td>
+                    <td></td><td></td><td></td>
+                    <td class="num">100%</td>
+                    <td class="num" id="fin-as-pl">0원</td>
                     <td class="num t-pos" id="fin-as-total">0원</td>
-                    <td colspan="2"></td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
@@ -755,16 +811,50 @@
             <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="assets">＋ 행 추가</button></div>
           </div>
 
+          <!-- ⑥ 초과근로 시뮬레이션 · 퇴직금 DC -->
+          <div class="fin-grid2">
+            <div class="fin-card">
+              <div class="fin-card-head">
+                <h3>⑥ 초과근로 시뮬레이션</h3>
+                <span class="hint">시간·시급을 넣으면 가산분까지 자동</span>
+              </div>
+              <div class="fin-table-scroll">
+                <table>
+                  <tbody id="fin-ot-body">
+                    <tr><td class="ot-label">초과근로 시간</td><td class="num"><input class="num" inputmode="decimal" data-t="overtime" data-k="hours" placeholder="0"></td></tr>
+                    <tr><td class="ot-label">8시간초과 시간</td><td class="num"><input class="num" inputmode="decimal" data-t="overtime" data-k="over8" placeholder="0"></td></tr>
+                    <tr><td class="ot-label">야간 가산 시간</td><td class="num"><input class="num" inputmode="decimal" data-t="overtime" data-k="night" placeholder="0"></td></tr>
+                    <tr><td class="ot-label">통상 시급(원)</td><td class="num"><input class="num" inputmode="numeric" data-t="overtime" data-k="wage" placeholder="0"></td></tr>
+                    <tr class="fin-sep"><td class="ot-label">기본 초과임금</td><td class="num calc" data-calc="ot:base">0원</td></tr>
+                    <tr><td class="ot-label">연장근로 가산분 <span class="ot-x">×0.5</span></td><td class="num calc" data-calc="ot:ext">0원</td></tr>
+                    <tr><td class="ot-label">8시간 초과 가산분 <span class="ot-x">×0.5</span></td><td class="num calc" data-calc="ot:over8">0원</td></tr>
+                    <tr><td class="ot-label">야간가산분 <span class="ot-x">×0.5</span></td><td class="num calc" data-calc="ot:night">0원</td></tr>
+                    <tr class="fin-total-row"><td class="ot-label">합계</td><td class="num calc" data-calc="ot:total">0원</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="fin-mini-note">기본 = 시급 × 초과근로, 연장가산 = 시급 × 0.5 × 초과근로, 8시간초과가산 = 시급 × 0.5 × 8시간초과, 야간가산 = 시급 × 0.5 × 야간</p>
+            </div>
+
+            <div class="fin-card">
+              <div class="fin-card-head">
+                <h3>⑥ 퇴직금 DC 적립 내역</h3><span class="count" id="fin-dc-count">0개</span>
+              </div>
+              <div class="fin-table-scroll">
+                <table>
+                  <thead><tr><th>연도</th><th class="num" style="width:150px">금액(원)</th><th style="width:36px"></th></tr></thead>
+                  <tbody id="fin-dc-body"></tbody>
+                  <tfoot><tr><td class="label">적립 합계</td><td class="num t-pos" id="fin-dc-total">0원</td><td></td></tr></tfoot>
+                </table>
+              </div>
+              <div class="fin-row-add"><button class="btn btn-ghost" type="button" data-fin-add="dc">＋ 행 추가</button></div>
+              <p class="fin-mini-note">적립 합계는 연도별 입금액 합계이고, ⑤ 자산표의 ‘퇴직금 DC’ 평가액과는 따로 둡니다(운용수익 반영 전·후 차이).</p>
+            </div>
+          </div>
+
           <p class="note" style="margin:4px 2px">모든 칸을 눌러 바로 고칠 수 있고, 고치면 <b>0.5초 뒤 자동으로 서버에 저장</b>됩니다. 행을 지우면 6초 동안 <b>실행취소</b>가 뜹니다. 엑셀로 보려면 <b>📊 CSV 내보내기</b>를 쓰세요.</p>
         </div>
         <input type="file" id="fin-file" accept=".json,application/json" hidden>
-        <datalist id="fin-cat-list">
-          <option value="개별주식"></option>
-          <option value="퇴직연금(DC)"></option>
-          <option value="부동산"></option>
-          <option value="현금·예금"></option>
-          <option value="기타"></option>
-        </datalist>
         <div class="fin-toast" id="fin-toast" role="status" aria-live="polite"><span id="fin-toast-msg"></span><button id="fin-toast-undo" type="button" hidden>실행취소</button></div>
       </section>
     </div>
@@ -799,8 +889,8 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=38"></script>
-<script src="assets/js/finance.js?v=38"></script>
-<script src="assets/js/app.js?v=38"></script>
+<script src="assets/js/sites.js?v=39"></script>
+<script src="assets/js/finance.js?v=39"></script>
+<script src="assets/js/app.js?v=39"></script>
 </body>
 </html>
