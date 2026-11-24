@@ -541,6 +541,15 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .age-card { border: 1px solid #ffd9a8; background: linear-gradient(180deg, #fffaf2, #fff); }
 .age-card .card-head h3 { color: #8a5300; }
 
+/* GA4 속성 바로가기 (2026-11-24 · v=38) */
+.ga-card { border: 1px solid #cfe0ff; background: linear-gradient(180deg, #f6f9ff, #fff); }
+.ga-card .card-head h3 { color: #1a3fa8; }
+.ga-sites { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin: 0 0 10px; }
+.ga-site { display: flex; flex-direction: column; gap: 3px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; }
+.ga-site .ga-name { font-size: 12.5px; font-weight: 800; }
+.ga-site code { align-self: flex-start; font-size: 12px; font-weight: 700; color: #1a3fa8; background: #eef4ff; border-radius: 6px; padding: 1px 7px; }
+.ga-site .ga-host { font-size: 11px; color: var(--ink-soft); }
+
 @media (max-width: 720px) {
   .bar-label { flex-basis: 68px; width: 68px; font-size: 12px; }
   .bar-value { flex-basis: 78px; width: 78px; font-size: 11px; }

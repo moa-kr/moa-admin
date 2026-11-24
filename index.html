@@ -10,7 +10,7 @@
 <meta name="description" content="포켓몬카드모아와 회사복지모아를 한 화면에서 관리하는 운영자 콘솔입니다.">
 <meta name="theme-color" content="#d6342c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=37">
+<link rel="stylesheet" href="assets/css/admin.css?v=38">
 <link rel="stylesheet" href="assets/css/finance.css?v=37">
 </head>
 <body>
@@ -486,6 +486,31 @@
         <div class="panel-head">
           <h2>방문 통계</h2>
           <p>포켓몬카드모아·회사복지모아 방문자의 <b>화면별 체류시간</b>과 <b>유입 경로·기기·접속 시간대</b>를 봅니다. IP·쿠키·개인 식별 정보는 저장하지 않고 <b>익명 세션</b>으로만 셉니다.</p>
+        </div>
+
+        <div class="card ga-card">
+          <div class="card-head">
+            <h3>GA4 속성 바로가기 <span class="tag">gtag</span></h3>
+            <span class="muted small">인구통계·전환은 GA4에서</span>
+          </div>
+          <div class="card-body">
+            <div class="ga-sites">
+              <div class="ga-site">
+                <span class="ga-name">포켓몬카드모아</span>
+                <code>G-LWRMBRD0X9</code>
+                <span class="ga-host">moa-kr.github.io/pokemoa</span>
+              </div>
+              <div class="ga-site">
+                <span class="ga-name">회사복지모아</span>
+                <code>G-YQW5YXYDTK</code>
+                <span class="ga-host">bokjimoa.onrender.com</span>
+              </div>
+            </div>
+            <div class="btn-row">
+              <a class="btn btn-dark btn-sm" href="https://analytics.google.com/" target="_blank" rel="noreferrer">Google Analytics 열기 ↗</a>
+            </div>
+            <p class="note">위 통계는 사이트가 직접 모은 <b>익명 세션</b> 집계입니다. <b>연령·성별·관심사·전환</b>은 각 사이트에 붙은 GA4 속성에서 보고, 속성은 측정 ID로 찾습니다. 내 기기 방문은 사이트 주소 뒤에 <code>?moa_notrack=1</code> 을 붙이면 자체 통계와 GA4 모두에서 빠집니다.</p>
+          </div>
         </div>
 
         <div class="card">
