@@ -10,7 +10,8 @@
   "use strict";
 
   const PATH = "/api/admin/personal-finance";
-  const VERSION = 2;
+  const QUOTE_PATH = "/api/admin/stock-quotes";
+  const VERSION = 3;
   /* ② 고정지출 정렬 — 값은 meta.fixedSort 로 서버에 함께 저장된다(기본: 지금 순서 그대로). */
   const SORTS = ["manual", "day-asc", "day-desc", "payday"];
   const SORT_LABEL = { manual: "직접 순서", "day-asc": "이체일 오름차순", "day-desc": "이체일 내림차순", payday: "월급일(20일) 기준" };
@@ -22,19 +23,30 @@
     cards: ["name", "amount"],
     nextCards: ["name", "amount"],
     debts: ["name", "balance", "rate", "principal", "interest", "maturity", "months", "memo"],
-    assets: ["name", "buy", "qty", "price", "avg", "total", "memo"],
+    assets: ["name", "buy", "qty", "price", "avg", "total", "memo", "link"],
+    stocks: ["name", "code", "qty", "avg", "price", "change", "changeRate", "memo"],
+    dcEtf: ["name", "code", "qty", "avg", "price", "change", "changeRate", "memo"],
     dc: ["year", "amount"]
   };
-  const EMPTY_COLS = { fixed: 6, income: 3, cards: 3, nextCards: 3, debts: 10, assets: 9, dc: 3 };
+  const EMPTY_COLS = { fixed: 6, income: 3, cards: 3, nextCards: 3, debts: 10, assets: 9, stocks: 10, dcEtf: 10, dc: 3 };
   const EMPTY_HINT = {
     fixed: "‘＋ 행 추가’로 월세·보험·카드 대금처럼 매달 나가는 돈을 넣으면 이체일별 소계와 미납 잔금이 자동으로 잡힙니다.",
     income: "‘＋ 행 추가’로 월급·OT·기타 수입을 넣으면 위 리포트의 이달 적자/흑자가 바로 바뀝니다.",
     cards: "‘＋ 행 추가’로 이번 달 카드 3사 청구액을 넣으면 합계가 잡힙니다.",
     nextCards: "‘＋ 행 추가’로 다음 달 청구 예정액을 넣으면 위 리포트에 예정액 합계가 표시됩니다.",
     debts: "‘＋ 행 추가’로 대출을 넣으면 잔금·금리·월 이자가 합산되고 고금리 순위가 리포트에 뜹니다.",
-    assets: "‘＋ 행 추가’로 주식·부동산·퇴직금을 넣으면 총자산·비중·손익이 계산됩니다.",
+    assets: "‘＋ 행 추가’로 주식·부동산·퇴직금을 넣으면 총자산·비중·손익이 계산됩니다. 개별 보유주식·DC 퇴직연금 ETF 는 아래 종목 표에 넣으면 이 표의 ‘보유주식’·‘퇴직금 DC’ 행으로 합계가 자동 반영됩니다.",
+    stocks: "‘＋ 행 추가’로 종목명·종목코드(6자리)·수량·매입단가를 넣고 「🔄 호가 새로고침」을 누르면 현재가·평가금액이 채워집니다. 합계는 ⑤ 자산의 ‘보유주식’ 행으로 자동 반영됩니다.",
+    dcEtf: "‘＋ 행 추가’로 퇴직연금에 담은 ETF 종목명·종목코드·수량·매입단가를 넣으세요. 합계는 ⑤ 자산의 ‘퇴직금 DC’ 행으로 자동 반영됩니다.",
     dc: "‘＋ 행 추가’로 연도별 DC 입금액을 넣으면 적립 합계가 잡힙니다."
   };
+  /* ⑤ 자산 표와 자동으로 이어지는 두 종목 표(2026-11-25 v3).
+     자산 표의 한 행(link="stocks"·"dcEtf")이 그 표의 합계를 따라가므로, 같은 금액이 두 번 합산되지 않는다. */
+  const HOLDINGS = {
+    stocks: { label: "개별 보유주식", assetName: "보유주식", badge: "🔗 보유주식 합계" },
+    dcEtf: { label: "DC 퇴직연금 ETF", assetName: "퇴직금 DC", badge: "🔗 퇴직금 DC 합계" }
+  };
+  const HOLDING_TABLES = ["stocks", "dcEtf"];
   const PALETTE = ["#1d4ed8", "#0ea5e9", "#0a9e6c", "#f59e0b", "#7c3aed", "#64748b", "#db2777", "#0891b2"];
 
   const root = () => document.getElementById("finance-root");
@@ -121,7 +133,7 @@
 
   /* ───────── 상태 ───────── */
   function emptyState() {
-    return { version: VERSION, meta: { asOf: "", fixedSort: DEFAULT_SORT, lastDebtDeductedMonth: "" }, fixed: [], income: [], cards: [], nextCards: [], debts: [], assets: [], dc: [], overtime: { hours: "", over8: "", night: "", wage: "" } };
+    return { version: VERSION, meta: { asOf: "", fixedSort: DEFAULT_SORT, lastDebtDeductedMonth: "", quoteAt: "" }, fixed: [], income: [], cards: [], nextCards: [], debts: [], assets: [], stocks: [], dcEtf: [], dc: [], overtime: { hours: "", over8: "", night: "", wage: "" } };
   }
   function normalizeRow(table, row) {
     const item = { id: row && row.id ? String(row.id) : uid() };
@@ -193,6 +205,8 @@
     out.meta.fixedSort = SORTS.indexOf(sort) >= 0 ? sort : DEFAULT_SORT;
     const deducted = source.meta && source.meta.lastDebtDeductedMonth ? String(source.meta.lastDebtDeductedMonth).trim() : "";
     out.meta.lastDebtDeductedMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(deducted) ? deducted : "";
+    const quoted = source.meta && source.meta.quoteAt ? String(source.meta.quoteAt).trim() : "";
+    out.meta.quoteAt = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(quoted) ? quoted.slice(0, 19) + "Z" : "";
     Object.keys(FIELDS).forEach((table) => {
       const list = Array.isArray(source[table]) ? source[table] : base[table];
       out[table] = (Array.isArray(list) ? list : []).map((row) => normalizeRow(table, row));
@@ -259,6 +273,13 @@
   function attrs(table, id, key) { return 'data-t="' + table + '" data-f="' + esc(id) + '" data-k="' + key + '"'; }
   function textInput(table, row, key, placeholder, extra) {
     return '<input ' + attrs(table, row.id, key) + ' value="' + esc(row[key]) + '" placeholder="' + esc(placeholder || "") + '" spellcheck="false" autocomplete="off"' + (extra || "") + '>';
+  }
+  /* 종목코드 칸 — 6자리(숫자·신규 ETF 영문)만 받고 항상 대문자로 보여 준다. */
+  function codeInput(table, row) {
+    const value = String(row.code === null || row.code === undefined ? "" : row.code).trim();
+    return '<input class="mono code" inputmode="text" maxlength="6" ' + attrs(table, row.id, "code") +
+      ' value="' + esc(value) + '" placeholder="005930" spellcheck="false" autocomplete="off"' +
+      ' style="text-transform:uppercase;letter-spacing:.5px">';
   }
   function moneyInput(table, row, key, extra) {
     const value = String(row[key] === null || row[key] === undefined ? "" : row[key]).trim();
@@ -459,7 +480,7 @@
     const body = $("#fin-as-body");
     if (!body) return;
     if (!state.assets.length) { body.innerHTML = emptyRow("assets"); const c = $("#fin-as-count"); if (c) c.textContent = "0개"; return; }
-    body.innerHTML = state.assets.map((r) =>
+    body.innerHTML = state.assets.map((r) => (r && r.link ? renderLinkedAssetRow(r) :
       '<tr data-id="' + esc(r.id) + '">' +
         '<td>' + textInput("assets", r, "name", "종목 (예: 국내주식 A)") + '</td>' +
         '<td class="num">' + moneyInput("assets", r, "buy") + '</td>' +
@@ -470,7 +491,7 @@
         '<td class="num calc" data-calc="as-pl:' + esc(r.id) + '">0원</td>' +
         '<td class="num">' + moneyInput("assets", r, "total", ' data-auto="total"') + '</td>' +
         delCell("assets", r) + '</tr>'
-    ).join("");
+    )).join("");
     const count = $("#fin-as-count");
     if (count) count.textContent = state.assets.length + "개";
   }
@@ -489,6 +510,105 @@
     if (count) count.textContent = state.dc.length + "개";
   }
 
+  /* ───────── 종목 표(개별 보유주식 · DC 퇴직연금 ETF) ─────────
+     행 하나가 [종목명 · 종목코드(6자리) · 수량 · 매입단가 · 매입금액 · 현재가(호가) · 전일대비 · 평가금액 · 손익].
+     매입금액 = 수량 × 매입단가, 평가금액 = 수량 × 현재가, 손익 = 평가금액 − 매입금액.
+     표 합계는 ⑤ 자산 표의 연동 행(link) 한 곳으로만 들어가므로 두 번 합산되지 않는다. */
+  function codeOfRow(row) {
+    const code = String(row && row.code ? row.code : "").replace(/[\s-]/g, "").toUpperCase();
+    return /^[0-9A-Z]{6}$/.test(code) ? code : "";
+  }
+  function holdingCostOf(row) { return Math.round(qtyNum(row && row.qty) * num(row && row.avg)); }
+  function holdingValueOf(row) { return Math.round(qtyNum(row && row.qty) * num(row && row.price)); }
+  function holdingsTotals(table) {
+    const out = { count: 0, cost: 0, value: 0, pl: 0 };
+    (state[table] || []).forEach((row) => {
+      out.count += 1;
+      out.cost += holdingCostOf(row);
+      out.value += holdingValueOf(row);
+    });
+    out.pl = out.value - out.cost;
+    return out;
+  }
+  function changeText(row) {
+    const change = num(row && row.change);
+    const rate = num(row && row.changeRate);
+    if (!change && !rate) return num(row && row.price) > 0 ? "보합" : "–";
+    const arrow = change > 0 ? "▲" : (change < 0 ? "▼" : "－");
+    return arrow + " " + comma(Math.abs(change)) + " (" + (rate > 0 ? "+" : rate < 0 ? "−" : "") + Math.abs(rate).toFixed(2) + "%)";
+  }
+  function changeClass(row) {
+    const change = num(row && row.change);
+    if (change > 0) return "t-pos";
+    if (change < 0) return "t-neg";
+    return "muted";
+  }
+
+  function renderHoldings(table) {
+    const body = $('[data-fin-body="' + table + '"]');
+    if (!body) return;
+    const count = $('[data-fin-count="' + table + '"]');
+    if (!state[table].length) {
+      body.innerHTML = emptyRow(table);
+      if (count) count.textContent = "0개";
+      return;
+    }
+    body.innerHTML = state[table].map((r) => {
+      const cost = holdingCostOf(r);
+      const value = holdingValueOf(r);
+      const pl = value - cost;
+      const valued = value > 0 || cost > 0;
+      return '<tr data-id="' + esc(r.id) + '">' +
+        '<td><div class="fin-name-cell">' + textInput(table, r, "name", "종목명") + '</div></td>' +
+        '<td>' + codeInput(table, r) + '</td>' +
+        '<td class="num">' + countInput(table, r, "qty", "0") + '</td>' +
+        '<td class="num">' + moneyInput(table, r, "avg") + '</td>' +
+        '<td class="num calc" data-calc="h-cost:' + esc(r.id) + '">' + won(cost) + '</td>' +
+        '<td class="num">' + moneyInput(table, r, "price") + '</td>' +
+        '<td class="num calc ' + changeClass(r) + '" data-calc="h-chg:' + esc(r.id) + '">' + esc(changeText(r)) + '</td>' +
+        '<td class="num calc" data-calc="h-val:' + esc(r.id) + '">' + won(value) + '</td>' +
+        '<td class="num calc ' + (pl > 0 ? "t-pos" : (pl < 0 ? "t-neg" : "")) + '" data-calc="h-pl:' + esc(r.id) + '">' + (valued ? signedWon(pl) : "–") + '</td>' +
+        delCell(table, r) + '</tr>';
+    }).join("");
+    if (count) count.textContent = state[table].length + "개";
+  }
+
+  /* 연동 행 — 종목 표가 비어 있는데 자산 표에 연동 행이 있으면, 표를 채울 때 바로 반영되도록 하나만 둔다. */
+  function linkedRowsOf(link) { return state.assets.filter((r) => r && r.link === link); }
+  function primaryLinkedRow(link) { const list = linkedRowsOf(link); return list.length ? list[0] : null; }
+  function ensureLinkedAssets() {
+    let added = false;
+    HOLDING_TABLES.forEach((table) => {
+      if (!state[table].length) return;
+      if (linkedRowsOf(table).length) return;
+      const row = blankRow("assets");
+      row.name = HOLDINGS[table].assetName;
+      row.link = table;
+      state.assets.push(row);
+      added = true;
+    });
+    return added;
+  }
+  function renderLinkedAssetRow(r) {
+    const meta = HOLDINGS[r.link] || { label: r.link, badge: "연동" };
+    const group = holdingsTotals(r.link);
+    const primary = primaryLinkedRow(r.link) === r;
+    const value = primary ? group.value : 0;
+    const cost = primary ? group.cost : 0;
+    return '<tr data-id="' + esc(r.id) + '" class="fin-linked">' +
+      '<td><div class="fin-name-cell">' + textInput("assets", r, "name", meta.assetName) +
+        '<span class="fin-link-dot" title="' + esc(meta.label) + ' 표의 합계를 따라갑니다">🔗</span></div>' +
+        '<span class="fin-linked-note">' + (primary ? esc(meta.badge) : "중복 연동 — 합계에서 제외") + '</span></td>' +
+      '<td class="num calc" data-calc="as-buy:' + esc(r.id) + '">' + won(cost) + '</td>' +
+      '<td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td>' +
+      '<td class="num calc" data-calc="as-weight:' + esc(r.id) + '">0.0%</td>' +
+      '<td class="num calc" data-calc="as-pl:' + esc(r.id) + '">0원</td>' +
+      '<td class="num calc" data-calc="as-total:' + esc(r.id) + '">' + won(value) + '</td>' +
+      '<td class="num">' + (group.count
+        ? '<span class="fin-lock" title="' + esc(meta.label) + ' 표에서 행을 지우면 이 행도 합계에서 빠집니다">🔒</span>'
+        : '<button class="del" type="button" data-fin-del="assets" data-f="' + esc(r.id) + '" title="이 행 삭제" aria-label="이 행 삭제">✕</button>') + '</td></tr>';
+  }
+
   function renderOvertimeInputs() {
     const ot = state.overtime || {};
     ["hours", "over8", "night", "wage"].forEach((key) => {
@@ -504,6 +624,14 @@
     if (!el || document.activeElement === el) return;
     el.value = state.meta && state.meta.asOf ? state.meta.asOf : "";
   }
+  function renderQuoteStamp() {
+    const el = $("#fin-quote-time");
+    if (!el) return;
+    const at = state.meta && state.meta.quoteAt ? new Date(state.meta.quoteAt) : null;
+    el.textContent = at && !isNaN(at.getTime())
+      ? "마지막 호가 " + prettyTime(at) + " · 네이버 금융 기준(종가)"
+      : "아직 호가를 불러오지 않았습니다";
+  }
 
   function renderAll() {
     renderFixed();
@@ -512,6 +640,8 @@
     renderSimple("nextCards", "#fin-nc-body", "#fin-nc-count", "카드사 (예: 현대)");
     renderDebts();
     renderAssets();
+    renderHoldings("stocks");
+    renderHoldings("dcEtf");
     renderDC();
     renderOvertimeInputs();
     renderAsOf();
@@ -520,25 +650,111 @@
     sync();
   }
 
+  /* ───────── 🔄 호가 새로고침 — 종목 표의 6자리 코드로 현재가·전일 대비를 받아 온다 ─────────
+     서버(복지모아 POST /api/admin/stock-quotes)가 네이버 금융 공개 시세를 읽어 준다.
+     받은 현재가로 평가금액·자산 합계·순자산·부채비율이 즉시 다시 계산되고, 0.5초 뒤 DB 에 저장된다. */
+  let quoting = false;
+  function holdingCodes() {
+    const codes = [];
+    HOLDING_TABLES.forEach((table) => {
+      (state[table] || []).forEach((r) => {
+        const code = codeOfRow(r);
+        if (code && codes.indexOf(code) < 0) codes.push(code);
+      });
+    });
+    return codes;
+  }
+  function setQuoting(on) {
+    quoting = on;
+    $$("[data-fin-quotes]").forEach((btn) => {
+      btn.disabled = on;
+      btn.textContent = on ? "⏳ 시세 불러오는 중…" : "🔄 호가 새로고침";
+    });
+  }
+  async function refreshQuotes() {
+    if (!loaded) { ensureLoaded(); return; }
+    if (!request || quoting) return;
+    const codes = holdingCodes();
+    if (!codes.length) {
+      toast("종목코드가 있는 행이 없습니다. 종목명과 6자리 종목코드를 먼저 넣어 주세요.");
+      return;
+    }
+    setQuoting(true);
+    const result = await request(QUOTE_PATH, { method: "POST", json: true, body: JSON.stringify({ codes }) });
+    setQuoting(false);
+    if (!result.ok) {
+      showWarn(result.error || "시세를 불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+      toast("시세를 불러오지 못했습니다.");
+      return;
+    }
+    const data = result.data || {};
+    const quotes = Array.isArray(data.quotes) ? data.quotes : [];
+    const byCode = {};
+    quotes.forEach((q) => { if (q && q.code) byCode[String(q.code).toUpperCase()] = q; });
+    let updated = 0;
+    const missing = [];
+    HOLDING_TABLES.forEach((table) => {
+      (state[table] || []).forEach((r) => {
+        const code = codeOfRow(r);
+        if (!code) return;
+        const quote = byCode[code];
+        if (!quote) { if (missing.indexOf(code) < 0) missing.push(code); return; }
+        r.price = String(quote.price);
+        r.change = String(quote.change);
+        r.changeRate = String(quote.changeRate);
+        /* 종목명을 비워 둔 행은 시세에서 받은 이름으로 채워 준다. */
+        if (String(r.name || "").trim() === "" && quote.name) r.name = String(quote.name).slice(0, 60);
+        updated += 1;
+      });
+    });
+    if (updated) {
+      const at = data.fetchedAt ? new Date(data.fetchedAt) : new Date();
+      state.meta.quoteAt = isNaN(at.getTime()) ? new Date().toISOString().slice(0, 19) + "Z" : at.toISOString().slice(0, 19) + "Z";
+    }
+    renderHoldings("stocks");
+    renderHoldings("dcEtf");
+    renderAssets();
+    sync();
+    if (updated) scheduleSave();
+    const parts = [];
+    if (updated) parts.push("현재가 " + updated + "종목 반영");
+    if (missing.length) parts.push("못 찾은 코드 " + missing.join("·"));
+    toast(parts.join(" · ") || "바뀐 시세가 없습니다.");
+    showWarn(missing.length ? "일부 종목의 시세를 찾지 못했습니다(" + missing.join(", ") + "). 종목코드 6자리를 확인해 주세요." : "");
+  }
+
   /* ───────── 계산 ───────── */
   function interestOf(row) {
     if (String(row.interest || "").trim() !== "") return num(row.interest);
     return Math.round(num(row.balance) * num(row.rate) / 1200);
   }
   function assetTotalOf(row) {
+    if (row && row.link) {
+      /* 연동 행은 종목 표의 합계를 따른다. 같은 link 가 둘 이상이면 첫 번째 행만 값을 가진다(중복 합산 방지). */
+      if (primaryLinkedRow(row.link) !== row) return 0;
+      return holdingsTotals(row.link).value;
+    }
     if (row.manualTotal && String(row.total || "").trim() !== "") return Math.round(num(row.total));
     const qty = qtyNum(row.qty);
     const price = num(row.price);
     if (qty > 0 && price > 0) return Math.round(qty * price);
     return Math.round(num(row.total));
   }
+  /* 매입금액(원가) — 연동 행은 종목 표의 수량×매입단가 합계. */
+  function assetCostOf(row) {
+    if (row && row.link) {
+      if (primaryLinkedRow(row.link) !== row) return 0;
+      return holdingsTotals(row.link).cost;
+    }
+    return num(row.buy);
+  }
   /* 평가액(합계)이 있는 행만 손익을 계산한다. 평가하지 않은 행(전액 손실 처리 등)은 ‘–’. */
   function assetValued(row) {
+    if (row && row.link) return holdingsTotals(row.link).count > 0;
     if (String(row.total || "").trim() !== "") return true;
     return qtyNum(row.qty) > 0 && num(row.price) > 0;
   }
-  function assetAvgOf(row) {
-    if (row.manualAvg && String(row.avg || "").trim() !== "") return Math.round(num(row.avg));
+  function assetAvgOf(row) {    if (row.manualAvg && String(row.avg || "").trim() !== "") return Math.round(num(row.avg));
     const qty = qtyNum(row.qty);
     if (qty > 0) return Math.round(num(row.buy) / qty);
     return Math.round(num(row.avg));
@@ -620,7 +836,7 @@
       const value = assetTotalOf(r);
       assetValues[r.id] = value;
       assetTotal += value;
-      assetBuy += num(r.buy);
+      assetBuy += assetCostOf(r);
     });
     let dcTotal = 0;
     state.dc.forEach((r) => { dcTotal += num(r.amount); });
@@ -668,15 +884,45 @@
     let plTotal = 0;
     state.assets.forEach((r) => {
       const value = t.assetValues[r.id] || 0;
+      const cost = assetCostOf(r);
       const valued = assetValued(r);
-      const pl = value - num(r.buy);
+      const pl = value - cost;
       if (valued) plTotal += pl;
       setCalc("as-weight:" + r.id, valued && t.assetTotal > 0 ? (value / t.assetTotal * 100).toFixed(1) + "%" : "0.0%");
       setCalc("as-pl:" + r.id, valued ? ((pl < 0 ? "−" : "") + comma(Math.abs(pl)) + "원") : "–");
+      /* 연동 행은 매입금액·평가금액도 계산값으로 보여 주고, 백업·CSV 에 같은 숫자가 남게 행에도 적어 둔다. */
+      if (r.link && primaryLinkedRow(r.link) === r) {
+        setCalc("as-buy:" + r.id, won(cost));
+        setCalc("as-total:" + r.id, won(value));
+        r.buy = String(Math.round(cost));
+        r.total = String(Math.round(value));
+      }
     });
     setText("#fin-as-pl", signedWon(plTotal));
     setClass("#fin-as-pl", "num " + (plTotal > 0 ? "t-pos" : (plTotal < 0 ? "t-neg" : "")));
     renderComposition(t.assetTotal);
+
+    /* 종목 표 — 행별 매입금액·평가금액·손익·전일대비 */
+    HOLDING_TABLES.forEach((table) => {
+      (state[table] || []).forEach((r) => {
+        const cost = holdingCostOf(r);
+        const value = holdingValueOf(r);
+        const pl = value - cost;
+        setCalc("h-cost:" + r.id, won(cost));
+        setCalc("h-val:" + r.id, won(value));
+        setCalc("h-pl:" + r.id, (value > 0 || cost > 0) ? signedWon(pl) : "–");
+        const chgCell = root() ? root().querySelector('[data-calc="h-chg:' + r.id + '"]') : null;
+        if (chgCell) { chgCell.textContent = changeText(r); chgCell.className = "num calc " + changeClass(r); }
+        const plCell = root() ? root().querySelector('[data-calc="h-pl:' + r.id + '"]') : null;
+        if (plCell) plCell.className = "num calc " + (pl > 0 ? "t-pos" : (pl < 0 ? "t-neg" : ""));
+      });
+      const sum = holdingsTotals(table);
+      setText('[data-fin-sum="' + table + ':cost"]', won(sum.cost));
+      setText('[data-fin-sum="' + table + ':value"]', won(sum.value));
+      setText('[data-fin-sum="' + table + ':pl"]', signedWon(sum.pl));
+      setClass('[data-fin-sum="' + table + ':pl"]', "num " + (sum.pl > 0 ? "t-pos" : (sum.pl < 0 ? "t-neg" : "")));
+    });
+    renderQuoteStamp();
 
     /* DC */
     setText("#fin-dc-total", won(t.dcTotal));
@@ -1040,6 +1286,8 @@
     setStamp(updatedAt);
     setChip("클라우드 동기화됨 " + hhmm(updatedAt));
     showWarn("");
+    /* 종목 표는 있는데 연동 행이 없으면 여기서 한 번 만들어 서버에도 저장한다. */
+    if (ensureLinkedAssets()) { renderAssets(); sync(); scheduleSave(); }
     /* 25일이 지났는데 이번 달 차감 전이면 여기서 한 번만 실행된다. */
     maybeDeductDebts();
   }
@@ -1061,7 +1309,10 @@
     if (!ensureLoaded()) return;
     const row = blankRow(table);
     state[table].push(row);
+    /* 종목 표에 첫 행이 생기면 ⑤ 자산에 연동 행(‘보유주식’·‘퇴직금 DC’)을 하나 만들어 합계가 바로 잡히게 한다. */
+    const linked = HOLDING_TABLES.indexOf(table) >= 0 ? ensureLinkedAssets() : false;
     RENDER[table]();
+    if (linked) renderAssets();
     sync();
     scheduleSave();
     const el = root().querySelector('[data-t="' + table + '"][data-f="' + row.id + '"][data-k="name"]') ||
@@ -1082,11 +1333,13 @@
     if (index < 0) return;
     const removed = list.splice(index, 1)[0];
     RENDER[table]();
+    if (HOLDING_TABLES.indexOf(table) >= 0) renderAssets();
     sync();
     scheduleSave();
     toast("행을 삭제했습니다.", () => {
       state[table].splice(Math.min(index, state[table].length), 0, removed);
       RENDER[table]();
+      if (HOLDING_TABLES.indexOf(table) >= 0) renderAssets();
       sync();
       scheduleSave();
       toast("되살렸습니다.");
@@ -1230,17 +1483,27 @@
     line(["부채 합계", t.debtBalance, t.avgRate.toFixed(2), t.debtPrincipal + t.debtInterest, t.debtPrincipal, t.debtInterest, "", "", ""]);
     line([]);
     line(["⑤ 자산"]);
-    line(["종목", "매입금액(원)", "수량", "시세(원)", "평균단가(원)", "비중(%)", "손실/수익(원)", "합계(원)"]);
+    line(["종목", "매입금액(원)", "수량", "시세(원)", "평균단가(원)", "비중(%)", "손실/수익(원)", "합계(원)", "연동"]);
     let csvPl = 0;
     state.assets.forEach((r) => {
       const value = assetTotalOf(r);
+      const cost = assetCostOf(r);
       const valued = assetValued(r);
-      const pl = valued ? value - num(r.buy) : "";
-      if (valued) csvPl += value - num(r.buy);
-      line([r.name, num(r.buy), qtyNum(r.qty), num(r.price), assetAvgOf(r), valued && t.assetTotal > 0 ? (value / t.assetTotal * 100).toFixed(1) : "0.0", pl, value]);
+      const pl = valued ? value - cost : "";
+      if (valued) csvPl += value - cost;
+      line([r.name, cost, qtyNum(r.qty), num(r.price), assetAvgOf(r), valued && t.assetTotal > 0 ? (value / t.assetTotal * 100).toFixed(1) : "0.0", pl, value, r.link ? "→ " + ((HOLDINGS[r.link] || {}).label || r.link) : ""]);
     });
-    line(["자산 총합", t.assetBuy, "", "", "", "100.0", csvPl, t.assetTotal]);
+    line(["자산 총합", t.assetBuy, "", "", "", "100.0", csvPl, t.assetTotal, ""]);
     line([]);
+    HOLDING_TABLES.forEach((table) => {
+      const meta = HOLDINGS[table];
+      line(["⑤ " + meta.label + " (수량 × 현재가)"]);
+      line(["종목명", "종목코드", "수량", "매입단가(원)", "매입금액(원)", "현재가(원)", "전일대비", "등락률(%)", "평가금액(원)", "손익(원)"]);
+      state[table].forEach((r) => line([r.name, codeOfRow(r), qtyNum(r.qty), num(r.avg), holdingCostOf(r), num(r.price), num(r.change), num(r.changeRate), holdingValueOf(r), holdingValueOf(r) - holdingCostOf(r)]));
+      const sum = holdingsTotals(table);
+      line(["합계", "", "", "", sum.cost, "", "", "", sum.value, sum.pl]);
+      line([]);
+    });
     line(["⑥ 초과근로"]);
     line(["초과근로 시간", num(state.overtime.hours)]);
     line(["8시간초과 시간", num(state.overtime.over8)]);
@@ -1284,10 +1547,11 @@
       let data;
       try { data = JSON.parse(String(reader.result)); }
       catch (err) { window.alert("불러오지 못했습니다. JSON 백업 파일이 맞는지 확인해 주세요.\n(" + err.message + ")"); return; }
-      const hasTable = data && (Array.isArray(data.fixed) || Array.isArray(data.debts) || Array.isArray(data.cashflow) || Array.isArray(data.loans));
+      const hasTable = data && (Array.isArray(data.fixed) || Array.isArray(data.debts) || Array.isArray(data.cashflow) || Array.isArray(data.loans) || Array.isArray(data.stocks) || Array.isArray(data.dcEtf));
       if (!hasTable) { window.alert("이 파일에는 개인 재무 표 데이터가 없습니다."); return; }
       if (!window.confirm("지금 표의 내용을 백업 파일 내용으로 바꿀까요?\n바꾸면 서버에도 그대로 저장됩니다.")) return;
       state = normalize(data);
+      ensureLinkedAssets();
       renderAll();
       scheduleSave();
       toast("백업을 불러왔습니다.");
@@ -1296,7 +1560,7 @@
   }
 
   /* ───────── 이벤트 ───────── */
-  const RENDER = { fixed: renderFixed, income: () => renderSimple("income", "#fin-in-body", "#fin-in-count", "항목 (예: 월급 20일)"), cards: () => renderSimple("cards", "#fin-cd-body", "#fin-cd-count", "카드사 (예: 현대)"), nextCards: () => renderSimple("nextCards", "#fin-nc-body", "#fin-nc-count", "카드사 (예: 현대)"), debts: renderDebts, assets: renderAssets, dc: renderDC };
+  const RENDER = { fixed: renderFixed, income: () => renderSimple("income", "#fin-in-body", "#fin-in-count", "항목 (예: 월급 20일)"), cards: () => renderSimple("cards", "#fin-cd-body", "#fin-cd-count", "카드사 (예: 현대)"), nextCards: () => renderSimple("nextCards", "#fin-nc-body", "#fin-nc-count", "카드사 (예: 현대)"), debts: renderDebts, assets: renderAssets, stocks: () => renderHoldings("stocks"), dcEtf: () => renderHoldings("dcEtf"), dc: renderDC };
 
   let bound = false;
   function bind() {
@@ -1401,6 +1665,8 @@
       if (!target || !target.closest) return;
       const addBtn = target.closest("[data-fin-add]");
       if (addBtn) { event.preventDefault(); addRow(addBtn.getAttribute("data-fin-add")); return; }
+      const quoteBtn = target.closest("[data-fin-quotes]");
+      if (quoteBtn) { event.preventDefault(); refreshQuotes(); return; }
       const moveBtn = target.closest("[data-fin-move]");
       if (moveBtn && !moveBtn.disabled) { event.preventDefault(); moveFixed(moveBtn.getAttribute("data-f"), moveBtn.getAttribute("data-fin-move")); return; }
       const paidBtn = target.closest("[data-fin-paid]");
@@ -1515,6 +1781,11 @@
       get state() { return state; },
       totals,
       normalize,
+      holdingsTotals,
+      ensureLinkedAssets,
+      primaryLinkedRow,
+      holdingCodes,
+      refreshQuotes,
       due: dueDeductMonth,
       lastDeducted,
       planDebtDeduction,

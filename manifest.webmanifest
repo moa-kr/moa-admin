@@ -1,0 +1,36 @@
+{
+  "name": "모아 어드민",
+  "short_name": "모아 어드민",
+  "description": "포켓몬카드모아·회사복지모아를 한 화면에서 관리하는 운영자 콘솔. 폰 홈 화면에 설치하면 앱처럼 열립니다.",
+  "lang": "ko-KR",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "theme_color": "#d6342c",
+  "background_color": "#ffffff",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
