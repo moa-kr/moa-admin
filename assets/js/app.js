@@ -2423,6 +2423,14 @@
     }
   }
 
+  /* 받침에 따른 조사 ‘으로/로’ — ‘신규’로 · ‘읽음’으로 · ‘완료’로 처럼 읽히게 한다. */
+  function roParticle(word) {
+    const text = String(word || "");
+    const code = text.charCodeAt(text.length - 1);
+    const hasFinal = code >= 0xac00 && code <= 0xd7a3 ? (code - 0xac00) % 28 !== 0 : true;
+    return hasFinal ? "으로" : "로";
+  }
+
   /* 문의 한 건의 상태를 new·read·done 중 하나로 바꾼다(PATCH /api/admin/inquiries/:id).
      서버가 돌려준 byStatus 로 현황 건수를 맞추고, 고른 상태 필터와 달라진 문의는 목록에서 뺀다. */
   async function changeInquiryStatus(btn) {
@@ -2455,7 +2463,7 @@
       }
       renderInquiries();
       addLog(`문의 #${id} 상태 → ${label[saved] || saved}`);
-      toast(`문의 #${id} 를 ‘${label[saved] || saved}’으로 바꿨습니다.`);
+      toast(`문의 #${id} 를 ‘${label[saved] || saved}’${roParticle(label[saved] || saved)} 바꿨습니다.`);
     } catch (err) {
       btn.textContent = before;
       buttons.forEach((b) => { b.disabled = false; });
