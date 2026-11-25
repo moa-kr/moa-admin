@@ -8,6 +8,13 @@
   --fin-pos-soft: #e8f7f0;
   --fin-neg: #e5484d;
   --fin-neg-soft: #fdecea;
+  /* 시세 등락 — 한국 주식 관례: 상승(+)은 붉은색, 하락(−)은 파란색, 보합은 중립 회색.
+     위의 --fin-pos/--fin-neg 는 ‘흑자/적자·정상/오류’ 같은 회계·상태 색이라 시세와 따로 둔다. */
+  --fin-up: #dc2626;
+  --fin-up-soft: #fdeceb;
+  --fin-down: #2563eb;
+  --fin-down-soft: #e9f0fe;
+  --fin-flat: #5b6784;
   --fin-warn: #92400e;
   --fin-warn-soft: #fffbeb;
   --fin-line: #e3e7ef;
@@ -138,6 +145,10 @@
 #finance-root td.calc.strong { font-weight: 800; color: var(--ink); }
 #finance-root .t-pos { color: var(--fin-pos); }
 #finance-root .t-neg { color: var(--fin-neg); }
+/* 시세·손익 전용 — 상승=빨강, 하락=파랑, 보합=회색 */
+#finance-root .t-up { color: var(--fin-up); }
+#finance-root .t-down { color: var(--fin-down); }
+#finance-root .t-flat { color: var(--fin-flat); }
 #finance-root .t-out { color: var(--ink); }
 #finance-root .muted { color: var(--fin-muted); }
 #finance-root input, #finance-root select {

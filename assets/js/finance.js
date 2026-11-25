@@ -537,11 +537,17 @@
     const arrow = change > 0 ? "▲" : (change < 0 ? "▼" : "－");
     return arrow + " " + comma(Math.abs(change)) + " (" + (rate > 0 ? "+" : rate < 0 ? "−" : "") + Math.abs(rate).toFixed(2) + "%)";
   }
+  /* 전일대비·손익 색 — 한국 주식 관례(상승=빨강, 하락=파랑, 보합=회색). */
   function changeClass(row) {
     const change = num(row && row.change);
-    if (change > 0) return "t-pos";
-    if (change < 0) return "t-neg";
-    return "muted";
+    if (change > 0) return "t-up";
+    if (change < 0) return "t-down";
+    return "t-flat";
+  }
+  function plClass(value) {
+    if (value > 0) return "t-up";
+    if (value < 0) return "t-down";
+    return "t-flat";
   }
 
   function renderHoldings(table) {
@@ -567,7 +573,7 @@
         '<td class="num">' + moneyInput(table, r, "price") + '</td>' +
         '<td class="num calc ' + changeClass(r) + '" data-calc="h-chg:' + esc(r.id) + '">' + esc(changeText(r)) + '</td>' +
         '<td class="num calc" data-calc="h-val:' + esc(r.id) + '">' + won(value) + '</td>' +
-        '<td class="num calc ' + (pl > 0 ? "t-pos" : (pl < 0 ? "t-neg" : "")) + '" data-calc="h-pl:' + esc(r.id) + '">' + (valued ? signedWon(pl) : "–") + '</td>' +
+        '<td class="num calc ' + plClass(pl) + '" data-calc="h-pl:' + esc(r.id) + '">' + (valued ? signedWon(pl) : "–") + '</td>' +
         delCell(table, r) + '</tr>';
     }).join("");
     if (count) count.textContent = state[table].length + "개";
@@ -894,6 +900,9 @@
       if (valued) plTotal += pl;
       setCalc("as-weight:" + r.id, valued && t.assetTotal > 0 ? (value / t.assetTotal * 100).toFixed(1) + "%" : "0.0%");
       setCalc("as-pl:" + r.id, valued ? ((pl < 0 ? "−" : "") + comma(Math.abs(pl)) + "원") : "–");
+      /* 행별 손실/수익도 한국 주식 관례 색(상승=빨강, 하락=파랑, 보합·미평가=회색)으로 칠한다. */
+      const plCell = root() ? root().querySelector('[data-calc="as-pl:' + r.id + '"]') : null;
+      if (plCell) plCell.className = "num calc " + (valued ? plClass(pl) : "");
       /* 연동 행은 매입금액·평가금액도 계산값으로 보여 주고, 백업·CSV 에 같은 숫자가 남게 행에도 적어 둔다. */
       if (r.link && primaryLinkedRow(r.link) === r) {
         setCalc("as-buy:" + r.id, won(cost));
@@ -903,7 +912,7 @@
       }
     });
     setText("#fin-as-pl", signedWon(plTotal));
-    setClass("#fin-as-pl", "num " + (plTotal > 0 ? "t-pos" : (plTotal < 0 ? "t-neg" : "")));
+    setClass("#fin-as-pl", "num " + plClass(plTotal));
     renderComposition(t.assetTotal);
 
     /* 종목 표 — 행별 매입금액·평가금액·손익·전일대비 */
@@ -918,13 +927,13 @@
         const chgCell = root() ? root().querySelector('[data-calc="h-chg:' + r.id + '"]') : null;
         if (chgCell) { chgCell.textContent = changeText(r); chgCell.className = "num calc " + changeClass(r); }
         const plCell = root() ? root().querySelector('[data-calc="h-pl:' + r.id + '"]') : null;
-        if (plCell) plCell.className = "num calc " + (pl > 0 ? "t-pos" : (pl < 0 ? "t-neg" : ""));
+        if (plCell) plCell.className = "num calc " + plClass(pl);
       });
       const sum = holdingsTotals(table);
       setText('[data-fin-sum="' + table + ':cost"]', won(sum.cost));
       setText('[data-fin-sum="' + table + ':value"]', won(sum.value));
       setText('[data-fin-sum="' + table + ':pl"]', signedWon(sum.pl));
-      setClass('[data-fin-sum="' + table + ':pl"]', "num " + (sum.pl > 0 ? "t-pos" : (sum.pl < 0 ? "t-neg" : "")));
+      setClass('[data-fin-sum="' + table + ':pl"]', "num " + plClass(sum.pl));
     });
     renderQuoteStamp();
 
