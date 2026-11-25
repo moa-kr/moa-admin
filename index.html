@@ -15,8 +15,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=49">
-<link rel="stylesheet" href="assets/css/finance.css?v=49">
+<link rel="stylesheet" href="assets/css/admin.css?v=50">
+<link rel="stylesheet" href="assets/css/finance.css?v=50">
 </head>
 <body>
 
@@ -545,6 +545,34 @@
           </div>
         </div>
 
+        <!-- 기간별 트렌드(2026-11-25) — 위의 기간(days) 필터와 무관하게 서버에 쌓인 전체 기록을
+             월별(최근 12개월)·연도별로 묶는다. 한 응답에 둘 다 실려 와서 전환은 다시 부르지 않고 그린다. -->
+        <div class="card">
+          <div class="card-head">
+            <h3>기간별 트렌드 <span class="tag">trend</span></h3>
+            <span class="muted small">전체 누적 기록 · 월별 최근 12개월 / 연도별 전체</span>
+          </div>
+          <div class="card-body">
+            <div class="inline-row stats-controls">
+              <div class="seg" id="stats-trend-mode" role="group" aria-label="트렌드 단위">
+                <button type="button" data-trend="monthly" class="is-active">월별 트렌드</button>
+                <button type="button" data-trend="yearly">연도별 트렌드</button>
+              </div>
+              <span class="muted small" id="stats-trend-note">기간(days) 조건과 상관없이 그 사이트에 쌓인 전체 기록을 셉니다.</span>
+            </div>
+            <div class="trend-chart" id="stats-trend-chart" role="img" aria-label="기간별 조회수 추이"></div>
+            <p class="note" id="stats-trend-empty" hidden>아직 자료가 없습니다. 사이트를 방문하는 사람이 생기면 달·해 단위로 여기에 쌓입니다.</p>
+            <div class="stats-table-wrap">
+              <table class="stats-table" id="stats-trend">
+                <thead>
+                  <tr><th>기간</th><th class="num">조회수</th><th class="num">세션</th><th class="num">이벤트</th><th class="num">평균 체류</th></tr>
+                </thead>
+                <tbody><tr><td colspan="5" class="muted small">아직 자료가 없습니다.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-head">
             <h3>페이지 · 탭별 체류시간 <span class="tag">pages</span></h3>
@@ -778,6 +806,13 @@
                   <option value="payday">월급일(20일) 기준</option>
                 </select>
               </label>
+            </div>
+            <!-- 납입여부 일괄 체크/해제 (2026-11-25) — 이 표의 모든 행을 한 번에 O / 미납으로. -->
+            <div class="fin-bulk-bar" role="group" aria-label="고정지출 납입여부 일괄 처리">
+              <span class="fin-bulk-label">납입여부 일괄</span>
+              <button class="btn btn-sm btn-ghost" type="button" id="fin-fx-check-all" data-fin-bulk="check" title="모든 고정지출을 납입 완료(O)로 표시">☑ 일괄 체크</button>
+              <button class="btn btn-sm btn-ghost" type="button" id="fin-fx-uncheck-all" data-fin-bulk="uncheck" title="모든 고정지출을 미납으로 되돌림">☐ 일괄 해제</button>
+              <span class="fin-bulk-note" id="fin-fx-bulk-note"></span>
             </div>
             <div class="fin-table-scroll">
               <table class="fin-fixed">
@@ -1039,9 +1074,11 @@
           </div>
 
           <p class="note" style="margin:4px 2px">모든 칸을 눌러 바로 고칠 수 있고, 고치면 <b>0.5초 뒤 자동으로 서버에 저장</b>됩니다. 행을 지우면 6초 동안 <b>실행취소</b>가 뜨고, <span class="req-star">*</span> 표시는 <b>매달 직접 고치는 칸</b>입니다. 엑셀로 보려면 <b>📊 CSV 내보내기</b>를 쓰세요.</p>
+          <!-- 토스트는 #finance-root 안에 있어야 한다 — JS($ = root().querySelector)와 CSS(#finance-root .fin-toast)가
+               둘 다 이 안을 본다. 2026-11-25 밖으로 나와 있어 안내·실행취소가 보이지 않던 것을 바로잡았다. -->
+          <div class="fin-toast" id="fin-toast" role="status" aria-live="polite"><span id="fin-toast-msg"></span><button id="fin-toast-undo" type="button" hidden>실행취소</button></div>
         </div>
         <input type="file" id="fin-file" accept=".json,application/json" hidden>
-        <div class="fin-toast" id="fin-toast" role="status" aria-live="polite"><span id="fin-toast-msg"></span><button id="fin-toast-undo" type="button" hidden>실행취소</button></div>
       </section>
     </div>
     <aside class="preview-rail" id="preview-rail">
@@ -1075,9 +1112,9 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=49"></script>
-<script src="assets/js/finance.js?v=49"></script>
-<script src="assets/js/app.js?v=49"></script>
+<script src="assets/js/sites.js?v=50"></script>
+<script src="assets/js/finance.js?v=50"></script>
+<script src="assets/js/app.js?v=50"></script>
 <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

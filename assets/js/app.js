@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=49";
+  const BUILD = "v=50";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 ‘💰 개인 재무’ 탭과 헤더 버튼을 보인다.
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -205,7 +205,7 @@
     // 🔌 태블릿 중계 서버 상태 — 마지막으로 본 /health 결과
     relay: { online: false, version: "", at: 0 },
     // 📊 방문 통계 — 사이트 필터·기간별로 서버에서 집계해 온다.
-    stats: { site: "all", days: 7, loading: false, error: "", data: null, loadedAt: "" },
+    stats: { site: "all", days: 7, loading: false, error: "", data: null, loadedAt: "", trend: "monthly" },
     log: []
   };
 
@@ -794,6 +794,15 @@
     });
     const statsRefresh = $("#stats-refresh");
     if (statsRefresh) statsRefresh.addEventListener("click", loadStats);
+    // 월별/연도별 트렌드 전환 — 서버 응답에 둘 다 들어 있어 다시 부르지 않고 그린다.
+    const statsTrendMode = $("#stats-trend-mode");
+    if (statsTrendMode) statsTrendMode.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-trend]");
+      if (!btn) return;
+      state.stats.trend = btn.dataset.trend === "yearly" ? "yearly" : "monthly";
+      syncStatsControls();
+      renderStatsTrend();
+    });
 
     // 순서 편집(탭/섹션)
     ["tabs", "sections"].forEach((listName) => {
@@ -2642,6 +2651,9 @@
     $$("#stats-period button[data-days]").forEach((btn) => {
       btn.classList.toggle("is-active", Number(btn.dataset.days) === Number(state.stats.days));
     });
+    $$("#stats-trend-mode button[data-trend]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.trend === state.stats.trend);
+    });
   }
 
   async function loadStats() {
@@ -2689,6 +2701,70 @@
     renderStats();
   }
 
+  /* 기간별 트렌드(2026-11-25) — 서버가 전체 누적 기록으로 묶은 monthly/yearly 를 그린다.
+     위쪽 기간(days)·사이트 필터와는 별개이고, 한 응답에 둘 다 실려 와서 전환은 즉시 된다. */
+  function renderStatsTrend() {
+    const chart = $("#stats-trend-chart");
+    const table = $("#stats-trend");
+    const emptyNote = $("#stats-trend-empty");
+    const note = $("#stats-trend-note");
+    if (!chart || !table) return;
+    const data = state.stats.data;
+    const unit = state.stats.trend === "yearly" ? "yearly" : "monthly";
+    const rows = data && Array.isArray(data[unit]) ? data[unit] : [];
+    const body = table.querySelector("tbody");
+    const meta = (data && data.trend) || {};
+
+    if (!rows.length) {
+      chart.hidden = true;
+      chart.innerHTML = "";
+      if (emptyNote) emptyNote.hidden = false;
+      if (body) body.innerHTML = '<tr><td colspan="5" class="muted small">아직 자료가 없습니다.</td></tr>';
+      if (note) note.textContent = "기간(days) 조건과 상관없이 그 사이트에 쌓인 전체 기록을 셉니다.";
+      return;
+    }
+    chart.hidden = false;
+    if (emptyNote) emptyNote.hidden = true;
+    const totalViews = rows.reduce((sum, row) => sum + (Number(row.views) || 0), 0);
+    const totalEvents = rows.reduce((sum, row) => sum + (Number(row.events) || 0), 0);
+    if (note) {
+      const scope = unit === "yearly" ? `연도별 ${rows.length}개 해` : `월별 최근 ${rows.length}개월`;
+      const cumulative = meta.truncated ? " · 최근 자료부터 집계(한도 도달)" : "";
+      note.textContent = `${scope} · 조회수 ${fmtCount(totalViews)} · 이벤트 ${fmtCount(totalEvents)} (전체 누적 ${fmtCount(meta.totalEvents)}건 중)${cumulative}`;
+    }
+
+    const maxValue = Math.max(1, ...rows.map((row) => Number(row.views) || 0));
+    const tickOf = (row) => (unit === "yearly" ? `${String(row.year).slice(2)}년` : `${row.month.slice(2).replace("-", ".")}`);
+    const fullLabelOf = (row) => row.label || (unit === "yearly" ? `${row.year}년` : row.month);
+    chart.setAttribute("aria-label", unit === "yearly" ? "연도별 조회수 추이" : "월별 조회수 추이");
+    chart.innerHTML = rows.map((row) => {
+      const views = Number(row.views) || 0;
+      const height = views ? Math.max(6, Math.round((views / maxValue) * 100)) : 3;
+      const title = `${fullLabelOf(row)} · 조회수 ${fmtCount(views)} · 세션 ${fmtCount(row.sessions)} · 이벤트 ${fmtCount(row.events)}`;
+      return `<div class="trend-col${row.empty ? " is-empty" : ""}" title="${esc(title)}">
+        <span class="trend-value">${views ? fmtCount(views) : ""}</span>
+        <span class="trend-bar" style="height:${height}%"></span>
+        <span class="trend-tick">${esc(tickOf(row))}</span>
+      </div>`;
+    }).join("");
+
+    if (body) {
+      body.innerHTML = rows.slice().reverse().map((row) => {
+        const views = Number(row.views) || 0;
+        const sessions = Number(row.sessions) || 0;
+        const events = Number(row.events) || 0;
+        const duration = row.avgDurationText || fmtDuration(row.avgDurationSec);
+        return `<tr${row.empty ? ' class="is-empty"' : ""}>
+          <td><b>${esc(fullLabelOf(row))}</b>${row.empty ? '<span class="cell-sub">기록 없음</span>' : ""}</td>
+          <td class="num">${fmtCount(views)}</td>
+          <td class="num">${fmtCount(sessions)}</td>
+          <td class="num">${fmtCount(events)}</td>
+          <td class="num">${events ? esc(duration) : "—"}</td>
+        </tr>`;
+      }).join("");
+    }
+  }
+
   function renderStats() {
     const summary = $("#stats-summary");
     if (!summary) return;
@@ -2704,6 +2780,7 @@
       summary.innerHTML = "";
       if (pagesBody) pagesBody.innerHTML = '<tr><td colspan="5" class="muted small">아직 자료가 없습니다.</td></tr>';
       [refBox, devBox, hourBox].forEach((box) => { if (box) box.innerHTML = emptyNote; });
+      renderStatsTrend();
       return;
     }
 
@@ -2794,6 +2871,8 @@
         <div class="hour-legend"><span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>23시</span></div>`;
       }
     }
+
+    renderStatsTrend();
   }
 
   /* ───────────── 🔌 태블릿 중계 서버(relay) — 상태 확인 · 원클릭 업데이트 ─────────────

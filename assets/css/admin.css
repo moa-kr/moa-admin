@@ -547,6 +547,19 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .hour-tick { font-size: 9.5px; color: var(--ink-soft); height: 12px; line-height: 12px; }
 .hour-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
 
+/* 기간별 트렌드 — 월별(최근 12개월)·연도별 막대 (2026-11-25) */
+.trend-chart { display: flex; align-items: flex-end; gap: 6px; height: 158px; padding: 6px 2px 0;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.trend-col { flex: 1 1 0; min-width: 34px; display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-end; height: 100%; gap: 3px; }
+.trend-value { font-size: 10.5px; font-weight: 800; color: var(--ink-soft); height: 13px; line-height: 13px; white-space: nowrap; }
+.trend-bar { width: 100%; max-width: 30px; min-height: 2px; border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(180deg, #7f9cff, #2c5bf6); }
+.trend-tick { font-size: 10px; color: var(--ink-soft); height: 14px; line-height: 14px; white-space: nowrap; }
+.trend-col.is-empty .trend-bar { background: #e3e8f2; }
+.trend-col.is-empty .trend-tick { color: #b3bccd; }
+.stats-table tr.is-empty td { color: var(--ink-soft); }
+
 .age-card { border: 1px solid #ffd9a8; background: linear-gradient(180deg, #fffaf2, #fff); }
 .age-card .card-head h3 { color: #8a5300; }
 
@@ -565,6 +578,10 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
   .bar-hosts { margin-left: 78px; }
   .hour-chart { height: 108px; gap: 2px; }
   .hour-tick { font-size: 8.5px; }
+  .trend-chart { height: 132px; gap: 4px; }
+  .trend-col { min-width: 30px; }
+  .trend-value { font-size: 9.5px; }
+  .trend-tick { font-size: 9px; }
   .stat-card strong { font-size: 19px; }
   .stats-table { font-size: 12px; }
   .stats-table code { font-size: 10.5px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle; }

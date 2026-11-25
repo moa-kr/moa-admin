@@ -345,6 +345,7 @@
   function renderFixed() {
     const body = $("#fin-fx-body");
     if (!body) return;
+    renderBulkNote();
     if (!state.fixed.length) { body.innerHTML = emptyRow("fixed"); updateLinkNotes(); return; }
     const order = displayFixed();
     const groups = [];
@@ -393,6 +394,16 @@
     const count = $("#fin-fx-count");
     if (count) count.textContent = state.fixed.length + "개";
     updateLinkNotes();
+  }
+
+  /* 툴바의 작은 현황 — 일괄 체크/해제 뒤 몇 건이 납입·미납인지 바로 보이게 한다. */
+  function renderBulkNote() {
+    const el = $("#fin-fx-bulk-note");
+    if (!el) return;
+    if (!state.fixed.length) { el.textContent = ""; return; }
+    const paid = state.fixed.filter(isPaidRow).length;
+    const unpaid = state.fixed.length - paid;
+    el.innerHTML = '납입 <b class="on">' + paid + '</b> · 미납 <b class="off">' + unpaid + '</b> / ' + state.fixed.length + '건';
   }
 
   /* 정렬 선택칸과 연동 안내 문구 */
@@ -1370,6 +1381,40 @@
     scheduleSave();
   }
 
+  /* 납입여부 일괄 체크/해제(2026-11-25) — ② 표의 모든 행을 한 번에 바꾸고 바로 저장한다.
+     바꾸기 전 값을 기억해 두었다가 토스트의 ‘되돌리기’로 원래 상태를 복구할 수 있게 한다. */
+  function setAllFixedPaid(markPaid) {
+    if (!ensureLoaded()) return;
+    if (!state.fixed.length) { toast("②월 고정지출에 항목이 없습니다. ‘＋ 행 추가’로 먼저 넣어 주세요."); return; }
+    const before = state.fixed.map((r) => ({ id: r.id, paid: r.paid }));
+    let changed = 0;
+    state.fixed.forEach((r) => {
+      if (isPaidRow(r) !== Boolean(markPaid)) changed += 1;
+      r.paid = markPaid ? "O" : "";
+    });
+    renderFixed();
+    sync();
+    scheduleSave();
+    const total = state.fixed.length;
+    if (!changed) {
+      toast(markPaid ? "이미 모두 납입(O)으로 표시되어 있습니다." : "이미 모두 미납 상태입니다.");
+      return;
+    }
+    toast(
+      markPaid ? "고정지출 " + total + "건을 모두 납입(O)으로 표시했습니다." : "고정지출 " + total + "건을 모두 미납으로 되돌렸습니다.",
+      () => {
+        before.forEach((item) => {
+          const row = getRow("fixed", item.id);
+          if (row) row.paid = item.paid;
+        });
+        renderFixed();
+        sync();
+        scheduleSave();
+        toast("일괄 변경 전 상태로 되돌렸습니다.");
+      }
+    );
+  }
+
   /* ───────── 연동: ③ 카드 → ② 고정지출 / ⑥ 초과근로 → ③ 수입 OT ───────── */
   /* ③ 이번 달 카드의 한 행 금액을 ② 의 이름이 같은 행(예: 카드 현대)에 그대로 옮긴다. */
   function pushCardToFixed(cardRow) {
@@ -1684,6 +1729,8 @@
       if (moveBtn && !moveBtn.disabled) { event.preventDefault(); moveFixed(moveBtn.getAttribute("data-f"), moveBtn.getAttribute("data-fin-move")); return; }
       const paidBtn = target.closest("[data-fin-paid]");
       if (paidBtn) { event.preventDefault(); togglePaid(paidBtn.getAttribute("data-fin-paid")); return; }
+      const bulkBtn = target.closest("[data-fin-bulk]");
+      if (bulkBtn) { event.preventDefault(); setAllFixedPaid(bulkBtn.getAttribute("data-fin-bulk") === "check"); return; }
       const delBtn = target.closest("[data-fin-del]");
       if (delBtn) { event.preventDefault(); delRow(delBtn.getAttribute("data-fin-del"), delBtn.getAttribute("data-f")); }
     });
