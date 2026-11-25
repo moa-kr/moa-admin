@@ -3077,14 +3077,20 @@
     if (!rows.length) { el.innerHTML = ""; return; }
     const values = rows.map((row) => (row[pick] === null || row[pick] === undefined ? null : Number(row[pick]) || 0));
     const max = Math.max(1, ...values.filter((value) => value !== null));
+    /* 칸이 좁으면 날짜 글자가 겹친다 — 폭에 들어가는 만큼만 눈금을 적고, 나머지는 띄엄띄엄 표시한다.
+       (막대·숫자는 모든 칸에 그대로 두고 title 에 날짜·값을 함께 남긴다.) */
+    const width = el.clientWidth || (typeof window !== "undefined" ? window.innerWidth : 360);
+    const maxLabels = Math.max(2, Math.floor(width / 34));
+    const step = Math.max(1, Math.ceil(rows.length / maxLabels));
     el.innerHTML = rows.map((row, index) => {
       const value = values[index];
       const height = value === null ? 3 : value ? Math.max(6, Math.round((value / max) * 100)) : 3;
       const title = `${labelOf(row)} · ${value === null ? "기록 없음" : fmtCount(value)}`;
+      const tick = index % step === 0 || index === rows.length - 1 ? labelOf(row) : "";
       return `<div class="trend-col${value === null ? " is-empty" : ""}" title="${esc(title)}">
         <span class="trend-value">${value === null ? "" : fmtCount(value)}</span>
         <span class="trend-bar" style="height:${height}%"></span>
-        <span class="trend-tick">${esc(labelOf(row))}</span>
+        <span class="trend-tick">${esc(tick)}</span>
       </div>`;
     }).join("");
   }
