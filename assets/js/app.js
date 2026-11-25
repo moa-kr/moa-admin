@@ -3148,13 +3148,20 @@
     const latest = summary.latest || {};
     const delta = summary.delta || {};
     const stamp = latest.date ? `${latest.date} 기준` : "기록 없음";
+    /* 값이 비어 있는 칸은 ‘기준일’이 아니라 ‘기록 없음’이라고 적는다(없는 값을 있는 것처럼 보이지 않게). */
+    const subOf = (value, deltaValue) => {
+      if (value === null || value === undefined) return "기록 없음 — 아래 빠른 입력";
+      if (deltaValue === null || deltaValue === undefined) return stamp;
+      return `${socialDelta(deltaValue)} · ${stamp}`;
+    };
     const cards = [
-      ["📸 인스타 팔로워", socialValue(latest.igFollowers), delta.igFollowers === null || delta.igFollowers === undefined ? stamp : `${socialDelta(delta.igFollowers)} · ${stamp}`],
-      ["📸 인스타 게시물", socialValue(latest.igMediaCount), delta.igMediaCount === null || delta.igMediaCount === undefined ? stamp : `${socialDelta(delta.igMediaCount)} · ${stamp}`],
-      ["❤️ 좋아요 · 댓글", `${socialValue(latest.igLikes)} · ${socialValue(latest.igComments)}`, "최근 10개 게시물 합"],
-      ["📝 블로그 이웃", socialValue(latest.blogNeighbors), delta.blogNeighbors === null || delta.blogNeighbors === undefined ? stamp : `${socialDelta(delta.blogNeighbors)} · ${stamp}`],
-      ["📝 블로그 방문자", socialValue(latest.blogVisitors), "최근 기록일 기준"],
-      ["📝 블로그 조회수", socialValue(latest.blogViews), "최근 기록일 기준"]
+      ["📸 인스타 팔로워", socialValue(latest.igFollowers), subOf(latest.igFollowers, delta.igFollowers)],
+      ["📸 인스타 게시물", socialValue(latest.igMediaCount), subOf(latest.igMediaCount, delta.igMediaCount)],
+      ["❤️ 좋아요 · 댓글", `${socialValue(latest.igLikes)} · ${socialValue(latest.igComments)}`,
+        (latest.igLikes === null && latest.igComments === null) ? "기록 없음 — 아래 빠른 입력" : "최근 10개 게시물 합"],
+      ["📝 블로그 이웃", socialValue(latest.blogNeighbors), subOf(latest.blogNeighbors, delta.blogNeighbors)],
+      ["📝 블로그 방문자", socialValue(latest.blogVisitors), subOf(latest.blogVisitors, null)],
+      ["📝 블로그 조회수", socialValue(latest.blogViews), subOf(latest.blogViews, null)]
     ];
     kpis.hidden = false;
     kpis.innerHTML = cards.map(([label, value, sub]) =>
@@ -3167,6 +3174,11 @@
     const labelOf = (row) => row.label || (state.social.mode === "monthly" ? row.month : socialDateLabel(row.date));
     renderSocialChart($("#social-chart-ig"), rows, "igFollowers", labelOf);
     renderSocialChart($("#social-chart-blog"), rows, "blogVisitors", labelOf);
+    /* 블로그 값이 아직 하나도 없으면 빈 차트 대신 안내를 둔다(고장처럼 보이지 않게). */
+    const blogBox = $("#social-chart-blog");
+    if (blogBox && !rows.some((row) => row.blogVisitors !== null && row.blogVisitors !== undefined)) {
+      blogBox.innerHTML = '<p class="social-chart-empty">블로그 수치는 아직 기록이 없습니다.<br>네이버 블로그 통계 화면의 <b>오늘 방문자·조회수</b>를 아래 <b>빠른 입력</b>에 넣으면 그날부터 막대가 생깁니다.</p>';
+    }
 
     const monthly = state.social.mode === "monthly";
     if (head) {
