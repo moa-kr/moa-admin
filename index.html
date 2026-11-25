@@ -15,8 +15,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=54">
-<link rel="stylesheet" href="assets/css/finance.css?v=54">
+<link rel="stylesheet" href="assets/css/admin.css?v=55">
+<link rel="stylesheet" href="assets/css/finance.css?v=55">
 </head>
 <body>
 
@@ -88,7 +88,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=54</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=55</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -390,7 +390,7 @@
       <section class="panel" data-panel="inquiry" hidden>
         <div class="panel-head">
           <h2>회사복지모아 관리자 문의</h2>
-          <p>복지모아에 들어온 문의를 읽고, 확인이 끝난 문의를 지웁니다.</p>
+          <p>복지모아에 들어온 문의를 읽고, <b>읽음·완료</b>로 표시하거나 확인이 끝난 문의를 지웁니다.</p>
         </div>
 
         <div class="card">
@@ -425,6 +425,7 @@
           <div class="card-body">
             <div class="stat-row" id="inquiry-stats" hidden></div>
             <p class="note" id="inquiry-msg">‘새로고침’을 누르면 문의를 불러옵니다.</p>
+            <p class="note">문의마다 <b>읽음</b>·<b>완료</b> 버튼으로 상태를 바꿉니다(지금 상태에 따라 <b>다시 열기</b>·<b>새 문의</b>). 바꾸면 위 현황 건수와 배지가 바로 다시 그려집니다.</p>
             <div class="inquiry-list" id="inquiry-list"></div>
           </div>
         </div>
@@ -1191,9 +1192,9 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=54"></script>
-<script src="assets/js/finance.js?v=54"></script>
-<script src="assets/js/app.js?v=54"></script>
+<script src="assets/js/sites.js?v=55"></script>
+<script src="assets/js/finance.js?v=55"></script>
+<script src="assets/js/app.js?v=55"></script>
 <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

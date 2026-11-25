@@ -16,7 +16,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=54";
+  const BUILD = "v=55";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -2369,23 +2369,103 @@
       return;
     }
     const statusLabel = { new: "신규", read: "읽음", done: "완료" };
-    list.innerHTML = inf.list.map((item) => `
-      <article class="inq" data-id="${Number(item.id)}">
+    list.innerHTML = inf.list.map((item) => {
+      const id = Number(item.id);
+      return `
+      <article class="inq" data-id="${id}">
         <div class="inq-top">
           <span class="badge">${esc(item.type || "문의")}</span>
           <span class="badge ${esc(item.status || "new")}">${esc(statusLabel[item.status] || item.status || "신규")}</span>
-          <span class="inq-time">#${Number(item.id)} · ${esc(fmtDateTime(item.createdAt))}</span>
+          <span class="inq-time">#${id} · ${esc(fmtDateTime(item.createdAt))}</span>
         </div>
         <p class="inq-msg">${esc(item.message)}</p>
         <div class="inq-meta">
           ${item.email ? `<a href="mailto:${esc(item.email)}">${esc(item.email)}</a>` : '<span>회신 이메일 없음</span>'}
           ${item.page ? `<span>· ${esc(item.page)}</span>` : ""}
-          <button type="button" class="btn btn-sm btn-danger" data-del="${Number(item.id)}">삭제</button>
+          <span class="inq-actions">
+            ${inquiryStatusActions(item.status).map((action) =>
+              `<button type="button" class="btn btn-sm btn-ghost" data-status="${esc(action.status)}" data-id="${id}" title="이 문의를 ‘${esc(statusLabel[action.status])}’ 상태로 바꿉니다">${esc(action.text)}</button>`).join("")}
+            <button type="button" class="btn btn-sm btn-danger" data-del="${id}">삭제</button>
+          </span>
         </div>
-      </article>`).join("");
+      </article>`;
+    }).join("");
+  }
+
+  /* 지금 상태에 따라 보여 줄 다른 상태 버튼 — 지금 상태는 빼고 둘만 둔다.
+     new → 읽음·완료 / read → 완료·새 문의 / done → 다시 열기(읽음)·새 문의 */
+  function inquiryStatusActions(status) {
+    const now = status === "read" || status === "done" ? status : "new";
+    const order = now === "new" ? ["read", "done"] : now === "read" ? ["done", "new"] : ["read", "new"];
+    const label = { new: "새 문의", read: "읽음", done: "완료" };
+    return order.map((next) => ({
+      status: next,
+      text: next === "read" && now === "done" ? "다시 열기" : label[next]
+    }));
+  }
+
+  /* 상태 변경 뒤 서버가 준 byStatus(없으면 지금 건수에서 한 건만 옴기는 계산)로 현황을 맞춘다. */
+  function applyInquiryCounts(serverByStatus, prevStatus, nextStatus) {
+    const counts = { new: 0, read: 0, done: 0 };
+    if (serverByStatus && typeof serverByStatus === "object") {
+      ["new", "read", "done"].forEach((key) => { counts[key] = Math.max(0, Number(serverByStatus[key]) || 0); });
+    } else {
+      const before = state.inquiries.byStatus || {};
+      ["new", "read", "done"].forEach((key) => { counts[key] = Math.max(0, Number(before[key]) || 0); });
+      if (prevStatus && counts[prevStatus] > 0) counts[prevStatus] -= 1;
+      if (counts[nextStatus] !== undefined) counts[nextStatus] += 1;
+    }
+    state.inquiries.byStatus = counts;
+    state.inquiries.total = counts.new + counts.read + counts.done;
+    const info = $("#inquiry-msg");
+    if (info) {
+      info.textContent = `문의 ${state.inquiries.total}건${state.inquiries.operatorEmail ? ` · 알림 메일 ${state.inquiries.operatorEmail}` : ""}`;
+    }
+  }
+
+  /* 문의 한 건의 상태를 new·read·done 중 하나로 바꾼다(PATCH /api/admin/inquiries/:id).
+     서버가 돌려준 byStatus 로 현황 건수를 맞추고, 고른 상태 필터와 달라진 문의는 목록에서 뺀다. */
+  async function changeInquiryStatus(btn) {
+    const id = Number(btn.dataset.id);
+    const next = btn.dataset.status;
+    if (!id || ["new", "read", "done"].indexOf(next) < 0) return;
+    const label = { new: "신규", read: "읽음", done: "완료" };
+    const card = btn.closest(".inq");
+    const buttons = card ? Array.prototype.slice.call(card.querySelectorAll("button")) : [];
+    const before = btn.textContent;
+    buttons.forEach((b) => { b.disabled = true; });
+    btn.textContent = "바꾸는 중…";
+    const item = (state.inquiries.list || []).find((row) => Number(row.id) === id);
+    const prev = item ? item.status : "";
+    try {
+      const res = await apiRequest(`/api/admin/inquiries/${id}`, {
+        method: "PATCH",
+        json: true,
+        body: JSON.stringify({ status: next })
+      });
+      if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`);
+      const data = res.data || {};
+      const saved = data.inquiry && data.inquiry.status ? data.inquiry.status : next;
+      if (item) item.status = saved;
+      applyInquiryCounts(data.byStatus, prev, saved);
+      // ‘신규만 보기’ 같은 필터가 켜져 있는데 그 상태를 벗어났다면 목록에서 뺀다.
+      const filter = $("#inquiry-status") ? $("#inquiry-status").value : "";
+      if (filter && filter !== saved) {
+        state.inquiries.list = (state.inquiries.list || []).filter((row) => Number(row.id) !== id);
+      }
+      renderInquiries();
+      addLog(`문의 #${id} 상태 → ${label[saved] || saved}`);
+      toast(`문의 #${id} 를 ‘${label[saved] || saved}’으로 바꿨습니다.`);
+    } catch (err) {
+      btn.textContent = before;
+      buttons.forEach((b) => { b.disabled = false; });
+      toast(`상태를 바꾸지 못했습니다: ${err.message}`, true);
+    }
   }
 
   async function handleInquiryClick(event) {
+    const statusBtn = event.target.closest("button[data-status]");
+    if (statusBtn) { await changeInquiryStatus(statusBtn); return; }
     const btn = event.target.closest("button[data-del]");
     if (!btn) return;
     const id = Number(btn.dataset.del);

@@ -384,6 +384,15 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .inq-msg { font-size: 13px; white-space: pre-wrap; word-break: break-word; margin: 0 0 8px; color: var(--ink-2); }
 .inq-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px; color: var(--ink-soft); align-items: center; }
 .inq-meta .btn { margin-left: auto; }
+/* 문의 상태 버튼(2026-11-26 v=55) — 읽음·완료·다시 열기·새 문의를 한 줄에 두고 삭제와 함께 오른쪽에 모은다. */
+.inq-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.inq-meta .inq-actions .btn { margin-left: 0; padding: 4px 9px; font-size: 11.5px; }
+.inq-actions .btn:disabled { opacity: .55; cursor: default; }
+@media (max-width: 620px) {
+  /* 폰에서는 버튼 줄이 자기 줄을 차지해 글자와 섞이지 않게 한다. */
+  .inq-actions { margin-left: 0; width: 100%; }
+  .inq-meta .inq-actions .btn { flex: 1 1 auto; justify-content: center; }
+}
 
 /* 배포 */
 .kv { display: grid; grid-template-columns: 104px 1fr; gap: 8px 12px; margin: 0 0 14px; font-size: 13px; }
