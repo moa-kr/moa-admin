@@ -585,6 +585,8 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .social-card { border: 1px solid #d6e0ff; background: linear-gradient(180deg, #f8faff, #fff); }
 .social-card .card-head h3 { color: #1a3fa8; }
 .social-controls { flex-wrap: wrap; row-gap: 8px; }
+.social-card .card-head .social-refresh { padding: 4px 10px; font-size: 12px; }
+.social-card .card-head .status-pill { margin-left: 0; }
 .social-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 12px 0 10px; }
 .social-chart-box { border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px 4px; background: #fff; }
 .social-chart-box h4 { margin: 0 0 4px; font-size: 12px; font-weight: 800; color: var(--ink); }
