@@ -145,10 +145,12 @@
 #finance-root td.calc.strong { font-weight: 800; color: var(--ink); }
 #finance-root .t-pos { color: var(--fin-pos); }
 #finance-root .t-neg { color: var(--fin-neg); }
-/* 시세·손익 전용 — 상승=빨강, 하락=파랑, 보합=회색 */
-#finance-root .t-up { color: var(--fin-up); }
-#finance-root .t-down { color: var(--fin-down); }
-#finance-root .t-flat { color: var(--fin-flat); }
+/* 시세·손익 전용 — 상승=빨강, 하락=파랑, 보합=회색.
+   표 안의 계산 칸은 `td.calc{color:#334155}` 이 더 구체적이라 클래스만으로는 색이 안 먹었다 →
+   `td.calc` 조합 선택자를 같이 둬서 실제 글자색이 바뀌게 한다. */
+#finance-root .t-up, #finance-root td.calc.t-up { color: var(--fin-up); }
+#finance-root .t-down, #finance-root td.calc.t-down { color: var(--fin-down); }
+#finance-root .t-flat, #finance-root td.calc.t-flat { color: var(--fin-flat); }
 #finance-root .t-out { color: var(--ink); }
 #finance-root .muted { color: var(--fin-muted); }
 #finance-root input, #finance-root select {
