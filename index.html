@@ -15,8 +15,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=51">
-<link rel="stylesheet" href="assets/css/finance.css?v=51">
+<link rel="stylesheet" href="assets/css/admin.css?v=52">
+<link rel="stylesheet" href="assets/css/finance.css?v=52">
 </head>
 <body>
 
@@ -88,7 +88,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=51</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=52</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -108,7 +108,7 @@
       <!-- 앱 설치(PWA) — 브라우저가 설치를 제안할 수 있을 때만 pwa.js 가 보여 준다. -->
       <button type="button" class="btn btn-sm btn-ghost app-install" id="app-install" hidden title="모아 어드민을 폰 홈 화면에 앱처럼 설치합니다">📲 앱 설치</button>
       <!-- 개인 재무 바로가기 — 로그인한 뒤에만 app.js 가 hidden 을 풉니다(데모·비로그인 화면 미노출) -->
-      <a class="btn btn-sm btn-finance" id="btn-finance" href="#" data-auth-only hidden title="개인 자산·현금흐름 표 — 같은 화면의 ‘💰 개인 재무’ 탭을 엽니다">💰 개인 재무</a>
+      <a class="btn btn-sm btn-finance" id="btn-finance" href="#" role="button" aria-pressed="false" data-auth-only hidden title="개인 자산·현금흐름 표 — 같은 화면의 ‘💰 개인 재무’ 탭을 엽니다">💰 개인 재무</a>
       <a class="btn btn-sm btn-ghost" id="btn-open-live" href="#" target="_blank" rel="noreferrer">사이트 열기</a>
       <button type="button" class="btn btn-sm btn-ghost" id="btn-logout">로그아웃</button>
     </div>
@@ -116,13 +116,16 @@
 
   <div class="topbar2">
     <nav class="tabs" id="tabs" aria-label="관리 항목">
-      <button type="button" class="tab" data-tab="people">👥 가입자·글</button>
+      <!-- 👥 가입자·글 — 복지모아 서버의 가입자·글 자료라 회사복지모아에서만 보입니다(v=52). -->
+      <button type="button" class="tab" data-tab="people" data-only-site="bokjimoa">👥 가입자·글</button>
       <button type="button" class="tab is-active" data-tab="notice">① 공지·팝업</button>
       <button type="button" class="tab" data-tab="order">② 탭·섹션 순서</button>
       <button type="button" class="tab" data-tab="copy">③ 문구</button>
       <button type="button" class="tab" data-tab="inquiry" data-only-site="bokjimoa">④ 문의</button>
       <button type="button" class="tab" data-tab="deploy">⑤ 저장·배포</button>
       <button type="button" class="tab" data-tab="stats">📊 통계</button>
+      <!-- 💰 개인 재무 — 사이트와 무관한 운영자 개인 자료라 탭 줄에는 두지 않고(항상 hidden),
+           헤더 오른쪽 「💰 개인 재무」 버튼(#btn-finance)으로만 엽니다. app.js 의 syncTabs() 가 이 규칙을 지킵니다. -->
       <button type="button" class="tab" data-tab="finance" data-auth-only hidden>💰 개인 재무</button>
     </nav>
     <div class="topbar2-right">
@@ -1115,9 +1118,9 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=51"></script>
-<script src="assets/js/finance.js?v=51"></script>
-<script src="assets/js/app.js?v=51"></script>
+<script src="assets/js/sites.js?v=52"></script>
+<script src="assets/js/finance.js?v=52"></script>
+<script src="assets/js/app.js?v=52"></script>
 <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

@@ -142,6 +142,14 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .topbar-right .btn-finance { background: rgba(255,203,5,.16); color: #ffe9a3; border-color: rgba(255,203,5,.38); font-weight: 700; }
 .topbar-right .btn-finance:hover { background: rgba(255,203,5,.28); color: #fff8dc; }
 .topbar-right .btn-finance .ext { font-size: 11px; opacity: .8; }
+/* ── 사이트별 탭 정리(v=52, 2026-11-25) ──
+   💰 개인 재무 모드에서는 두 사이트 pill 이 모두 선택 해제되므로, 어느 사이트도 현재가 아님을
+   site-switch 를 살짝 죽이고, 헤더의 「💰 개인 재무」 버튼을 노란 바탕(.is-on)으로 눌린 모양으로 남깁니다. */
+.site-switch.is-finance { background: rgba(255, 255, 255, .04); }
+.site-switch.is-finance .site-btn { color: #8d97ad; }
+.topbar-right .btn-finance.is-on { background: #ffcb05; color: #2a2200; border-color: #ffcb05;
+  box-shadow: 0 0 0 3px rgba(255, 203, 5, .22); }
+.topbar-right .btn-finance.is-on:hover { background: #ffd633; color: #2a2200; }
 /* ── 헤더 「📝 블로그」 (v=51, 2026-11-25) ──
    여조원 부장님 네이버 블로그(blog.naver.com/y__woni)로 새 창에서 바로 가는 버튼입니다.
    옆의 「사이트 열기」와 같은 반투명 고스트 버튼으로 두어 저장·배포 같은 작업 버튼과 섞이지 않게 하고,

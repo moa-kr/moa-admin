@@ -14,8 +14,8 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=51";
-  /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 ‘💰 개인 재무’ 탭과 헤더 버튼을 보인다.
+  const BUILD = "v=52";
+  /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
   const FINANCE_TAB = "finance";
@@ -591,7 +591,7 @@
     }
     // 마지막으로 보던 탭이 ‘📊 통계’·‘👥 가입자·글’이면 바로 자료를 불러온다(빈 화면으로 열리지 않도록).
     if (state.tab === "stats") loadStats();
-    if (state.tab === "people") loadPeople();
+    if (state.tab === "people" && state.site === "bokjimoa") loadPeople();
   }
 
   function updateSessionUi() {
@@ -652,7 +652,10 @@
     });
     const inquiryTab = $('.tab[data-tab="inquiry"]');
     if (inquiryTab) inquiryTab.hidden = siteId !== "bokjimoa";
-    if (siteId !== "bokjimoa" && state.tab === "inquiry") state.tab = "notice";
+    // 사이트를 바꿨을 때 그 사이트에 없는 탭에 남아 있으면 ① 공지·팝업으로 돌린다(v=52).
+    //  · 포케모아: 👥 가입자·글 · 💰 개인 재무 → ① 공지·팝업
+    //  · 복지모아: 💰 개인 재무 → ① 공지·팝업 (④ 문의 · 👥 가입자·글은 그대로)
+    if (state.tab === FINANCE_TAB || !tabAllowedForSite(state.tab, siteId)) state.tab = "notice";
     saveUi();
     applyTab();
     renderAll();
@@ -670,9 +673,45 @@
     }
   }
 
+  /* 탭 줄 노출 규칙(v=52) — 사이트마다 뜻이 있는 탭만 남긴다.
+     · 👥 가입자·글 : 복지모아 서버의 가입자·글 자료라 회사복지모아에서만 보인다.
+     · 💰 개인 재무 : 사이트 설정이 아니라 운영자 개인 자료라 탭 줄에서는 늘 감추고,
+                     헤더 오른쪽 「💰 개인 재무」 버튼(#btn-finance)으로만 연다.
+     다른 곳(updateSessionUi 의 data-auth-only · renderAll 의 data-only-site)이 hidden 을 풀어도
+     마지막에 이 함수가 다시 정리한다. */
+  function syncTabs() {
+    const peopleTab = $('.tab[data-tab="people"]');
+    if (peopleTab) peopleTab.hidden = state.site !== "bokjimoa";
+    const financeTab = $('.tab[data-tab="finance"]');
+    if (financeTab) financeTab.hidden = true;
+  }
+
+  /* 그 사이트에서 뜻이 있는 탭인가 — 사이트를 바꿨을 때 남아 있으면 ① 공지·팝업으로 돌린다. */
+  function tabAllowedForSite(tab, siteId) {
+    if (tab === "people" || tab === "inquiry") return siteId === "bokjimoa";
+    return true;
+  }
+
   function applyTab() {
     if (state.tab === "inquiry" && state.site !== "bokjimoa") state.tab = "notice";
+    if (state.tab === "people" && state.site !== "bokjimoa") state.tab = "notice";
     if (state.tab === FINANCE_TAB && !signedIn()) state.tab = "notice";
+    syncTabs();
+    // 💰 개인 재무 모드는 어느 사이트 화면도 아니다 — 두 사이트 pill 을 모두 해제하고
+    //    헤더의 「💰 개인 재무」 버튼을 눌린 모양(.is-on)으로 남겨 지금 보는 화면을 알린다.
+    const financeMode = state.tab === FINANCE_TAB;
+    $$(".site-btn").forEach((btn) => {
+      const on = !financeMode && btn.dataset.site === state.site;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    const siteSwitch = $(".site-switch");
+    if (siteSwitch) siteSwitch.classList.toggle("is-finance", financeMode);
+    const financeBtn = $("#btn-finance");
+    if (financeBtn) {
+      financeBtn.classList.toggle("is-on", financeMode);
+      financeBtn.setAttribute("aria-pressed", financeMode ? "true" : "false");
+    }
     $$(".tab").forEach((btn) => btn.classList.toggle("is-active", btn.dataset.tab === state.tab));
     $$(".panel").forEach((panel) => { panel.hidden = panel.dataset.panel !== state.tab; });
     // 개인 재무 표는 넓게 쓴다(모바일 미리보기 레일을 접는다).
@@ -690,6 +729,8 @@
 
   function setTab(tabId) {
     if (tabId === FINANCE_TAB && !signedIn()) tabId = "notice";
+    // 👥 가입자·글은 복지모아 자료다 — 포케모아에서는 숨겨 둔 탭이라 열지 않는다.
+    if (tabId === "people" && state.site !== "bokjimoa") tabId = "notice";
     state.tab = tabId;
     saveUi();
     applyTab();
