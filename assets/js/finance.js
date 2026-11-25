@@ -367,11 +367,11 @@
       const dayText = group.day === "" ? "이체일 미지정" : (/^\d+$/.test(group.day) ? Number(group.day) + "일" : group.day);
       /* 그룹 소계 줄은 항목 위(그룹 머리)에 둔다. */
       html.push('<tr class="fin-sub">' +
-        '<td>📅 ' + esc(dayText) + ' <span class="fin-sub-count">' + group.rows.length + '건</span></td>' +
-        '<td class="num">' + won(sum) + '</td>' +
-        '<td></td>' +
-        '<td class="num ' + (unpaid ? "t-neg fin-sub-unpaid" : "muted") + '">' + (unpaid ? "잔금 " + won(unpaid) : "완납") + '</td>' +
-        '<td colspan="2"></td></tr>');
+        '<td class="fx-day">📅 ' + esc(dayText) + ' <span class="fin-sub-count">' + group.rows.length + '건</span></td>' +
+        '<td class="num fx-sum">' + won(sum) + '</td>' +
+        '<td class="fx-blank"></td>' +
+        '<td class="num fx-unpaid ' + (unpaid ? "t-neg fin-sub-unpaid" : "muted") + '">' + (unpaid ? "잔금 " + won(unpaid) : "완납") + '</td>' +
+        '<td class="fx-blank" colspan="2"></td></tr>');
       group.rows.forEach((r) => {
         const index = order.indexOf(r);
         const key = dayKeyOf(r);
@@ -379,15 +379,15 @@
         const canDown = index < order.length - 1 && dayKeyOf(order[index + 1]) === key;
         const cardTag = linked.has(nameKey(r.name)) ? '<span class="fin-link-dot" title="③ 이번 달 카드 금액을 따라갑니다">③↔</span>' : "";
         html.push('<tr data-id="' + esc(r.id) + '">' +
-          '<td><div class="fin-name-cell">' + textInput("fixed", r, "name", "항목 (예: 주택담보)") + cardTag + '</div></td>' +
-          '<td class="num">' + moneyInput("fixed", r, "amount") + '</td>' +
-          '<td>' + textInput("fixed", r, "day", "20", ' class="mono day"') + '</td>' +
-          '<td class="center"><button type="button" class="paid-toggle ' + (isPaidRow(r) ? "on" : "off") + '" data-fin-paid="' + esc(r.id) + '" title="눌러서 O / 미납 전환">' + (isPaidRow(r) ? "O" : "미납") + '</button></td>' +
-          '<td class="center fin-move">' +
+          '<td class="fx-name"><div class="fin-name-cell">' + textInput("fixed", r, "name", "항목 (예: 주택담보)") + cardTag + '</div></td>' +
+          '<td class="num fx-amount">' + moneyInput("fixed", r, "amount") + '</td>' +
+          '<td class="fx-day" data-label="이체일">' + textInput("fixed", r, "day", "20", ' class="mono day"') + '</td>' +
+          '<td class="center fx-paid"><button type="button" class="paid-toggle ' + (isPaidRow(r) ? "on" : "off") + '" data-fin-paid="' + esc(r.id) + '" title="눌러서 O / 미납 전환">' + (isPaidRow(r) ? "O" : "미납") + '</button></td>' +
+          '<td class="center fin-move fx-move">' +
             '<button type="button" class="mv" data-fin-move="up" data-f="' + esc(r.id) + '" title="같은 이체일 안에서 위로" aria-label="위로 이동"' + (canUp ? "" : " disabled") + '>↑</button>' +
             '<button type="button" class="mv" data-fin-move="down" data-f="' + esc(r.id) + '" title="같은 이체일 안에서 아래로" aria-label="아래로 이동"' + (canDown ? "" : " disabled") + '>↓</button>' +
           '</td>' +
-          delCell("fixed", r) + '</tr>');
+          '<td class="num fx-del"><button class="del" type="button" data-fin-del="fixed" data-f="' + esc(r.id) + '" title="이 행 삭제" aria-label="이 행 삭제">✕</button></td></tr>');
       });
     });
     body.innerHTML = html.join("");

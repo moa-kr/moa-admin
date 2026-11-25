@@ -581,6 +581,48 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .trend-col.is-empty .trend-tick { color: #b3bccd; }
 .stats-table tr.is-empty td { color: var(--ink-soft); }
 
+/* 📱 인스타 · 네이버 블로그 성장 트렌드 (2026-11-26 v=53) */
+.social-card { border: 1px solid #d6e0ff; background: linear-gradient(180deg, #f8faff, #fff); }
+.social-card .card-head h3 { color: #1a3fa8; }
+.social-controls { flex-wrap: wrap; row-gap: 8px; }
+.social-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 12px 0 10px; }
+.social-chart-box { border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px 4px; background: #fff; }
+.social-chart-box h4 { margin: 0 0 4px; font-size: 12px; font-weight: 800; color: var(--ink); }
+.social-chart-box h4 .muted { font-weight: 600; font-size: 10.5px; }
+.social-chart-box .trend-chart { height: 128px; }
+.social-form { margin-top: 14px; border: 1px dashed #cfd8ef; border-radius: 12px; padding: 11px 13px; background: #fbfcff; }
+.social-form-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; font-size: 13px; }
+.social-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: 8px; }
+.social-form-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 700; color: var(--ink-soft); }
+.social-form-grid label.wide { grid-column: 1 / -1; }
+.social-form-grid input { width: 100%; padding: 6px 8px; font-size: 13px; }
+.social-form-actions { margin-top: 10px; align-items: center; }
+.social-form-actions .status-pill { margin-left: 2px; }
+.social-note-mark { display: none; margin-left: 4px; font-size: 11px; cursor: help; }
+.social-mobile-hint { display: none; margin: 6px 0 0; font-size: 11px; color: var(--ink-soft); }
+@media (max-width: 640px) {
+  .social-charts { grid-template-columns: minmax(0, 1fr); }
+  .social-chart-box .trend-chart { height: 116px; }
+  .social-chart-box .trend-col { min-width: 0; }
+  .social-chart-box .trend-value { font-size: 9px; }
+  .social-chart-box .trend-tick { font-size: 8.5px; }
+  .social-form-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  /* 폰에서는 날짜 칸에 비고를 글로 두면 8칸 표가 좁아져 글자가 세로로 쪼개진다.
+     비고는 📝 표시(누르면 말풍선)로 바꾸고, 표는 읽을 수 있는 최소 폭을 준다. */
+  /* 폰에서는 8칸을 다 넣으면 글자가 뭉개져서, 핵심 네 칸(팔로워·좋아요·방문·조회)만 남긴다.
+     게시물·댓글·이웃은 KPI 카드와 월별/PC 표에서 볼 수 있다. */
+  #social-table th, #social-table td { padding: 8px 6px; }
+  #social-table th:nth-child(3), #social-table td:nth-child(3),
+  #social-table th:nth-child(5), #social-table td:nth-child(5),
+  #social-table th:nth-child(8), #social-table td:nth-child(8) { display: none; }
+  .social-mobile-hint { display: block; }
+  #social-table td.social-when { white-space: nowrap; }
+  .stats-table .cell-sub.social-note-full { display: none; }
+  .social-note-mark { display: inline-block; }
+  #social-kpis .stat-card { padding: 10px 11px; }
+  #social-kpis .stat-card strong { font-size: 18px; }
+}
+
 .age-card { border: 1px solid #ffd9a8; background: linear-gradient(180deg, #fffaf2, #fff); }
 .age-card .card-head h3 { color: #8a5300; }
 

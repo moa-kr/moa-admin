@@ -15,8 +15,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=52">
-<link rel="stylesheet" href="assets/css/finance.css?v=52">
+<link rel="stylesheet" href="assets/css/admin.css?v=53">
+<link rel="stylesheet" href="assets/css/finance.css?v=53">
 </head>
 <body>
 
@@ -88,7 +88,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=52</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=53</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -579,6 +579,73 @@
           </div>
         </div>
 
+        <div class="card social-card" id="social-card">
+          <div class="card-head">
+            <h3>📱 인스타 · 네이버 블로그 성장 트렌드 <span class="tag">social</span></h3>
+            <span class="status-pill" id="social-conn">불러오기 전</span>
+          </div>
+          <div class="card-body">
+            <div class="inline-row stats-controls social-controls">
+              <div class="seg" id="social-period" role="group" aria-label="SNS 기간">
+                <button type="button" data-social-days="7">7일</button>
+                <button type="button" data-social-days="30" class="is-active">30일</button>
+                <button type="button" data-social-days="90">90일</button>
+                <button type="button" data-social-days="all">전체</button>
+              </div>
+              <div class="seg" id="social-mode" role="group" aria-label="SNS 단위">
+                <button type="button" data-social-mode="daily" class="is-active">일별</button>
+                <button type="button" data-social-mode="monthly">월별</button>
+              </div>
+              <button type="button" class="btn btn-sm btn-ghost" id="social-refresh">새로고침</button>
+            </div>
+            <p class="note" id="social-msg">‘📊 통계’ 탭을 열면 두 채널(<a href="https://www.instagram.com/acewoni_/" target="_blank" rel="noreferrer">@acewoni_</a> · <a href="https://blog.naver.com/y__woni" target="_blank" rel="noreferrer">y__woni</a>)의 기록을 불러옵니다. 포케모아·복지모아 어느 쪽에서 열어도 같은 지표입니다.</p>
+            <div class="stat-cards" id="social-kpis" hidden></div>
+            <p class="note" id="social-empty" hidden>아직 SNS 기록이 없습니다. 아래 <b>빠른 입력</b>에서 오늘 수치를 한 번 넣으면 그날부터 쌓입니다.</p>
+            <div class="social-charts" id="social-charts" hidden>
+              <div class="social-chart-box">
+                <h4>📸 인스타그램 — 팔로워 <span class="muted">(막대 높이 = 팔로워, 위 숫자 = 그날 팔로워)</span></h4>
+                <div class="trend-chart" id="social-chart-ig" role="img" aria-label="인스타그램 팔로워 추이"></div>
+              </div>
+              <div class="social-chart-box">
+                <h4>📝 네이버 블로그 — 일 방문자 <span class="muted">(기록한 날만 막대가 서고, 빈 날은 회색)</span></h4>
+                <div class="trend-chart" id="social-chart-blog" role="img" aria-label="네이버 블로그 방문자 추이"></div>
+              </div>
+            </div>
+            <div class="stats-table-wrap">
+              <table class="stats-table" id="social-table">
+                <thead>
+                  <tr><th>기간</th><th class="num">팔로워</th><th class="num">게시물</th><th class="num">좋아요</th><th class="num">댓글</th><th class="num">블로그 방문</th><th class="num">조회</th><th class="num">이웃</th></tr>
+                </thead>
+                <tbody><tr><td colspan="8" class="muted small">아직 기록이 없습니다.</td></tr></tbody>
+              </table>
+            </div>
+            <p class="social-mobile-hint">📱 폰에서는 표를 읽기 쉽게 <b>팔로워·좋아요·블로그 방문·조회</b> 네 칸만 보여 줍니다. 게시물·댓글·이웃은 위 <b>KPI 카드</b>에서 확인하세요.</p>
+            <form class="social-form" id="social-form" autocomplete="off">
+              <div class="social-form-head">
+                <b>빠른 입력 · 수정</b>
+                <span class="muted small">같은 날짜가 이미 있으면 덮어씁니다. 모르는 칸은 비워 두세요(0과 다릅니다).</span>
+              </div>
+              <div class="social-form-grid">
+                <label>날짜<input type="date" id="social-date" required></label>
+                <label>인스타 팔로워<input type="text" inputmode="numeric" id="social-ig-followers" placeholder="예: 77" spellcheck="false"></label>
+                <label>인스타 게시물<input type="text" inputmode="numeric" id="social-ig-media" placeholder="예: 13" spellcheck="false"></label>
+                <label>최근 게시물 좋아요<input type="text" inputmode="numeric" id="social-ig-likes" placeholder="최근 10개 합" spellcheck="false"></label>
+                <label>최근 게시물 댓글<input type="text" inputmode="numeric" id="social-ig-comments" placeholder="최근 10개 합" spellcheck="false"></label>
+                <label>최근 게시물 조회수<input type="text" inputmode="numeric" id="social-ig-views" placeholder="인사이트 권한 필요" spellcheck="false"></label>
+                <label>블로그 일 방문자<input type="text" inputmode="numeric" id="social-blog-visitors" placeholder="예: 31" spellcheck="false"></label>
+                <label>블로그 일 조회수<input type="text" inputmode="numeric" id="social-blog-views" placeholder="예: 120" spellcheck="false"></label>
+                <label>블로그 이웃<input type="text" inputmode="numeric" id="social-blog-neighbors" placeholder="예: 5" spellcheck="false"></label>
+                <label class="wide">비고<input type="text" id="social-note" maxlength="240" placeholder="어디서 잰 값인지 (예: 인스타 Graph API 실측 · 블로그는 네이버 통계 화면)"></label>
+              </div>
+              <div class="btn-row social-form-actions">
+                <button type="submit" class="btn btn-dark btn-sm" id="social-save">이 날짜로 저장</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="social-today">오늘 날짜로</button>
+                <span class="status-pill" id="social-save-state" hidden>저장됨</span>
+              </div>
+            </form>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-head">
             <h3>페이지 · 탭별 체류시간 <span class="tag">pages</span></h3>
@@ -820,7 +887,7 @@
               <button class="btn btn-sm btn-ghost" type="button" id="fin-fx-uncheck-all" data-fin-bulk="uncheck" title="모든 고정지출을 미납으로 되돌림">☐ 일괄 해제</button>
               <span class="fin-bulk-note" id="fin-fx-bulk-note"></span>
             </div>
-            <div class="fin-table-scroll">
+            <div class="fin-table-scroll fin-fixed-wrap">
               <table class="fin-fixed">
                 <thead>
                   <tr>
@@ -1118,9 +1185,9 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=52"></script>
-<script src="assets/js/finance.js?v=52"></script>
-<script src="assets/js/app.js?v=52"></script>
+<script src="assets/js/sites.js?v=53"></script>
+<script src="assets/js/finance.js?v=53"></script>
+<script src="assets/js/app.js?v=53"></script>
 <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=52";
+  const BUILD = "v=53";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -206,6 +206,8 @@
     relay: { online: false, version: "", at: 0 },
     // 📊 방문 통계 — 사이트 필터·기간별로 서버에서 집계해 온다.
     stats: { site: "all", days: 7, loading: false, error: "", data: null, loadedAt: "", trend: "monthly" },
+    // 📱 인스타 · 네이버 블로그 성장 트렌드 — 두 사이트 공통 채널이라 사이트 필터가 없다.
+    social: { days: 30, mode: "daily", loading: false, error: "", data: null, loadedAt: "", saving: false },
     log: []
   };
 
@@ -590,7 +592,7 @@
       toast("저장하지 않은 편집 내용을 불러왔습니다.");
     }
     // 마지막으로 보던 탭이 ‘📊 통계’·‘👥 가입자·글’이면 바로 자료를 불러온다(빈 화면으로 열리지 않도록).
-    if (state.tab === "stats") loadStats();
+    if (state.tab === "stats") { loadStats(); loadSocialStats(); }
     if (state.tab === "people" && state.site === "bokjimoa") loadPeople();
   }
 
@@ -736,7 +738,7 @@
     applyTab();
     if (tabId === FINANCE_TAB && window.MOA_FINANCE) window.MOA_FINANCE.enter();
     if (tabId === "inquiry") renderInquiries();
-    if (tabId === "stats") loadStats();
+    if (tabId === "stats") { loadStats(); loadSocialStats(); }
     if (tabId === "people") loadPeople();
     if (tabId === "deploy") {
       renderRelayCard();
@@ -844,6 +846,37 @@
       syncStatsControls();
       renderStatsTrend();
     });
+
+    // 📱 인스타 · 네이버 블로그 성장 트렌드 — 기간·단위 전환, 새로고침, 빠른 입력(저장)
+    const socialPeriod = $("#social-period");
+    if (socialPeriod) socialPeriod.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-social-days]");
+      if (!btn) return;
+      const raw = btn.dataset.socialDays;
+      state.social.days = raw === "all" ? "all" : Number(raw) || 30;
+      syncSocialControls();
+      loadSocialStats({ keepForm: true });
+    });
+    const socialMode = $("#social-mode");
+    if (socialMode) socialMode.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-social-mode]");
+      if (!btn) return;
+      state.social.mode = btn.dataset.socialMode === "monthly" ? "monthly" : "daily";
+      syncSocialControls();
+      renderSocial();
+    });
+    const socialRefresh = $("#social-refresh");
+    if (socialRefresh) socialRefresh.addEventListener("click", () => loadSocialStats({ keepForm: true }));
+    const socialForm = $("#social-form");
+    if (socialForm) socialForm.addEventListener("submit", saveSocialStats);
+    const socialToday = $("#social-today");
+    if (socialToday) socialToday.addEventListener("click", () => {
+      const input = socialDateInput();
+      if (input) input.value = kstDateString();
+      fillSocialForm();
+    });
+    const socialDate = $("#social-date");
+    if (socialDate) socialDate.addEventListener("change", fillSocialForm);
 
     // 순서 편집(탭/섹션)
     ["tabs", "sections"].forEach((listName) => {
@@ -2914,6 +2947,311 @@
     }
 
     renderStatsTrend();
+  }
+
+  /* ───────────── 📱 인스타 · 네이버 블로그 성장 트렌드 (2026-11-26 v=53) ─────────────
+     복지모아 서버의 /api/admin/social-stats 를 그린다. 두 사이트(포케모아·복지모아) 공통 채널이라
+     사이트 필터와 무관하고, 어느 쪽에서 통계 탭을 열어도 같은 기록을 본다.
+     값이 없는 칸은 0 이 아니라 ‘—’로 그린다(못 잰 값과 실제 0 을 구분). */
+  const SOCIAL_MAX_CHART_COLS = 31;
+
+  /* 오늘 날짜(KST) — YYYY-MM-DD. 기기 시간대와 무관하게 한국 날짜로 적는다. */
+  function kstDateString(date) {
+    const base = date instanceof Date ? date : new Date();
+    try {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(base);
+    } catch (err) {
+      return base.toISOString().slice(0, 10);
+    }
+  }
+
+  /* ‘—’ 와 숫자 */
+  function socialValue(value) {
+    return value === null || value === undefined || value === "" ? "—" : fmtCount(value);
+  }
+  function socialDelta(value) {
+    if (value === null || value === undefined) return "";
+    if (!value) return "변화 없음";
+    return (value > 0 ? "+" : "−") + fmtCount(Math.abs(value));
+  }
+  function socialDateLabel(text) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(text || ""));
+    if (!match) return String(text || "");
+    return `${Number(match[2])}/${Number(match[3])}`;
+  }
+
+  function syncSocialControls() {
+    $$("#social-period button[data-social-days]").forEach((btn) => {
+      const value = btn.dataset.socialDays;
+      const wanted = state.social.days === "all" ? "all" : String(state.social.days);
+      btn.classList.toggle("is-active", value === wanted);
+    });
+    $$("#social-mode button[data-social-mode]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.socialMode === state.social.mode);
+    });
+  }
+
+  function socialDateInput() {
+    const input = $("#social-date");
+    if (!input) return null;
+    if (!input.value) input.value = kstDateString();
+    return input;
+  }
+
+  async function loadSocialStats(opts) {
+    const pill = $("#social-conn");
+    const msg = $("#social-msg");
+    if (!pill) return;
+    syncSocialControls();
+    const session = state.session || {};
+    if (session.mode === "demo" || (!session.token && !session.key)) {
+      state.social.data = null;
+      state.social.error = "";
+      state.social.loading = false;
+      pill.textContent = "로그인 필요";
+      pill.className = "status-pill wait";
+      if (msg) msg.textContent = "SNS 성장 트렌드는 운영자 로그인(아이디·비밀번호 또는 관리자 키) 후 볼 수 있습니다.";
+      renderSocial();
+      return;
+    }
+    state.social.loading = true;
+    state.social.error = "";
+    pill.textContent = "불러오는 중…";
+    pill.className = "status-pill wait";
+    renderSocial();
+    try {
+      const range = state.social.days === "all" ? "all" : String(Number(state.social.days) || 30);
+      const res = await apiRequest(`/api/admin/social-stats?days=${encodeURIComponent(range)}`);
+      if (!res.ok || !res.data) throw new Error(res.error || `HTTP ${res.status}`);
+      state.social.data = res.data;
+      state.social.loadedAt = new Date().toISOString();
+      pill.textContent = "연결됨";
+      pill.className = "status-pill ok";
+      const total = res.data.summary ? res.data.summary.totalDays : 0;
+      if (msg) {
+        const scope = state.social.days === "all" ? "전체 기록" : `최근 ${res.data.days}일`;
+        msg.textContent = total
+          ? `${scope} · 기록 ${total}일 (${res.data.from} ~ ${res.data.to}) · 인스타 @acewoni_ · 블로그 y__woni`
+          : `${scope}에 아직 기록이 없습니다. 아래 빠른 입력에서 오늘 수치를 넣어 주세요.`;
+      }
+      if (!opts || !opts.keepForm) fillSocialForm();
+    } catch (err) {
+      state.social.data = null;
+      state.social.error = err.message || "알 수 없는 오류";
+      pill.textContent = "오류";
+      pill.className = "status-pill bad";
+      if (msg) msg.textContent = `SNS 성장 트렌드를 불러오지 못했습니다: ${state.social.error}`;
+    }
+    state.social.loading = false;
+    renderSocial();
+  }
+
+  /* 날짜 칸의 날짜가 이미 기록에 있으면 그 값을 입력칸에 채운다(수정하기 쉽게). */
+  function fillSocialForm() {
+    const dateInput = socialDateInput();
+    if (!dateInput) return;
+    const rows = (state.social.data && state.social.data.daily) || [];
+    const found = rows.find((row) => row.date === dateInput.value) || null;
+    const map = {
+      "#social-ig-followers": "igFollowers",
+      "#social-ig-media": "igMediaCount",
+      "#social-ig-likes": "igLikes",
+      "#social-ig-comments": "igComments",
+      "#social-ig-views": "igRecentViews",
+      "#social-blog-visitors": "blogVisitors",
+      "#social-blog-views": "blogViews",
+      "#social-blog-neighbors": "blogNeighbors"
+    };
+    Object.keys(map).forEach((sel) => {
+      const input = $(sel);
+      if (!input) return;
+      const value = found ? found[map[sel]] : null;
+      input.value = value === null || value === undefined ? "" : String(value);
+    });
+    const note = $("#social-note");
+    if (note) note.value = found ? found.note || "" : "";
+  }
+
+  function renderSocialChart(el, rows, pick, labelOf) {
+    if (!el) return;
+    if (!rows.length) { el.innerHTML = ""; return; }
+    const values = rows.map((row) => (row[pick] === null || row[pick] === undefined ? null : Number(row[pick]) || 0));
+    const max = Math.max(1, ...values.filter((value) => value !== null));
+    el.innerHTML = rows.map((row, index) => {
+      const value = values[index];
+      const height = value === null ? 3 : value ? Math.max(6, Math.round((value / max) * 100)) : 3;
+      const title = `${labelOf(row)} · ${value === null ? "기록 없음" : fmtCount(value)}`;
+      return `<div class="trend-col${value === null ? " is-empty" : ""}" title="${esc(title)}">
+        <span class="trend-value">${value === null ? "" : fmtCount(value)}</span>
+        <span class="trend-bar" style="height:${height}%"></span>
+        <span class="trend-tick">${esc(labelOf(row))}</span>
+      </div>`;
+    }).join("");
+  }
+
+  /* 차트용 날짜 배열 — 기록이 없는 날도 회색 막대로 세워 추이를 끊기지 않게 한다. */
+  function socialChartRows() {
+    const data = state.social.data;
+    if (!data || !data.summary || !data.summary.totalDays) return [];
+    const daily = data.daily || [];
+    if (state.social.mode === "monthly") {
+      return (data.monthly || []).slice(-12).map((row) => Object.assign({ label: row.label || row.month }, row));
+    }
+    const byDate = {};
+    daily.forEach((row) => { byDate[row.date] = row; });
+    let start;
+    let end;
+    const today = kstDateString();
+    if (state.social.days === "all") {
+      start = daily.length ? daily[0].date : today;
+      end = daily.length ? daily[daily.length - 1].date : today;
+    } else {
+      const days = Number(state.social.days) || 30;
+      const base = new Date(`${today}T00:00:00Z`);
+      start = new Date(base.getTime() - (days - 1) * 86400000).toISOString().slice(0, 10);
+      end = today;
+    }
+    const list = [];
+    let cursor = new Date(`${start}T00:00:00Z`);
+    const last = new Date(`${end}T00:00:00Z`);
+    let guard = 0;
+    while (cursor <= last && guard < 400) {
+      const key = cursor.toISOString().slice(0, 10);
+      list.push(byDate[key] || { date: key, label: socialDateLabel(key), empty: true, igFollowers: null, blogVisitors: null });
+      cursor = new Date(cursor.getTime() + 86400000);
+      guard += 1;
+    }
+    const cap = (typeof window !== "undefined" && window.innerWidth <= 640) ? 10 : SOCIAL_MAX_CHART_COLS;
+    return list.slice(-cap);
+  }
+
+  function renderSocial() {
+    const kpis = $("#social-kpis");
+    if (!kpis) return;
+    const data = state.social.data;
+    const emptyNote = $("#social-empty");
+    const charts = $("#social-charts");
+    const table = $("#social-table");
+    const body = table ? table.querySelector("tbody") : null;
+    const head = table ? table.querySelector("thead tr") : null;
+
+    if (!data || !data.summary || !data.summary.totalDays) {
+      kpis.hidden = true;
+      kpis.innerHTML = "";
+      if (charts) charts.hidden = true;
+      if (emptyNote) emptyNote.hidden = !(data && data.summary && !state.social.error);
+      if (body) body.innerHTML = '<tr><td colspan="8" class="muted small">아직 기록이 없습니다. 아래 빠른 입력에서 오늘 수치를 넣어 주세요.</td></tr>';
+      return;
+    }
+
+    const summary = data.summary;
+    const latest = summary.latest || {};
+    const delta = summary.delta || {};
+    const stamp = latest.date ? `${latest.date} 기준` : "기록 없음";
+    const cards = [
+      ["📸 인스타 팔로워", socialValue(latest.igFollowers), delta.igFollowers === null || delta.igFollowers === undefined ? stamp : `${socialDelta(delta.igFollowers)} · ${stamp}`],
+      ["📸 인스타 게시물", socialValue(latest.igMediaCount), delta.igMediaCount === null || delta.igMediaCount === undefined ? stamp : `${socialDelta(delta.igMediaCount)} · ${stamp}`],
+      ["❤️ 좋아요 · 댓글", `${socialValue(latest.igLikes)} · ${socialValue(latest.igComments)}`, "최근 10개 게시물 합"],
+      ["📝 블로그 이웃", socialValue(latest.blogNeighbors), delta.blogNeighbors === null || delta.blogNeighbors === undefined ? stamp : `${socialDelta(delta.blogNeighbors)} · ${stamp}`],
+      ["📝 블로그 방문자", socialValue(latest.blogVisitors), "최근 기록일 기준"],
+      ["📝 블로그 조회수", socialValue(latest.blogViews), "최근 기록일 기준"]
+    ];
+    kpis.hidden = false;
+    kpis.innerHTML = cards.map(([label, value, sub]) =>
+      `<div class="stat-card"><span>${esc(label)}</span><strong>${esc(value)}</strong><em>${esc(sub)}</em></div>`
+    ).join("");
+    if (emptyNote) emptyNote.hidden = true;
+
+    const rows = socialChartRows();
+    if (charts) charts.hidden = !rows.length;
+    const labelOf = (row) => row.label || (state.social.mode === "monthly" ? row.month : socialDateLabel(row.date));
+    renderSocialChart($("#social-chart-ig"), rows, "igFollowers", labelOf);
+    renderSocialChart($("#social-chart-blog"), rows, "blogVisitors", labelOf);
+
+    const monthly = state.social.mode === "monthly";
+    if (head) {
+      head.innerHTML = monthly
+        ? '<th>기간</th><th class="num">팔로워</th><th class="num">게시물</th><th class="num">좋아요</th><th class="num">댓글</th><th class="num">블로그 방문</th><th class="num">조회</th><th class="num">이웃</th>'
+        : '<th>기간</th><th class="num">팔로워</th><th class="num">게시물</th><th class="num">좋아요</th><th class="num">댓글</th><th class="num">블로그 방문</th><th class="num">조회</th><th class="num">이웃</th>';
+    }
+    if (body) {
+      if (monthly) {
+        const list = (data.monthly || []).slice().reverse();
+        body.innerHTML = list.map((row) => {
+          const deltaText = row.igFollowersDelta === null || row.igFollowersDelta === undefined ? "" : socialDelta(row.igFollowersDelta);
+          return `<tr>
+            <td><b>${esc(row.label || row.month)}</b><span class="cell-sub">${esc(row.from)} ~ ${esc(row.to)} · ${fmtCount(row.days)}일 기록</span></td>
+            <td class="num">${socialValue(row.igFollowers)}${deltaText ? `<span class="cell-sub">${esc(deltaText)}</span>` : ""}</td>
+            <td class="num">${socialValue(row.igMediaCount)}</td>
+            <td class="num">${socialValue(row.igLikes)}</td>
+            <td class="num">${socialValue(row.igComments)}</td>
+            <td class="num">${socialValue(row.blogVisitors)}</td>
+            <td class="num">${socialValue(row.blogViews)}</td>
+            <td class="num">${socialValue(row.blogNeighbors)}</td>
+          </tr>`;
+        }).join("") || '<tr><td colspan="8" class="muted small">아직 기록이 없습니다.</td></tr>';
+      } else {
+        const list = (data.daily || []).slice().reverse();
+        body.innerHTML = list.map((row) => `<tr>
+            <td class="social-when"><b>${esc(row.date)}</b>${row.note ? `<span class="cell-sub social-note-full">${esc(row.note)}</span><span class="social-note-mark" title="${esc(row.note)}">📝</span>` : ""}</td>
+            <td class="num">${socialValue(row.igFollowers)}</td>
+            <td class="num">${socialValue(row.igMediaCount)}</td>
+            <td class="num">${socialValue(row.igLikes)}</td>
+            <td class="num">${socialValue(row.igComments)}</td>
+            <td class="num">${socialValue(row.blogVisitors)}</td>
+            <td class="num">${socialValue(row.blogViews)}</td>
+            <td class="num">${socialValue(row.blogNeighbors)}</td>
+          </tr>`).join("") || '<tr><td colspan="8" class="muted small">아직 기록이 없습니다.</td></tr>';
+      }
+    }
+  }
+
+  async function saveSocialStats(event) {
+    if (event) event.preventDefault();
+    const dateInput = socialDateInput();
+    const statePill = $("#social-save-state");
+    if (!dateInput || !dateInput.value) {
+      toast("날짜를 먼저 골라 주세요.");
+      return;
+    }
+    const readNum = (sel) => {
+      const input = $(sel);
+      const text = input ? String(input.value || "").replace(/[,\s]/g, "").trim() : "";
+      return text === "" ? null : text;
+    };
+    const payload = {
+      stat_date: dateInput.value,
+      ig_followers: readNum("#social-ig-followers"),
+      ig_media_count: readNum("#social-ig-media"),
+      ig_likes: readNum("#social-ig-likes"),
+      ig_comments: readNum("#social-ig-comments"),
+      ig_recent_views: readNum("#social-ig-views"),
+      blog_visitors: readNum("#social-blog-visitors"),
+      blog_views: readNum("#social-blog-views"),
+      blog_neighbors: readNum("#social-blog-neighbors"),
+      note: (($("#social-note") || {}).value || "").trim()
+    };
+    if (state.social.saving) return;
+    state.social.saving = true;
+    const saveBtn = $("#social-save");
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "저장 중…"; }
+    if (statePill) { statePill.hidden = true; }
+    try {
+      const res = await apiRequest("/api/admin/social-stats", {
+        method: "POST",
+        json: true,
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`);
+      toast(`${dateInput.value} SNS 기록을 저장했습니다.`);
+      if (statePill) { statePill.hidden = false; statePill.textContent = "저장됨"; statePill.className = "status-pill ok"; }
+      await loadSocialStats({ keepForm: true });
+    } catch (err) {
+      toast(`SNS 기록을 저장하지 못했습니다: ${err.message || "알 수 없는 오류"}`);
+      if (statePill) { statePill.hidden = false; statePill.textContent = "저장 실패"; statePill.className = "status-pill bad"; }
+    }
+    state.social.saving = false;
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "이 날짜로 저장"; }
   }
 
   /* ───────────── 🔌 태블릿 중계 서버(relay) — 상태 확인 · 원클릭 업데이트 ─────────────
