@@ -15,8 +15,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=53">
-<link rel="stylesheet" href="assets/css/finance.css?v=53">
+<link rel="stylesheet" href="assets/css/admin.css?v=54">
+<link rel="stylesheet" href="assets/css/finance.css?v=54">
 </head>
 <body>
 
@@ -88,7 +88,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=53</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=54</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -500,9 +500,15 @@
         <div class="panel-head">
           <h2>방문 통계</h2>
           <p>포켓몬카드모아·회사복지모아 방문자의 <b>화면별 체류시간</b>과 <b>유입 경로·기기·접속 시간대</b>를 봅니다. IP·쿠키·개인 식별 정보는 저장하지 않고 <b>익명 세션</b>으로만 셉니다.</p>
+          <!-- 카드 순서 바꾸기(2026-11-26 v=54) — 각 카드 머리 오른쪽 위 ↑ / ↓ 로 옮기면
+               이 브라우저(localStorage)에 바로 저장되어 새로고침·재접속 뒤에도 그 순서로 보인다. -->
+          <div class="stats-order-bar">
+            <span class="muted small">카드 순서 — 각 카드 오른쪽 위 <b>↑</b> <b>↓</b> 를 누르면 이 브라우저에 저장되고, 포케모아·복지모아 통계 화면 모두 같은 순서로 보입니다.</span>
+            <button type="button" class="btn btn-sm btn-ghost" id="stats-order-reset">순서 초기화</button>
+          </div>
         </div>
 
-        <div class="card ga-card">
+        <div class="card ga-card" data-stats-card="ga">
           <div class="card-head">
             <h3>GA4 속성 바로가기 <span class="tag">gtag</span></h3>
             <span class="muted small">인구통계·전환은 GA4에서</span>
@@ -527,7 +533,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" data-stats-card="filters">
           <div class="card-head">
             <h3>조회 조건 <span class="tag">analytics</span></h3>
             <span class="status-pill" id="stats-conn">불러오기 전</span>
@@ -553,7 +559,7 @@
 
         <!-- 기간별 트렌드(2026-11-25) — 위의 기간(days) 필터와 무관하게 서버에 쌓인 전체 기록을
              월별(최근 12개월)·연도별로 묶는다. 한 응답에 둘 다 실려 와서 전환은 다시 부르지 않고 그린다. -->
-        <div class="card">
+        <div class="card" data-stats-card="trend">
           <div class="card-head">
             <h3>기간별 트렌드 <span class="tag">trend</span></h3>
             <span class="muted small">전체 누적 기록 · 월별 최근 12개월 / 연도별 전체</span>
@@ -579,7 +585,7 @@
           </div>
         </div>
 
-        <div class="card social-card" id="social-card">
+        <div class="card social-card" id="social-card" data-stats-card="social">
           <div class="card-head">
             <h3>📱 인스타 · 네이버 블로그 성장 트렌드 <span class="tag">social</span></h3>
             <button type="button" class="btn btn-sm btn-ghost social-refresh" id="social-refresh">새로고침</button>
@@ -646,7 +652,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" data-stats-card="pages">
           <div class="card-head">
             <h3>페이지 · 탭별 체류시간 <span class="tag">pages</span></h3>
             <span class="muted small">조회수 순 · 평균 체류</span>
@@ -663,7 +669,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" data-stats-card="referrer">
           <div class="card-head">
             <h3>유입 경로 <span class="tag">referrer</span></h3>
             <span class="muted small">직접 접속 · 네이버 · 구글 · 카카오 등</span>
@@ -673,7 +679,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" data-stats-card="device">
           <div class="card-head">
             <h3>기기 · OS 비율 <span class="tag">device</span></h3>
             <span class="muted small">모바일 · PC · 태블릿</span>
@@ -683,7 +689,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" data-stats-card="hour">
           <div class="card-head">
             <h3>시간대별 접속 분포 <span class="tag">hour</span></h3>
             <span class="muted small">한국 시간(KST) 0시~23시</span>
@@ -693,7 +699,7 @@
           </div>
         </div>
 
-        <div class="card age-card">
+        <div class="card age-card" data-stats-card="age">
           <div class="card-head">
             <h3>나이대는 어떻게 볼 수 있나요? <span class="tag">안내</span></h3>
           </div>
@@ -1185,9 +1191,9 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=53"></script>
-<script src="assets/js/finance.js?v=53"></script>
-<script src="assets/js/app.js?v=53"></script>
+<script src="assets/js/sites.js?v=54"></script>
+<script src="assets/js/finance.js?v=54"></script>
+<script src="assets/js/app.js?v=54"></script>
 <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

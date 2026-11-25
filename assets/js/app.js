@@ -10,11 +10,13 @@
     session: "moa-admin.session",
     draft: "moa-admin.draft.",
     log: "moa-admin.log",
-    ui: "moa-admin.ui"
+    ui: "moa-admin.ui",
+    // 📊 통계 카드 순서(2026-11-26 v=54) — 이 브라우저에만 남는 보기 설정
+    statsOrder: "moa-admin.stats.order"
   };
   const REMEMBER_DAYS = 90;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=53";
+  const BUILD = "v=54";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -837,6 +839,8 @@
     });
     const statsRefresh = $("#stats-refresh");
     if (statsRefresh) statsRefresh.addEventListener("click", loadStats);
+    // 📊 통계 카드 순서 — ↑ / ↓ 버튼을 붙이고 이 브라우저에 저장된 순서를 되살린다.
+    initStatsOrder();
     // 월별/연도별 트렌드 전환 — 서버 응답에 둘 다 들어 있어 다시 부르지 않고 그린다.
     const statsTrendMode = $("#stats-trend-mode");
     if (statsTrendMode) statsTrendMode.addEventListener("click", (event) => {
@@ -2698,6 +2702,177 @@
           <td>${esc(fmtDateTime(row.createdAt))}</td>
         </tr>`).join("")
       : '<tr><td colspan="4" class="muted small">한 줄 팁이 아직 없습니다.</td></tr>';
+  }
+
+  /* ───────────── 📊 통계 카드 순서 (2026-11-26 v=54) ─────────────
+     `📊 통계` 탭의 섹션 카드마다 카드 머리 오른쪽 위에 ↑ / ↓ 를 붙여 순서를 바꾼다.
+     바뀐 순서는 localStorage(moa-admin.stats.order)에 바로 저장되어 새로고침·재접속 뒤에도 그대로 보이고,
+     포케모아·복지모아 두 화면이 같은 순서를 쓴다(통계 탭은 사이트 필터만 다르고 화면은 하나다).
+     서버에 보내지 않는다 — 운영자 화면의 보기 방식이라 사이트 설정(site-config)과 섞지 않는다.
+     저장된 키 중 지금 없는 카드는 버리고, 새로 생긴 카드는 원래 자리에 끼워 넣는다. */
+  let statsOrderDefault = [];   // 이 화면을 처음 만들 때의 카드 순서(초기화 기준)
+
+  function statsPanel() { return document.querySelector('[data-panel="stats"]'); }
+
+  function statsCards() {
+    const panel = statsPanel();
+    return panel ? Array.prototype.slice.call(panel.querySelectorAll("[data-stats-card]")) : [];
+  }
+
+  function statsCardKeys() { return statsCards().map((card) => card.dataset.statsCard); }
+
+  /* 카드 제목 — 머리의 h3 에서 태그(analytics·trend 같은 작은 표시)를 뺀 글자. */
+  function statsCardTitle(card) {
+    const h3 = card ? card.querySelector(".card-head h3") : null;
+    if (!h3) return card ? card.dataset.statsCard : "";
+    const copy = h3.cloneNode(true);
+    Array.prototype.forEach.call(copy.querySelectorAll(".tag"), (tag) => tag.remove());
+    return (copy.textContent || "").replace(/\s+/g, " ").trim() || card.dataset.statsCard;
+  }
+
+  function readStatsOrder() {
+    try {
+      const raw = localStorage.getItem(LS.statsOrder);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.slice(0, 40) : [];
+    } catch (err) { return []; }
+  }
+
+  /* 저장된 순서에 지금 화면의 카드를 맞춘다 — 모르는 키는 버리고, 빠진 카드는 뒤에 붙인다. */
+  function normalizeStatsOrder(saved) {
+    const present = statsCardKeys();
+    const out = [];
+    (Array.isArray(saved) ? saved : []).forEach((key) => {
+      if (typeof key === "string" && present.indexOf(key) >= 0 && out.indexOf(key) < 0) out.push(key);
+    });
+    present.forEach((key) => { if (out.indexOf(key) < 0) out.push(key); });
+    return out;
+  }
+
+  function saveStatsOrder(keys) {
+    try {
+      localStorage.setItem(LS.statsOrder, JSON.stringify(keys));
+      return true;
+    } catch (err) { return false; }
+  }
+
+  function clearStatsOrder() {
+    try { localStorage.removeItem(LS.statsOrder); return true; } catch (err) { return false; }
+  }
+
+  /* 카드를 keys 순서대로 다시 놓는다. 카드가 아닌 요소(안내·다른 카드)는 건드리지 않는다. */
+  function applyStatsOrder(keys) {
+    const panel = statsPanel();
+    if (!panel) return;
+    const byKey = {};
+    const cards = statsCards();
+    if (!cards.length) return;
+    cards.forEach((card) => { byKey[card.dataset.statsCard] = card; });
+    const list = (Array.isArray(keys) ? keys : []).filter((key) => byKey[key]);
+    if (!list.length) return;
+    if (list.join("|") === cards.map((card) => card.dataset.statsCard).join("|")) return;
+    // 카드 묶음 뒤에 다른 요소가 있어도 그 자리는 지키도록 마지막 카드의 다음 요소 앞에 끼워 넣는다.
+    const anchor = cards[cards.length - 1].nextSibling;
+    list.forEach((key) => { panel.insertBefore(byKey[key], anchor); });
+  }
+
+  function syncStatsOrderButtons() {
+    const cards = statsCards();
+    cards.forEach((card, index) => {
+      const up = card.querySelector('[data-stats-move="up"]');
+      const down = card.querySelector('[data-stats-move="down"]');
+      if (up) up.disabled = index === 0;
+      if (down) down.disabled = index === cards.length - 1;
+    });
+    const reset = $("#stats-order-reset");
+    if (reset) {
+      // 저장값이 아니라 ‘지금 순서가 처음 순서인가’ 로 잠근다 — 손으로 되돌려 놓았으면 초기화할 것이 없다.
+      const current = cards.map((card) => card.dataset.statsCard).join("|");
+      const same = current === statsOrderDefault.join("|");
+      reset.disabled = same;
+      reset.title = same
+        ? "지금이 처음 순서입니다."
+        : "카드 순서를 처음(기본) 순서로 되돌립니다.";
+    }
+  }
+
+  /* 카드마다 ↑ / ↓ 한 쌍을 카드 머리 끝에 붙인다(이미 있으면 건너뛴다). */
+  function ensureStatsOrderControls() {
+    statsCards().forEach((card) => {
+      const head = card.querySelector(".card-head");
+      if (!head || head.querySelector(".stats-order")) return;
+      const title = statsCardTitle(card);
+      const box = document.createElement("div");
+      box.className = "stats-order";
+      box.setAttribute("role", "group");
+      box.setAttribute("aria-label", `${title} 카드 순서`);
+      [
+        ["up", "↑", "위로 이동"],
+        ["down", "↓", "아래로 이동"]
+      ].forEach((pair) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "stats-order-btn";
+        btn.dataset.statsMove = pair[0];
+        btn.textContent = pair[1];
+        btn.title = `${title} 카드를 ${pair[2]}`;
+        btn.setAttribute("aria-label", `${title} 카드를 ${pair[2]}`);
+        box.appendChild(btn);
+      });
+      head.appendChild(box);
+    });
+  }
+
+  function moveStatsCard(key, direction) {
+    const order = statsCardKeys();
+    const from = order.indexOf(key);
+    if (from < 0) return;
+    const to = direction === "up" ? from - 1 : from + 1;
+    if (to < 0 || to >= order.length) return;
+    const next = order.slice();
+    next.splice(from, 1);
+    next.splice(to, 0, key);
+    applyStatsOrder(next);
+    // 손으로 처음 순서까지 되돌렸으면 저장값을 지운다(다음에 열 때 초기 순서 그대로).
+    const saved = next.join("|") === statsOrderDefault.join("|") ? clearStatsOrder() : saveStatsOrder(next);
+    syncStatsOrderButtons();
+    const title = statsCardTitle(statsCards().find((card) => card.dataset.statsCard === key));
+    const where = direction === "up" ? "위" : "아래";
+    if (saved) {
+      toast(`「${title}」 카드를 ${where}로 옮겼습니다 · 이 브라우저에 저장되어 새로고침해도 그대로입니다.`);
+    } else {
+      toast(`「${title}」 카드를 ${where}로 옮겼지만 브라우저 저장소를 쓸 수 없어 이번 화면에서만 적용됩니다.`, true);
+    }
+  }
+
+  function resetStatsOrder() {
+    clearStatsOrder();
+    applyStatsOrder(statsOrderDefault.slice());
+    syncStatsOrderButtons();
+    toast("카드 순서를 처음 상태로 되돌렸습니다.");
+  }
+
+  function onStatsOrderClick(event) {
+    const btn = event.target.closest ? event.target.closest("[data-stats-move]") : null;
+    if (!btn) return;
+    const card = btn.closest("[data-stats-card]");
+    if (!card) return;
+    moveStatsCard(card.dataset.statsCard, btn.dataset.statsMove === "up" ? "up" : "down");
+  }
+
+  function initStatsOrder() {
+    const panel = statsPanel();
+    if (!panel) return;
+    if (!statsOrderDefault.length) statsOrderDefault = statsCardKeys();
+    ensureStatsOrderControls();
+    applyStatsOrder(normalizeStatsOrder(readStatsOrder()));
+    syncStatsOrderButtons();
+    if (panel.dataset.statsOrderBound === "1") return;  // 다시 로그인해도 한 번만 건다
+    panel.dataset.statsOrderBound = "1";
+    panel.addEventListener("click", onStatsOrderClick);
+    const reset = $("#stats-order-reset");
+    if (reset) reset.addEventListener("click", resetStatsOrder);
   }
 
   /* ───────────── 📊 방문 통계 (2026-11-19) ─────────────

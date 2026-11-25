@@ -640,6 +640,38 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .ga-site code { align-self: flex-start; font-size: 12px; font-weight: 700; color: #1a3fa8; background: #eef4ff; border-radius: 6px; padding: 1px 7px; }
 .ga-site .ga-host { font-size: 11px; color: var(--ink-soft); }
 
+/* 📊 통계 카드 순서 바꾸기 (2026-11-26 v=54) — 패널 머리의 안내·초기화와 카드 머리 끝의 ↑ ↓ */
+.stats-order-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+.stats-order-bar .muted { line-height: 1.55; }
+.stats-order-bar .btn { flex: 0 0 auto; padding: 5px 10px; font-size: 12px; }
+
+/* 카드 머리는 제목이 왼쪽, 작은 안내·배지·순서 버튼이 오른쪽에 모이게 한다.
+   (auto 마진이 여러 개면 빈 공간이 나뉘어 가운데로 밀리므로 제목에만 준다.) */
+[data-panel="stats"] .card-head { flex-wrap: wrap; row-gap: 6px; }
+[data-panel="stats"] .card-head h3 { margin-right: auto; min-width: 0; }
+[data-panel="stats"] .card-head > .muted,
+[data-panel="stats"] .card-head > .status-pill,
+[data-panel="stats"] .card-head > .switch,
+[data-panel="stats"] .card-head > .inline-row { margin-left: 0; }
+
+.stats-order { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; margin-left: 2px; }
+.stats-order button { width: 26px; height: 26px; padding: 0; display: inline-flex; align-items: center;
+  justify-content: center; font-size: 13px; line-height: 1; border-radius: 8px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink-soft); cursor: pointer; }
+.stats-order button:hover:not(:disabled) { border-color: #b9c6e4; color: var(--ink); background: #f2f6ff; }
+.stats-order button:active:not(:disabled) { transform: translateY(1px); }
+.stats-order button:disabled { opacity: .32; cursor: default; }
+.stats-order button:focus-visible { outline: 2px solid #2c5bf6; outline-offset: 1px; }
+
+@media (max-width: 640px) {
+  /* 폰에서는 ↑↓를 세로로 세워 카드 머리 폭을 아끼고, 제목이 두 줄로 접히지 않게 줄인다. */
+  .stats-order { flex-direction: column; gap: 2px; }
+  .stats-order button { width: 26px; height: 21px; font-size: 11px; border-radius: 7px; }
+  [data-panel="stats"] .card-head h3 { font-size: 13px; }
+  .stats-order-bar { margin-top: 8px; gap: 6px; }
+  .stats-order-bar .btn { padding: 4px 9px; }
+}
+
 @media (max-width: 720px) {
   .bar-label { flex-basis: 68px; width: 68px; font-size: 12px; }
   .bar-value { flex-basis: 78px; width: 78px; font-size: 11px; }
