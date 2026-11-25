@@ -15,8 +15,10 @@
     statsOrder: "moa-admin.stats.order"
   };
   const REMEMBER_DAYS = 90;
+  /* 「페이지·탭별 체류시간」은 한 번에 5개씩 — 더보기·접기의 단위(2026-11-26 v=56). */
+  const STATS_PAGES_STEP = 5;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=55";
+  const BUILD = "v=56";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -207,7 +209,7 @@
     // 🔌 태블릿 중계 서버 상태 — 마지막으로 본 /health 결과
     relay: { online: false, version: "", at: 0 },
     // 📊 방문 통계 — 사이트 필터·기간별로 서버에서 집계해 온다.
-    stats: { site: "all", days: 7, loading: false, error: "", data: null, loadedAt: "", trend: "monthly" },
+    stats: { site: "all", days: 7, loading: false, error: "", data: null, loadedAt: "", trend: "monthly", pagesVisible: STATS_PAGES_STEP },
     // 📱 인스타 · 네이버 블로그 성장 트렌드 — 두 사이트 공통 채널이라 사이트 필터가 없다.
     social: { days: 30, mode: "daily", loading: false, error: "", data: null, loadedAt: "", saving: false },
     log: []
@@ -839,6 +841,16 @@
     });
     const statsRefresh = $("#stats-refresh");
     if (statsRefresh) statsRefresh.addEventListener("click", loadStats);
+    // 「페이지·탭별 체류시간」 더보기(+5) / 접기(5개만) — 다시 부를 때(loadStats)와 달리 그 자리에서만 다시 그린다.
+    const statsPagesToggle = $("#stats-pages-toggle");
+    if (statsPagesToggle) statsPagesToggle.addEventListener("click", () => {
+      const pages = state.stats.data && Array.isArray(state.stats.data.pages) ? state.stats.data.pages : [];
+      const total = pages.length;
+      if (!total) return;
+      const shown = statsPagesShown(total);
+      state.stats.pagesVisible = shown >= total ? STATS_PAGES_STEP : Math.min(total, shown + STATS_PAGES_STEP);
+      renderStatsPages();
+    });
     // 📊 통계 카드 순서 — ↑ / ↓ 버튼을 붙이고 이 브라우저에 저장된 순서를 되살린다.
     initStatsOrder();
     // 월별/연도별 트렌드 전환 — 서버 응답에 둘 다 들어 있어 다시 부르지 않고 그린다.
@@ -2997,6 +3009,8 @@
     const pill = $("#stats-conn");
     const msg = $("#stats-msg");
     if (!pill) return;
+    /* 조회 조건(사이트·기간)이나 새로고침으로 다시 부를 때는 목록을 5개 상태로 되돌린다. */
+    state.stats.pagesVisible = STATS_PAGES_STEP;
     syncStatsControls();
     const session = state.session || {};
     if (session.mode === "demo" || (!session.token && !session.key)) {
@@ -3102,11 +3116,63 @@
     }
   }
 
+  /* 「페이지·탭별 체류시간」 — 기본 5개만 보여 주고, 더보기를 누를 때마다 5개씩 늘린다.
+     끝까지 펼치면 ‘접기’로 바뀌어 다시 5개로 돌아온다. 5개 이하면 버튼을 숨긴다.
+     막대 길이는 펼침과 상관없이 전체 목록의 최댓값을 기준으로 그려, 더 볼 때 길이가 흔들리지 않게 한다. */
+  function statsPagesShown(total) {
+    const want = Number(state.stats.pagesVisible) || STATS_PAGES_STEP;
+    return Math.max(STATS_PAGES_STEP, Math.min(want, total));
+  }
+
+  function renderStatsPages() {
+    const table = $("#stats-pages");
+    const body = table ? table.querySelector("tbody") : null;
+    if (!body) return;
+    const box = $("#stats-pages-more");
+    const btn = $("#stats-pages-toggle");
+    const data = state.stats.data;
+    const pages = data && Array.isArray(data.pages) ? data.pages : [];
+
+    if (!pages.length) {
+      body.innerHTML = '<tr><td colspan="5" class="muted small">아직 자료가 없습니다.</td></tr>';
+      if (box) box.hidden = true;
+      return;
+    }
+
+    const total = pages.length;
+    const shown = statsPagesShown(total);
+    const maxAvg = Math.max(1, ...pages.map((page) => Number(page.avgDurationSec) || 0));
+    body.innerHTML = pages.slice(0, shown).map((page) => {
+      const width = Math.max(3, Math.round(((Number(page.avgDurationSec) || 0) / maxAvg) * 100));
+      return `<tr>
+        <td><b>${esc(page.label || page.path)}</b><span class="cell-sub">${esc(page.siteLabel)}</span></td>
+        <td><code>${esc(page.path)}</code></td>
+        <td class="num">${fmtCount(page.views)}</td>
+        <td class="num">${esc(page.avgDurationText || fmtDuration(page.avgDurationSec))}</td>
+        <td><span class="mini-bar" aria-hidden="true"><i style="width:${width}%"></i></span></td>
+      </tr>`;
+    }).join("");
+
+    if (!box || !btn) return;
+    box.hidden = total <= STATS_PAGES_STEP;
+    if (box.hidden) return;
+    const expanded = shown >= total;
+    const remaining = total - shown;
+    btn.textContent = expanded
+      ? `접기 (${STATS_PAGES_STEP}개만 보기)`
+      : (remaining <= STATS_PAGES_STEP
+        ? `더보기 (남은 ${remaining}개)`
+        : `더보기 (${STATS_PAGES_STEP}개 추가 · 남은 ${remaining}개)`);
+    btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+    btn.setAttribute("aria-label", expanded
+      ? `페이지·탭별 체류시간 ${total}개를 상위 ${STATS_PAGES_STEP}개만 보기로 접기`
+      : `페이지·탭별 체류시간 더보기 — 지금 ${shown}개, ${Math.min(total, shown + STATS_PAGES_STEP)}개까지`);
+  }
+
   function renderStats() {
     const summary = $("#stats-summary");
     if (!summary) return;
     const data = state.stats.data;
-    const pagesBody = $("#stats-pages") ? $("#stats-pages").querySelector("tbody") : null;
     const refBox = $("#stats-referrers");
     const devBox = $("#stats-devices");
     const hourBox = $("#stats-hourly");
@@ -3115,7 +3181,7 @@
     if (!data || !data.summary) {
       summary.hidden = true;
       summary.innerHTML = "";
-      if (pagesBody) pagesBody.innerHTML = '<tr><td colspan="5" class="muted small">아직 자료가 없습니다.</td></tr>';
+      renderStatsPages();
       [refBox, devBox, hourBox].forEach((box) => { if (box) box.innerHTML = emptyNote; });
       renderStatsTrend();
       return;
@@ -3133,24 +3199,8 @@
       `<div class="stat-card"><span>${esc(label)}</span><strong>${esc(value)}</strong><em>${esc(sub)}</em></div>`
     ).join("");
 
-    // 페이지·탭별 체류시간
-    if (pagesBody) {
-      if (!data.pages.length) {
-        pagesBody.innerHTML = '<tr><td colspan="5" class="muted small">아직 자료가 없습니다.</td></tr>';
-      } else {
-        const maxAvg = Math.max(1, ...data.pages.map((page) => Number(page.avgDurationSec) || 0));
-        pagesBody.innerHTML = data.pages.slice(0, 50).map((page) => {
-          const width = Math.max(3, Math.round(((Number(page.avgDurationSec) || 0) / maxAvg) * 100));
-          return `<tr>
-            <td><b>${esc(page.label || page.path)}</b><span class="cell-sub">${esc(page.siteLabel)}</span></td>
-            <td><code>${esc(page.path)}</code></td>
-            <td class="num">${fmtCount(page.views)}</td>
-            <td class="num">${esc(page.avgDurationText || fmtDuration(page.avgDurationSec))}</td>
-            <td><span class="mini-bar" aria-hidden="true"><i style="width:${width}%"></i></span></td>
-          </tr>`;
-        }).join("");
-      }
-    }
+    // 페이지·탭별 체류시간 (5개씩 더보기·접기)
+    renderStatsPages();
 
     // 유입 경로
     if (refBox) {

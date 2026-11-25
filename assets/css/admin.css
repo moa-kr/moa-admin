@@ -554,6 +554,10 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .people-mod-row input[type="text"] { min-width: 220px; flex: 1 1 220px; }
 .stats-table code { font-size: 11.5px; white-space: nowrap; }
 
+/* 「페이지·탭별 체류시간」 5개씩 더보기·접기 (2026-11-26 v=56) — 목록 하단의 보기 버튼 */
+.stats-more { display: flex; justify-content: center; padding: 10px 0 2px; }
+.stats-more .btn { min-width: 230px; padding: 6px 14px; font-size: 12.5px; font-weight: 700; }
+
 .mini-bar { display: block; width: 90px; height: 7px; background: #eef1f7; border-radius: 999px; overflow: hidden; }
 .mini-bar i { display: block; height: 100%; background: linear-gradient(90deg, #2c5bf6, #7f9cff); border-radius: 999px; }
 
@@ -680,6 +684,9 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
   [data-panel="stats"] .card-head h3 { font-size: 13px; }
   .stats-order-bar { margin-top: 8px; gap: 6px; }
   .stats-order-bar .btn { padding: 4px 9px; }
+  /* 목록 하단 보기 버튼은 폰에서 한 줄을 다 쓸어 엄지로 누르기 쉽게 한다. */
+  .stats-more { padding: 9px 0 1px; }
+  .stats-more .btn { width: 100%; min-width: 0; padding: 8px 12px; }
 }
 
 @media (max-width: 720px) {
