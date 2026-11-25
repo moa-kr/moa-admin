@@ -692,6 +692,7 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
      한 줄로 읽히게 한다. 2026-11-26 v=57 */
   #stats-pages th:nth-child(5), #stats-pages td:nth-child(5) { display: none; }
   #stats-pages td:first-child { min-width: 120px; }
+  #stats-pages code { max-width: 100px; }
   #stats-pages th, #stats-pages td { padding: 8px 6px; }
 }
 
