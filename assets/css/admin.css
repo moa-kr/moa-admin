@@ -687,6 +687,12 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
   /* 목록 하단 보기 버튼은 폰에서 한 줄을 다 쓸어 엄지로 누르기 쉽게 한다. */
   .stats-more { padding: 9px 0 1px; }
   .stats-more .btn { width: 100%; min-width: 0; padding: 8px 12px; }
+  /* 5칸짜리 표가 366px 카드에 다 들어가지 않아 화면 이름이 한 글자씩 쪼개졌다.
+     장식인 '체류 비중' 막대 칸은 폰에서 빼고(평균 체류는 숫자로 남아 있다), 이름 칸에 최소 폭을 주어
+     한 줄로 읽히게 한다. 2026-11-26 v=57 */
+  #stats-pages th:nth-child(5), #stats-pages td:nth-child(5) { display: none; }
+  #stats-pages td:first-child { min-width: 120px; }
+  #stats-pages th, #stats-pages td { padding: 8px 6px; }
 }
 
 @media (max-width: 720px) {
