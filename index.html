@@ -15,8 +15,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=50">
-<link rel="stylesheet" href="assets/css/finance.css?v=50">
+<link rel="stylesheet" href="assets/css/admin.css?v=51">
+<link rel="stylesheet" href="assets/css/finance.css?v=51">
 </head>
 <body>
 
@@ -88,7 +88,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=49</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=51</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -102,6 +102,9 @@
 
     <div class="topbar-right">
       <span class="user-chip" id="user-chip" hidden></span>
+      <!-- 네이버 블로그 — 여조원 부장님 공개 블로그로 새 창에서 바로 이동합니다(v=51).
+           운영자 공개 링크라 로그인 전에도 보입니다. 폰 폭에서는 📝 아이콘만 남습니다. -->
+      <a class="btn btn-sm btn-ghost btn-blog" id="btn-blog" href="https://blog.naver.com/y__woni" target="_blank" rel="noopener noreferrer" title="여조원 부장님 네이버 블로그 — 새 창에서 열립니다" aria-label="네이버 블로그 (새 창에서 열기)"><span class="btn-blog-ico" aria-hidden="true">📝</span><span class="btn-blog-label">블로그</span></a>
       <!-- 앱 설치(PWA) — 브라우저가 설치를 제안할 수 있을 때만 pwa.js 가 보여 준다. -->
       <button type="button" class="btn btn-sm btn-ghost app-install" id="app-install" hidden title="모아 어드민을 폰 홈 화면에 앱처럼 설치합니다">📲 앱 설치</button>
       <!-- 개인 재무 바로가기 — 로그인한 뒤에만 app.js 가 hidden 을 풉니다(데모·비로그인 화면 미노출) -->
@@ -1112,9 +1115,9 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=50"></script>
-<script src="assets/js/finance.js?v=50"></script>
-<script src="assets/js/app.js?v=50"></script>
+<script src="assets/js/sites.js?v=51"></script>
+<script src="assets/js/finance.js?v=51"></script>
+<script src="assets/js/app.js?v=51"></script>
 <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>
