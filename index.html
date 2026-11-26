@@ -15,8 +15,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d6342c'/%3E%3Crect x='7' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3Crect x='17.5' y='7' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='7' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da' opacity='.7'/%3E%3Crect x='17.5' y='17.5' width='7.5' height='7.5' rx='2.2' fill='%23ffe0da'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/admin.css?v=58">
-<link rel="stylesheet" href="assets/css/finance.css?v=58">
+<link rel="stylesheet" href="assets/css/admin.css?v=59">
+<link rel="stylesheet" href="assets/css/finance.css?v=59">
 </head>
 <body>
 
@@ -88,7 +88,7 @@
       </span>
       <span class="topbar-title">모아 어드민</span>
       <span class="mode-chip" id="mode-chip">데모 모드</span>
-      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=58</span>
+      <span class="build-chip" id="build-chip" title="지금 보고 있는 화면의 빌드 번호입니다. 이 번호가 다르면 새로고침해 주세요.">v=59</span>
     </div>
 
     <div class="site-switch" role="tablist" aria-label="사이트 선택">
@@ -176,6 +176,52 @@
                 <button type="button" data-style="warn">주의 <span class="dot warn"></span></button>
                 <button type="button" data-style="urgent">긴급 <span class="dot urgent"></span></button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 🔧 태블릿 점검 공지 (2026-11-26 · v=59) — 집 태블릿(재고 중계 서버)을 재부팅·점검할 때
+             포케모아 위쪽 공지 바를 ‘시작 ~ 종료 시각’이 들어간 점검 안내로 한 번에 바꾸고,
+             점검이 끝나면 켜기 전 공지로 되돌립니다.
+             · 켜기 전 공지(켜짐·문구·링크·링크 문구·강조)는 meta.maintenanceNotice 에 보관한다
+               — 설정 파일에 실려 다른 기기·브라우저에서 꺼도 그대로 되돌아간다(사이트는 이 값을 읽지 않는다).
+             · 고른 점검 시각도 같은 자리(meta.maintenanceNotice.window)에 남겨 새로고침해도 같은 시간이 보인다.
+             · 누르면 초안에 곧바로 적용되고, 이어서 기존 저장·배포(saveToGitHub)로 커밋한다 — 확인 대화상자는 한 번. -->
+        <div class="card maintenance-card" data-only-site="pokemoa" id="maintenance-card">
+          <div class="card-head">
+            <h3>🔧 태블릿 점검 공지 <span class="tag">maintenance</span></h3>
+            <span class="status-pill" id="maintenance-state">꺼짐</span>
+          </div>
+          <div class="card-body">
+            <p class="note">집 태블릿(재고 중계 서버)을 재부팅·점검할 때 씁니다. <b>점검 시작·종료 시각</b>을 넣으면 위 공지 바가 「🔧 서버 점검 안내 (11/26 13:00 ~ 13:15) · …」처럼 바뀌고, <b>‘원래 공지로’</b>를 누르면 켜기 전 공지 문구·링크·켜짐 상태가 그대로 돌아옵니다. 반영은 지금 쓰는 저장·배포 흐름 그대로입니다(확인 한 번).</p>
+            <div class="grid-2 maintenance-times">
+              <label class="field">
+                <span class="field-label">점검 시작</span>
+                <input type="datetime-local" id="maintenance-start" step="60">
+              </label>
+              <label class="field">
+                <span class="field-label">점검 종료</span>
+                <input type="datetime-local" id="maintenance-end" step="60">
+              </label>
+            </div>
+            <div class="seg maintenance-quick" id="maintenance-quick" role="group" aria-label="점검 시간 빠른 선택">
+              <button type="button" data-minutes="10">지금 ~ 10분</button>
+              <button type="button" data-minutes="30">지금 ~ 30분</button>
+              <button type="button" data-minutes="60">지금 ~ 1시간</button>
+            </div>
+            <span class="field-label">공지 바에 이렇게 뜹니다</span>
+            <div class="maintenance-preview" id="maintenance-preview" aria-live="polite"></div>
+            <p class="note" id="maintenance-window-note"></p>
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary" id="maintenance-on">🔧 점검 공지 켜고 지금 반영</button>
+              <button type="button" class="btn btn-ghost" id="maintenance-off">점검 끝 — 원래 공지로</button>
+            </div>
+            <p class="note" id="maintenance-current"></p>
+            <p class="note" id="maintenance-saved"></p>
+            <div class="maintenance-relay">
+              <span class="status-pill" id="maintenance-relay-pill">중계 서버 확인 전</span>
+              <button type="button" class="btn btn-sm btn-ghost" id="maintenance-relay-check">중계 서버 상태 확인</button>
+              <span class="muted small" id="maintenance-relay-note">집 태블릿이 켜져 있는지 여기서 바로 확인할 수 있어요.</span>
             </div>
           </div>
         </div>
@@ -485,6 +531,19 @@
             <div class="btn-row">
               <button type="button" class="btn btn-primary" id="relay-update">🔄 최신 버전 업데이트</button>
               <button type="button" class="btn btn-ghost btn-sm" id="relay-health">/health 다시 조회</button>
+            </div>
+            <!-- 🔧 점검 공지(v=59) — ① 공지·팝업의 점검 공지 카드와 같은 동작을 여기서도 한 번에.
+                 시간은 ① 에서 고른 값을 그대로 쓴다(여기서는 ‘지금 기준’ 빠른 선택만). -->
+            <div class="maintenance-inline" id="relay-maintenance">
+              <div class="inline-row">
+                <span class="status-pill" id="relay-maintenance-pill">점검 공지 꺼짐</span>
+                <span class="muted small" id="relay-maintenance-when"></span>
+              </div>
+              <div class="btn-row">
+                <button type="button" class="btn btn-sm btn-dark" id="relay-maintenance-on">🔧 점검 공지 켜기</button>
+                <button type="button" class="btn btn-sm btn-ghost" id="relay-maintenance-off">원래 공지로</button>
+                <button type="button" class="btn btn-sm btn-ghost" id="relay-maintenance-more">① 공지·팝업에서 시간 고르기</button>
+              </div>
             </div>
             <p class="note">업데이트를 누르면 태블릿의 서버가 <code>relay/server.js</code> 를 GitHub 최신 판으로 스스로 바꾸고 다시 시작합니다(재고 조회는 몇 초만 끊깁니다). <b>이 버튼은 서버가 v2.0 이상일 때만 돕니다</b> — v1.x 는 브라우저 요청(X-Admin-Token)을 받지 못하므로, 태블릿에서 한 줄 설치를 한 번만 해 주세요. <b>cloudflared 임시 주소(<code>trycloudflare.com</code>)는 태블릿을 다시 켤 때마다 바뀌므로</b>, 주소가 바뀌면 위 칸에 새 주소를 넣고 <b>주소 저장</b>을 눌러 주세요.</p>
           </div>
@@ -1196,9 +1255,9 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/js/sites.js?v=58"></script>
-<script src="assets/js/finance.js?v=58"></script>
-<script src="assets/js/app.js?v=58"></script>
+<script src="assets/js/sites.js?v=59"></script>
+<script src="assets/js/finance.js?v=59"></script>
+<script src="assets/js/app.js?v=59"></script>
 <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

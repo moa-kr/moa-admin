@@ -18,7 +18,7 @@
   /* 「페이지·탭별 체류시간」은 한 번에 5개씩 — 더보기·접기의 단위(2026-11-26 v=56). */
   const STATS_PAGES_STEP = 5;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=58";
+  const BUILD = "v=59";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -1074,6 +1074,9 @@
       event.preventDefault();
       event.returnValue = "";
     });
+
+    // 🔧 태블릿 점검 공지 — ① 카드와 ⑤ 중계 서버 카드의 버튼(한 번만 묶는다)
+    bindMaintenance();
   }
 
   /* ───────────── 순서 목록 ───────────── */
@@ -1617,6 +1620,9 @@
         note.textContent = "기간을 비우면 항상 노출됩니다. ‘다시 보지 않기’는 방문자 브라우저에 그 일수만큼 기억됩니다.";
       }
     }
+
+    // 🔧 태블릿 점검 공지 — 스위치 라벨과 같은 원리로 입력이 바뀔 때마다 상태·미리보기를 맞춘다.
+    renderMaintenance();
   }
 
   /* ───────────── 전체 렌더 ───────────── */
@@ -1977,7 +1983,10 @@
     box.innerHTML = html;
   }
 
-  async function saveToGitHub() {
+  /* 저장·배포 — options.skipConfirm 이면 기본 확인 대화상자를 건너뛴다(부르는 쪽이 더 자세한 확인을 이미 받은 경우).
+     outcome 만큼 커밋하면 true, 중단·실패하면 false 를 돌려준다(호출한 쪽이 결과를 알 수 있게). */
+  async function saveToGitHub(options) {
+    const opts = options || {};
     const site = current();
     const session = state.session || {};
     const viaServer = session.mode === "idpw";
@@ -1985,25 +1994,25 @@
       setResult(`<h4>데모 모드입니다</h4><p>실제 저장은 아이디로 로그인해야 합니다. 지금 설정은 ‘JSON 내려받기’로 파일로 보관할 수 있어요.</p>
         <p>로그아웃 후 아이디·비밀번호로 다시 로그인하면 <code>${esc(site.repo)}</code> 의 <code>${esc(site.path)}</code> 로 바로 커밋됩니다.</p>`, true);
       setTab("deploy");
-      return;
+      return false;
     }
     if (!viaServer && !session.token) {
       setResult("<h4>로그인이 필요합니다</h4><p>관리자 키만으로 로그인한 상태라 저장은 할 수 없습니다. 아이디로 다시 로그인해 주세요.</p>", true);
       setTab("deploy");
-      return;
+      return false;
     }
     if (!viaServer && session.repos && session.repos[site.id] === false) {
       setResult(`<h4>쓰기 권한이 없습니다</h4><p>이 토큰으로는 <code>${esc(site.repo)}</code> 에 커밋할 수 없습니다. GitHub 저장소 권한(Contents: Read and write)을 확인해 주세요.</p>`, true);
       setTab("deploy");
-      return;
+      return false;
     }
     // 저장된 설정을 아직 못 읽은 상태(기본값·불러오기 실패)에서 저장하면 화면의 기본값으로 덮어쓴다 — 한 번 더 확인한다.
     const sourceNow = String(state.source[site.id] || "");
     if (/^(기본값|불러오기 실패|GitHub에 아직|아직 설정 파일 없음)/.test(sourceNow)) {
       const ok = window.confirm(`${site.name}의 저장된 설정을 아직 읽지 못했습니다(지금 화면: ${sourceNow}).\n\n이대로 저장하면 화면의 기본값이 저장소 파일을 덮어씁니다. 먼저 ‘현재 값 불러오기’를 누르는 것이 안전합니다.\n\n그래도 저장할까요?`);
-      if (!ok) return;
+      if (!ok) return false;
     }
-    if (!window.confirm(`${site.name} (${site.repo}) 의 ${site.path} 에 저장하고 배포할까요?`)) return;
+    if (opts.skipConfirm !== true && !window.confirm(`${site.name} (${site.repo}) 의 ${site.path} 에 저장하고 배포할까요?`)) return false;
 
     const payload = buildConfigForSave();
     const json = `${JSON.stringify(payload, null, 2)}\n`;
@@ -2028,7 +2037,7 @@
         if (!put.ok) {
           setResult(`<h4>커밋하지 못했습니다</h4><p>${esc(put.error)}${put.status ? ` (HTTP ${put.status})` : ""}</p>
             <p>${put.status === 401 || put.status === 403 ? "로그인을 다시 해 주세요." : "잠시 뒤 다시 시도하거나 서버 상태를 확인해 주세요."}</p>`, true);
-          return;
+          return false;
         }
         commit = (put.data && put.data.commit) || {};
       } else {
@@ -2037,7 +2046,7 @@
         if (head.ok && head.data && head.data.sha) sha = head.data.sha;
         else if (head.status !== 404) {
           setResult(`<h4>현재 파일을 읽지 못했습니다</h4><p>${esc(head.error || "알 수 없는 오류")}</p>`, true);
-          return;
+          return false;
         }
 
         const body = {
@@ -2055,7 +2064,7 @@
         if (!put.ok) {
           setResult(`<h4>커밋하지 못했습니다</h4><p>${esc(put.error)}${put.status ? ` (HTTP ${put.status})` : ""}</p>
             <p>토큰 권한과 저장소 이름을 확인해 주세요.</p>`, true);
-          return;
+          return false;
         }
         commit = (put.data && put.data.commit) || {};
       }
@@ -2075,6 +2084,7 @@
       addLog(`${site.name} 설정 커밋 ${shortSha}`);
       renderAll();
       toast("커밋했습니다. 잠시 뒤 사이트에 반영됩니다.");
+      return true;
     } finally {
       buttons.forEach((b) => { if (b) b.disabled = false; });
     }
@@ -3585,6 +3595,338 @@
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "이 날짜로 저장"; }
   }
 
+  /* ───────────── 🔧 태블릿 점검 공지 — 시작·종료 시각이 들어간 공지로 한 번에 바꾸고 되돌리기 ─────────────
+     집 태블릿(중계 서버)을 재부팅·점검할 때 포케모아 위쪽 공지 바를 점검 안내로 바꾼다.
+     · 켜기 전 공지(켜짐·문구·링크·링크 문구·강조)는 meta.maintenanceNotice 에 보관한다
+       — 설정 파일에 실려 다른 기기·브라우저에서 꺼도 그대로 되돌아간다(사이트는 이 값을 읽지 않는다).
+     · 고른 점검 시각은 meta.maintenanceNotice.window 에 남겨 새로고침·재접속해도 같은 시간이 보인다.
+     · 누르면 초안에 바로 적용하고, 이어서 기존 저장·배포(saveToGitHub)로 커밋한다(확인 대화상자는 한 번). */
+  const MAINTENANCE = {
+    metaKey: "maintenanceNotice",
+    head: "🔧 서버 점검 안내",
+    tail: " · 재고 중계 서버 재부팅으로 실시간 재고 조회가 잠시 중단됩니다. (지도·도감·일정은 정상)",
+    defaultMinutes: 15,
+    quick: [10, 30, 60]
+  };
+  /* 화면에서 고른 점검 시각(datetime-local 문자열). 같은 날이면 ‘11/26 13:00 ~ 13:15’로 줄여 쓴다.
+     source: auto = 아직 손대지 않음(설정에 보관된 점검 시각·기본값을 따른다) / user = 직접 고름(그대로 존중). */
+  const maintenanceWhen = { start: "", end: "", source: "auto" };
+  let maintenanceBound = false;
+
+  function maintenanceSnapshot() {
+    const cfg = config();
+    const snap = cfg && cfg.meta && cfg.meta[MAINTENANCE.metaKey];
+    return snap && typeof snap === "object" ? snap : null;
+  }
+  function isMaintenanceNotice() {
+    return String(config().banner.text || "").trim().indexOf(`${MAINTENANCE.head} (`) === 0;
+  }
+  function toLocalInput(date) {
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+  function parseLocalInput(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  function roundedNow() {
+    const now = new Date();
+    now.setSeconds(0, 0);
+    return now;
+  }
+  function maintenanceRangeText(startStr, endStr) {
+    const s = parseLocalInput(startStr);
+    const e = parseLocalInput(endStr);
+    if (!s || !e) return "";
+    const day = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+    const hm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const sameDay = s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth() && s.getDate() === e.getDate();
+    return sameDay ? `${day(s)} ${hm(s)} ~ ${hm(e)}` : `${day(s)} ${hm(s)} ~ ${day(e)} ${hm(e)}`;
+  }
+  /* 공지 바에 들어갈 한 문장 — 시각이 정확히 들어간다. */
+  function maintenanceText(startStr, endStr) {
+    const range = maintenanceRangeText(startStr, endStr);
+    return range ? `${MAINTENANCE.head} (${range})${MAINTENANCE.tail}` : "";
+  }
+  function maintenanceValid() {
+    const s = parseLocalInput(maintenanceWhen.start);
+    const e = parseLocalInput(maintenanceWhen.end);
+    return Boolean(s && e && e > s);
+  }
+  /* 처음 열 때·설정을 다시 불러올 때 — 보관된 점검 시각이 있으면 그대로, 없으면 ‘지금 ~ 15분 뒤’로 채운다.
+     사용자가 직접 고른 시각(source: user)은 설정을 불러와도 덮지 않는다. */
+  function ensureMaintenanceWhen() {
+    if (maintenanceWhen.source === "user") return;
+    const snap = maintenanceSnapshot();
+    const win = snap && snap.window;
+    if (win && win.start && win.end) {
+      maintenanceWhen.start = String(win.start);
+      maintenanceWhen.end = String(win.end);
+      return;
+    }
+    if (maintenanceWhen.start && maintenanceWhen.end) return;
+    const now = roundedNow();
+    maintenanceWhen.start = toLocalInput(now);
+    maintenanceWhen.end = toLocalInput(new Date(now.getTime() + MAINTENANCE.defaultMinutes * 60000));
+  }
+  function maintenanceStyleLabel(style) {
+    return { info: "안내", warn: "주의", urgent: "긴급" }[style] || "안내";
+  }
+  /* 지금 공지 바가 어느 상태인가 — 점검 중 / 점검 문구만(꺼짐) / 평소 공지 / 꺼짐. */
+  function maintenanceUiState() {
+    const on = isMaintenanceNotice();
+    const enabled = Boolean(config().banner.enabled);
+    if (on && enabled) return { key: "on", label: "점검 중", tone: "wait" };
+    if (on) return { key: "idle", label: "꺼짐 · 점검 문구", tone: "" };
+    if (enabled) return { key: "notice", label: "공지 켜짐", tone: "ok" };
+    return { key: "off", label: "꺼짐", tone: "" };
+  }
+  function maintenanceRangeShort() {
+    return maintenanceRangeText(maintenanceWhen.start, maintenanceWhen.end);
+  }
+
+  /* 화면(① 카드 + ⑤ 중계 서버 카드의 한 줄)을 지금 설정에 맞춘다. */
+  function renderMaintenance() {
+    const startEl = $("#maintenance-start");
+    if (!startEl) return;
+    const endEl = $("#maintenance-end");
+    ensureMaintenanceWhen();
+    if (document.activeElement !== startEl) startEl.value = maintenanceWhen.start;
+    if (endEl && document.activeElement !== endEl) endEl.value = maintenanceWhen.end;
+
+    const state0 = maintenanceUiState();
+    const pill = $("#maintenance-state");
+    if (pill) {
+      pill.textContent = state0.label;
+      pill.className = "status-pill" + (state0.tone ? ` ${state0.tone}` : "");
+      pill.title = state0.key === "on" ? "지금 포케모아 위쪽 공지 바에 점검 안내가 떠 있습니다." : "";
+    }
+
+    const text = maintenanceText(maintenanceWhen.start, maintenanceWhen.end);
+    const preview = $("#maintenance-preview");
+    if (preview) {
+      preview.textContent = text || "시작·종료 시각을 넣으면 점검 공지 문구가 여기에 그대로 나옵니다.";
+      preview.classList.toggle("is-empty", !text);
+    }
+
+    const note = $("#maintenance-window-note");
+    if (note) {
+      const s = parseLocalInput(maintenanceWhen.start);
+      const e = parseLocalInput(maintenanceWhen.end);
+      if (!s || !e) note.textContent = "시작·종료 시각을 모두 넣어 주세요.";
+      else if (e <= s) note.textContent = "종료 시각은 시작 시각보다 뒤여야 합니다.";
+      else {
+        const mins = Math.round((e - s) / 60000);
+        const now = Date.now();
+        const left = Math.round((e.getTime() - now) / 60000);
+        const tail = left > 0 ? `지금부터 ${left}분 뒤 종료` : "이미 종료 시각이 지났습니다";
+        note.textContent = `점검 ${mins}분 (${maintenanceRangeShort()}) · ${tail} — 시각이 지나도 공지가 저절로 꺼지지는 않으니 점검이 끝나면 ‘원래 공지로’를 눌러 주세요.`;
+      }
+    }
+
+    const valid = maintenanceValid();
+    const onBtn = $("#maintenance-on");
+    if (onBtn) {
+      onBtn.textContent = state0.key === "on" ? "🔧 점검 공지를 다시 반영" : "🔧 점검 공지 켜고 지금 반영";
+      onBtn.disabled = !valid;
+      onBtn.title = valid ? "지금 설정 그대로 저장·배포합니다(확인 한 번)." : "점검 시작·종료 시각을 먼저 맞춰 주세요.";
+    }
+    const snap = maintenanceSnapshot();
+    const offBtn = $("#maintenance-off");
+    if (offBtn) {
+      const canUndo = Boolean(snap) || Boolean(config().banner.enabled);
+      offBtn.disabled = !canUndo;
+      offBtn.title = snap
+        ? `켜기 전 공지(${snap.text ? `「${snap.text}」` : "문구 없음"})로 되돌립니다.`
+        : "보관한 공지가 없어 공지 바만 끕니다.";
+    }
+
+    const cur = $("#maintenance-current");
+    if (cur) {
+      const banner = config().banner;
+      const textNow = String(banner.text || "").trim();
+      cur.innerHTML = `지금 공지 바: <b>${banner.enabled ? "켜짐" : "꺼짐"}</b>${textNow ? ` · 「${esc(banner.text)}」` : " · 문구 없음"} <span class="muted small">(강조 ${maintenanceStyleLabel(banner.style)})</span>`;
+    }
+    const saved = $("#maintenance-saved");
+    if (saved) {
+      if (snap) {
+        const when = snap.window && snap.window.start ? ` · 점검 ${maintenanceRangeText(snap.window.start, snap.window.end)}` : "";
+        saved.innerHTML = `되돌릴 공지 보관됨: <b>${snap.enabled ? "켜짐" : "꺼짐"}</b>${snap.text ? ` · 「${esc(snap.text)}」` : " · 문구 없음"}${esc(when)} <span class="muted small">(${fmtDateTime(snap.at)})</span>`;
+      } else {
+        saved.textContent = "보관한 원래 공지가 없습니다 — ‘원래 공지로’를 누르면 공지 바만 꺼집니다.";
+      }
+    }
+
+    /* ⑤ 태블릿 중계 서버 카드 안의 한 줄 컨트롤도 같은 상태를 보여 준다. */
+    const relayPill = $("#relay-maintenance-pill");
+    if (relayPill) {
+      relayPill.textContent = state0.key === "on" ? "점검 공지 켜짐" : "점검 공지 꺼짐";
+      relayPill.className = "status-pill" + (state0.key === "on" ? " wait" : "");
+    }
+    const relayWhen = $("#relay-maintenance-when");
+    if (relayWhen) relayWhen.textContent = valid ? `점검 ${maintenanceRangeShort()}` : "점검 시각을 확인해 주세요";
+    const relayOn = $("#relay-maintenance-on");
+    if (relayOn) relayOn.disabled = !valid;
+    const relayOff = $("#relay-maintenance-off");
+    if (relayOff) relayOff.disabled = offBtn ? offBtn.disabled : false;
+
+    renderMaintenanceRelay();
+  }
+
+  /* ① 카드의 중계 서버 상태 줄 — ⑤ 카드의 /health 결과(state.relay)를 그대로 보여 준다. */
+  function renderMaintenanceRelay() {
+    const pill = $("#maintenance-relay-pill");
+    if (!pill) return;
+    const note = $("#maintenance-relay-note");
+    const relay = state.relay || {};
+    if (!relay.at) {
+      pill.textContent = "중계 서버 확인 전";
+      pill.className = "status-pill";
+      if (note) note.textContent = "집 태블릿이 켜져 있는지 여기서 바로 확인할 수 있어요.";
+      return;
+    }
+    const at = fmtDateTime(relay.at);
+    if (relay.online) {
+      pill.textContent = `온라인 · v${relay.version || "?"}`;
+      pill.className = "status-pill ok";
+      if (note) note.textContent = `${at} 확인 — 재고 조회가 되고 있어요.`;
+    } else {
+      pill.textContent = "오프라인";
+      pill.className = "status-pill bad";
+      if (note) note.textContent = `${at} 확인 — 태블릿이 꺼졌거나 주소가 바뀌었을 수 있어요. 점검 중이라면 ‘점검 공지’를 켜 두세요.`;
+    }
+  }
+
+  /* 시간을 ‘지금’ 기준으로 잡는다 — 빠른 선택(10·30·60분). */
+  function setMaintenanceWhenFromNow(minutes) {
+    const now = roundedNow();
+    const span = minutes || MAINTENANCE.defaultMinutes;
+    maintenanceWhen.start = toLocalInput(now);
+    maintenanceWhen.end = toLocalInput(new Date(now.getTime() + span * 60000));
+    maintenanceWhen.source = "user";
+    const quick = $("#maintenance-quick");
+    if (quick) $$("button[data-minutes]", quick).forEach((btn) => btn.classList.toggle("is-active", Number(btn.dataset.minutes) === span));
+    renderMaintenance();
+    toast(`점검 시간을 ‘지금 ~ ${span >= 60 ? `${span / 60}시간` : `${span}분`}’으로 넣었습니다 — ‘🔧 점검 공지 켜고 지금 반영’을 누르면 배포됩니다.`);
+  }
+
+  /* 초안에 적용만 한다(커밋은 toggleMaintenanceNotice 가 이어서). */
+  function applyMaintenanceNotice(enable) {
+    if (state.site !== "pokemoa") return false;
+    if (enable && !maintenanceValid()) {
+      toast("점검 시작·종료 시각을 먼저 맞춰 주세요.", true);
+      return false;
+    }
+    const cfg = config();
+    if (!cfg.meta || typeof cfg.meta !== "object") cfg.meta = {};
+    if (enable) {
+      let snap = maintenanceSnapshot();
+      if (!snap) {
+        // 지금 공지가 이미 점검 문구라면 그 문구를 ‘원래 공지’로 보관하지 않는다.
+        snap = cfg.meta[MAINTENANCE.metaKey] = isMaintenanceNotice()
+          ? { enabled: false, text: "", linkUrl: "", linkLabel: "", style: "info", at: new Date().toISOString() }
+          : {
+              enabled: Boolean(cfg.banner.enabled),
+              text: cfg.banner.text || "",
+              linkUrl: cfg.banner.linkUrl || "",
+              linkLabel: cfg.banner.linkLabel || "",
+              style: cfg.banner.style || "info",
+              at: new Date().toISOString()
+            };
+      }
+      snap.window = { start: maintenanceWhen.start, end: maintenanceWhen.end };
+      cfg.banner.enabled = true;
+      cfg.banner.text = maintenanceText(maintenanceWhen.start, maintenanceWhen.end);
+      cfg.banner.linkUrl = "";
+      cfg.banner.linkLabel = "";
+      cfg.banner.style = "warn";
+      addLog(`🔧 태블릿 점검 공지 켜기(초안) — ${maintenanceRangeShort()}`);
+    } else {
+      const snap = maintenanceSnapshot();
+      if (snap) {
+        cfg.banner.enabled = Boolean(snap.enabled);
+        cfg.banner.text = String(snap.text || "");
+        cfg.banner.linkUrl = String(snap.linkUrl || "");
+        cfg.banner.linkLabel = String(snap.linkLabel || "");
+        cfg.banner.style = String(snap.style || "info");
+        delete cfg.meta[MAINTENANCE.metaKey];
+        addLog("🔧 태블릿 점검 공지 끄기 — 원래 공지로 되돌림(초안)");
+      } else {
+        cfg.banner.enabled = false;
+        addLog("🔧 태블릿 점검 공지 끄기(초안) — 보관한 공지 없음");
+      }
+    }
+    markDirty(true);
+    syncInputs();
+    updateDerived();
+    schedulePreview();
+    return true;
+  }
+
+  /* 원클릭 — 적용하고 이어서 저장·배포한다. 확인은 한 번. */
+  async function toggleMaintenanceNotice(enable) {
+    if (state.site !== "pokemoa") {
+      toast("태블릿 점검 공지는 포켓몬카드모아에서만 씁니다.", true);
+      return;
+    }
+    ensureMaintenanceWhen();
+    if (!applyMaintenanceNotice(enable)) return;
+    const mode = (state.session || {}).mode;
+    if (mode === "demo" || !signedIn()) {
+      toast("데모 모드입니다 — 초안에만 적용했어요. 아이디로 로그인하면 바로 배포됩니다.", true);
+      return;
+    }
+    const snap = maintenanceSnapshot();
+    const message = enable
+      ? `🔧 점검 공지를 켜고 포켓몬카드모아에 지금 반영할까요?\n\n공지 바: ${maintenanceText(maintenanceWhen.start, maintenanceWhen.end)}\n\n· 켜기 전 공지(${snap && String(snap.text || "").trim() ? `「${snap.text}」` : "꺼짐"})는 보관해 두었다가 ‘원래 공지로’에서 그대로 되돌립니다.\n· 반영까지 30초 ~ 1분 걸립니다.`
+      : `점검을 마치고 원래 공지로 되돌려 지금 반영할까요?\n\n되돌릴 공지: ${snap ? `${snap.enabled ? "켜짐" : "꺼짐"}${String(snap.text || "").trim() ? ` · 「${snap.text}」` : " · 문구 없음"}` : "보관한 공지 없음 — 공지 바만 끕니다."}\n· 반영까지 30초 ~ 1분 걸립니다.`;
+    if (!window.confirm(message)) {
+      toast("초안에만 적용했습니다 — ‘저장 및 사이트 반영’을 누르면 배포됩니다.");
+      return;
+    }
+    await saveToGitHub({ skipConfirm: true });
+  }
+
+  /* ① 카드·⑤ 중계 서버 카드의 버튼을 한 번만 묶는다(다시 로그인해도 두 번 묶이지 않게). */
+  function bindMaintenance() {
+    if (maintenanceBound) return;
+    maintenanceBound = true;
+    const startInput = $("#maintenance-start");
+    if (startInput) startInput.addEventListener("change", () => {
+      maintenanceWhen.start = startInput.value;
+      maintenanceWhen.source = "user";
+      const s = parseLocalInput(maintenanceWhen.start);
+      const e = parseLocalInput(maintenanceWhen.end);
+      // 시작을 종료보다 뒤로 옮기면 종료를 ‘시작 + 15분’으로 따라 붙인다.
+      if (s && (!e || e <= s)) maintenanceWhen.end = toLocalInput(new Date(s.getTime() + MAINTENANCE.defaultMinutes * 60000));
+      renderMaintenance();
+    });
+    const endInput = $("#maintenance-end");
+    if (endInput) endInput.addEventListener("change", () => {
+      maintenanceWhen.end = endInput.value;
+      maintenanceWhen.source = "user";
+      renderMaintenance();
+    });
+    const quick = $("#maintenance-quick");
+    if (quick) quick.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-minutes]");
+      if (!btn) return;
+      setMaintenanceWhenFromNow(Number(btn.dataset.minutes) || MAINTENANCE.defaultMinutes);
+    });
+    const onBtn = $("#maintenance-on");
+    if (onBtn) onBtn.addEventListener("click", () => { toggleMaintenanceNotice(true); });
+    const offBtn = $("#maintenance-off");
+    if (offBtn) offBtn.addEventListener("click", () => { toggleMaintenanceNotice(false); });
+    const relayOn = $("#relay-maintenance-on");
+    if (relayOn) relayOn.addEventListener("click", () => { toggleMaintenanceNotice(true); });
+    const relayOff = $("#relay-maintenance-off");
+    if (relayOff) relayOff.addEventListener("click", () => { toggleMaintenanceNotice(false); });
+    const relayMore = $("#relay-maintenance-more");
+    if (relayMore) relayMore.addEventListener("click", () => setTab("notice"));
+    const check = $("#maintenance-relay-check");
+    if (check) check.addEventListener("click", () => { checkRelay(false); });
+  }
+
   /* ───────────── 🔌 태블릿 중계 서버(relay) — 상태 확인 · 원클릭 업데이트 ─────────────
      태블릿 Termux 에서 도는 relay/server.js(v2.0) 를 브라우저에서 바로 확인·갱신한다.
      주소는 cloudflared 임시 주소라서 브라우저(localStorage)에 저장해 둔다. */
@@ -3651,10 +3993,12 @@
       state.relay = { online: true, version, at: Date.now() };
       relayPill(`온라인 · v${version}`, "ok");
       relayNote(`${relayUrl()} · 버전 v${version} · ${upText} 가동 중 (${new Date().toLocaleTimeString("ko-KR")} 확인)`);
+      renderMaintenanceRelay();
       return data;
     } catch (err) {
       state.relay = { online: false, version: "", at: Date.now() };
       relayPill("오프라인", "bad");
+      renderMaintenanceRelay();
       const why = err && err.name === "AbortError" ? `${Math.round(RELAY.healthMs / 1000)}초 안에 응답 없음` : (err && err.message) || "연결 실패";
       relayOfflineNote(why);
       if (!quiet) toast("중계 서버에 연결하지 못했습니다.", true);

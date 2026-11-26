@@ -26,6 +26,7 @@
 | `navigation` | `{ tabs[], sections[] }` | 탭·섹션의 순서와 노출 |
 | `cards` | 배열 | 현황 카드(제목·설명) |
 | `meta` | `{ updatedBy, updatedAt, note }` | 마지막 수정 정보(어드민이 자동 기록) |
+| `meta.maintenanceNotice` | 객체(선택) | **어드민 전용 보관값** — 🔧 태블릿 점검 공지를 켜기 전의 공지(`enabled`·`text`·`linkUrl`·`linkLabel`·`style`·`at`)와 고른 점검 시각(`window: { start, end }`, `datetime-local` 문자열). 사이트는 이 값을 읽지 않습니다. ‘원래 공지로’를 누르면 되돌린 뒤 지웁니다(v=59). |
 
 ### banner
 
