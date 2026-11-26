@@ -18,7 +18,7 @@
   /* 「페이지·탭별 체류시간」은 한 번에 5개씩 — 더보기·접기의 단위(2026-11-26 v=56). */
   const STATS_PAGES_STEP = 5;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=59";
+  const BUILD = "v=60";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -3869,10 +3869,23 @@
       toast("태블릿 점검 공지는 포켓몬카드모아에서만 씁니다.", true);
       return;
     }
+    const mode = (state.session || {}).mode;
+    // 점검 공지는 설정을 통째로 저장한다. 저장 안 된 편집이 없으면 최신 설정을 먼저 읽어(조용한 불러오기)
+    // 그 위에 점검 문구를 얹는다 — 오래된 화면으로 다른 곳의 변경을 덮어쓰지 않도록.
+    const keepSnap = maintenanceSnapshot();
+    if (!isDirty() && (mode === "idpw" || mode === "live")) {
+      await pullConfig("pokemoa", true);
+      // 서버 사본이 아직 커밋 직전 판이어도, 방금 보관한 공지를 잃지 않게 다시 붙인다.
+      if (keepSnap && !maintenanceSnapshot()) {
+        const fresh = config();
+        if (!fresh.meta || typeof fresh.meta !== "object") fresh.meta = {};
+        fresh.meta[MAINTENANCE.metaKey] = keepSnap;
+      }
+    }
     ensureMaintenanceWhen();
     if (!applyMaintenanceNotice(enable)) return;
-    const mode = (state.session || {}).mode;
-    if (mode === "demo" || !signedIn()) {
+    const sessionMode = (state.session || {}).mode;
+    if (sessionMode === "demo" || !signedIn()) {
       toast("데모 모드입니다 — 초안에만 적용했어요. 아이디로 로그인하면 바로 배포됩니다.", true);
       return;
     }
