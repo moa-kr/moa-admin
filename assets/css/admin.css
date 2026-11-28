@@ -546,7 +546,7 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 /* 👥 가입자·글 — 체크박스·상태 배지·행별 관리 버튼 (2026-11-24 v=44) */
 .stats-table th.pick, .stats-table td.pick { width: 30px; padding-right: 0; text-align: center; }
 .stats-table td.pick input { width: 15px; height: 15px; accent-color: var(--brand); cursor: pointer; }
-.stats-table td .badge { margin-right: 4px; }
+.stats-table td .badge { margin-right: 4px; white-space: nowrap; }
 .stats-table td.row-actions { white-space: nowrap; }
 .stats-table td.row-actions .btn { padding: 4px 8px; font-size: 11.5px; margin-right: 4px; }
 .stats-table td.row-actions .btn:last-child { margin-right: 0; }
