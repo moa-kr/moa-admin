@@ -20,7 +20,7 @@
   /* 「페이지·탭별 체류시간」은 한 번에 5개씩 — 더보기·접기의 단위(2026-11-26 v=56). */
   const STATS_PAGES_STEP = 5;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=69";
+  const BUILD = "v=70";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -3602,16 +3602,17 @@
     if (!match) return String(text || "");
     return `${Number(match[2])}/${Number(match[3])}`;
   }
-  /* ISO 시각 → ‘11/28 17:10’(KST). 값이 없으면 ‘—’. */
+  /* ISO 시각 → ‘11/28 17:10’(KST). 값이 없으면 ‘—’. 기기 시간대와 상관없이 한국 시각으로 적는다. */
   function kstStamp(value) {
     if (!value) return "—";
     const time = Date.parse(value);
     if (!Number.isFinite(time)) return "—";
-    try {
-      return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(time));
-    } catch (err) {
-      return new Date(time).toISOString().slice(5, 16).replace("T", " ");
-    }
+    const kst = new Date(time + 9 * 3600 * 1000);
+    const mm = String(kst.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(kst.getUTCDate()).padStart(2, "0");
+    const hh = String(kst.getUTCHours()).padStart(2, "0");
+    const mi = String(kst.getUTCMinutes()).padStart(2, "0");
+    return `${mm}/${dd} ${hh}:${mi}`;
   }
 
   function syncSocialControls() {
@@ -3695,7 +3696,7 @@
     if (ig && ig.ok) {
       list.push(["📸 인스타 팔로워", socialValue(ig.followers), "@acewoni_ · Graph API"]);
       list.push(["📸 인스타 게시물", socialValue(ig.mediaCount), `최근 30일 ${socialValue(ig.posts30)}개 발행`]);
-      list.push(["❤️ 최근 게시물 좋아요 · 댓글", `${socialValue(ig.likes)} · ${socialValue(ig.comments)}`,
+      list.push(["❤️ 좋아요 · 댓글", `${socialValue(ig.likes)} · ${socialValue(ig.comments)}`,
         `최근 ${fmtCount(ig.sampleSize)}개 게시물 합`]);
       list.push(["📸 인스타 조회수", "미지원", "인사이트(insights) 권한 없음"]);
     }
