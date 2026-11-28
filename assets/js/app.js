@@ -18,7 +18,7 @@
   /* 「페이지·탭별 체류시간」은 한 번에 5개씩 — 더보기·접기의 단위(2026-11-26 v=56). */
   const STATS_PAGES_STEP = 5;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=60";
+  const BUILD = "v=61";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -206,6 +206,8 @@
     inquiries: { loading: false, error: "", list: [], byStatus: null, total: 0, operatorEmail: "", loadedAt: "" },
     // 👥 가입자·글 — 복지모아 서버의 가입자 목록과 사용자 작성 글·팁
     people: { loading: false, error: "", users: null, subs: null, filter: "", selected: [], loadedAt: "" },
+    // 🧾 회원가입 시도 로그 — 회사명·@도메인·결과·사유·시각(이메일 원문 없음)
+    attempts: { loading: false, error: "", data: null, filter: "", loadedAt: "" },
     // 🔌 태블릿 중계 서버 상태 — 마지막으로 본 /health 결과
     relay: { online: false, version: "", at: 0 },
     // 📊 방문 통계 — 사이트 필터·기간별로 서버에서 집계해 온다.
@@ -1050,6 +1052,22 @@
     if (peopleCheckAll) peopleCheckAll.addEventListener("change", handlePeopleCheckAll);
     const peopleItems = $("#people-items");
     if (peopleItems) peopleItems.addEventListener("click", handlePeopleItemsClick);
+    // 🧾 회원가입 시도 로그 (2026-11-28 v=61)
+    const attemptsRefresh = $("#attempts-refresh");
+    if (attemptsRefresh) attemptsRefresh.addEventListener("click", () => loadAttempts());
+    const attemptsFilter = $("#attempts-filter");
+    if (attemptsFilter) {
+      attemptsFilter.addEventListener("change", () => {
+        state.attempts.filter = attemptsFilter.value;
+        loadAttempts();
+      });
+    }
+    if (peopleUsers) {
+      peopleUsers.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-domain-action]");
+        if (btn) confirmCompanyDomain(Number(btn.dataset.id), btn.dataset.domainAction, btn);
+      });
+    }
     $$("[data-moderate]").forEach((btn) => {
       btn.addEventListener("click", () => moderatePeople(btn.dataset.moderate));
     });
@@ -2675,6 +2693,8 @@
     state.people.users = usersRes.data || null;
     state.people.subs = subsRes.data || null;
     state.people.loadedAt = new Date().toISOString();
+    // 가입 시도 로그는 따로 읽는다(이 엔드포인트가 아직 없는 서버여도 가입자 목록은 보이게).
+    loadAttempts();
     // 목록에서 사라진 회원은 선택에서도 뺀다(제재 직후 새로고침 대비).
     const alive = new Set((usersRes.data && usersRes.data.users || []).map((user) => Number(user.id)));
     state.people.selected = peopleSelection().filter((id) => alive.has(Number(id)));
@@ -2684,6 +2704,119 @@
     const s = state.people.subs || {};
     msg.textContent = `가입자 ${fmtCount(u.total)}명 · 새로 쓴 복지 정보 ${fmtCount(s.itemTotal)}건 · 한 줄 팁 ${fmtCount(s.tipTotal)}건`;
     renderPeople();
+  }
+
+  /* ── 🧾 회원가입 시도 로그 (2026-11-28 v=61) ─────────────────────
+     복지모아가 남기는 signup_attempts 를 그대로 보여 준다(최근 200건).
+     이메일 원문은 서버가 저장하지 않으므로 표에도 @뒤 도메인만 나온다. */
+  const ATTEMPT_LABELS = {
+    success: { text: "성공", badge: "new" },
+    pending: { text: "도메인 확인 대기", badge: "read" },
+    blocked: { text: "차단", badge: "done" },
+    error: { text: "오류", badge: "" }
+  };
+
+  async function loadAttempts() {
+    const msg = $("#attempts-msg");
+    const table = $("#attempts-table");
+    if (!msg || !table) return;
+    const count = $("#attempts-count");
+    const tbody = table.querySelector("tbody");
+    if (!signedIn()) {
+      state.attempts.data = null;
+      if (count) count.textContent = "";
+      msg.textContent = "아이디로 로그인하면 가입 시도 로그를 불러옵니다.";
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="muted small">로그인이 필요합니다.</td></tr>';
+      const summary = $("#attempts-summary");
+      if (summary) summary.hidden = true;
+      return;
+    }
+    if (state.attempts.loading) return;
+    state.attempts.loading = true;
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="muted small">불러오는 중…</td></tr>';
+    const filter = state.attempts.filter ? `&result=${encodeURIComponent(state.attempts.filter)}` : "";
+    const res = await apiRequest(`/api/admin/signup-attempts?limit=200${filter}`);
+    state.attempts.loading = false;
+    if (!res.ok) {
+      state.attempts.data = null;
+      state.attempts.error = res.error || "불러오지 못했습니다.";
+      if (count) count.textContent = "";
+      msg.textContent = res.status === 401 || res.status === 403
+        ? "로그인이 필요합니다. 아이디로 로그인한 뒤 새로고침해 주세요."
+        : `불러오지 못했습니다: ${state.attempts.error}`;
+      renderAttempts();
+      return;
+    }
+    state.attempts.error = "";
+    state.attempts.data = res.data || null;
+    state.attempts.loadedAt = new Date().toISOString();
+    const d = res.data || {};
+    const c = d.counts || {};
+    msg.textContent = `전체 ${fmtCount(d.total)}건 · 성공 ${fmtCount(c.success)} · 도메인 확인 대기 ${fmtCount(c.pending)} · 차단 ${fmtCount(c.blocked)} · 오류 ${fmtCount(c.error)}${d.lastAt ? ` · 최근 ${fmtDateTime(d.lastAt)}` : ""}`;
+    if (count) count.textContent = `${fmtCount(d.total)}건`;
+    renderAttempts();
+  }
+
+  function renderAttempts() {
+    const table = $("#attempts-table");
+    const summary = $("#attempts-summary");
+    if (!table) return;
+    const tbody = table.querySelector("tbody");
+    const data = state.attempts.data;
+    if (!data) {
+      if (summary) { summary.hidden = true; summary.innerHTML = ""; }
+      if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="muted small">${esc(state.attempts.error || "‘새로고침’을 눌러 불러와 주세요.")}</td></tr>`;
+      return;
+    }
+    const c = data.counts || {};
+    if (summary) {
+      const cards = [
+        { label: "전체 시도", value: data.total || 0, sub: data.lastAt ? `최근 ${fmtDateTime(data.lastAt)}` : "아직 기록 없음" },
+        { label: "성공", value: c.success || 0, sub: "인증 메일까지 보냄" },
+        { label: "도메인 확인 대기", value: c.pending || 0, sub: "관리자 확인 필요" },
+        { label: "차단", value: c.blocked || 0, sub: "규칙에 걸림" },
+        { label: "오류", value: c.error || 0, sub: "서버·메일 오류" }
+      ];
+      summary.innerHTML = cards.map((card) => `
+        <div class="stat-card">
+          <span>${esc(card.label)}</span>
+          <strong>${esc(fmtCount(card.value))}</strong>
+          <em>${esc(card.sub)}</em>
+        </div>`).join("");
+      summary.hidden = false;
+    }
+    const rows = data.attempts || [];
+    if (!tbody) return;
+    tbody.innerHTML = rows.length
+      ? rows.map((row) => {
+        const meta = ATTEMPT_LABELS[row.result] || { text: row.result || "-", badge: "" };
+        return `
+        <tr>
+          <td><b>${esc(row.company || "(회사명 없음)")}</b></td>
+          <td>${row.domain ? `@${esc(row.domain)}` : '<span class="muted">—</span>'}</td>
+          <td><span class="badge ${meta.badge}">${esc(meta.text)}</span></td>
+          <td>${esc(row.reason || "-")}</td>
+          <td>${esc(fmtDateTime(row.createdAt))}</td>
+        </tr>`;
+      }).join("")
+      : `<tr><td colspan="5" class="muted small">${state.attempts.filter ? "이 결과에 해당하는 시도가 없습니다." : "아직 가입 시도 기록이 없습니다."}</td></tr>`;
+  }
+
+  /* ‘도메인 확인 대기’ 회원을 확인(verified) 또는 되돌리기(pending) 처리한다. */
+  async function confirmCompanyDomain(id, status, button) {
+    if (!id || (status !== "verified" && status !== "pending")) return;
+    if (status === "pending" && !window.confirm("이 회원의 재직 인증을 ‘도메인 확인 대기’로 되돌릴까요?")) return;
+    const label = button ? button.textContent : "";
+    if (button) { button.disabled = true; button.textContent = "처리 중…"; }
+    const res = await apiRequest(`/api/admin/users/${id}/company-domain`, {
+      method: "PATCH",
+      json: true,
+      body: JSON.stringify({ status })
+    });
+    if (button) { button.disabled = false; button.textContent = label; }
+    if (!res.ok) { toast(res.error || "처리하지 못했습니다.", true); return; }
+    toast(status === "verified" ? "도메인 확인 완료 — 재직 인증이 완성되었습니다." : "‘도메인 확인 대기’로 되돌렸습니다.");
+    loadPeople();
   }
 
   function peopleCards() {
@@ -2756,6 +2889,10 @@
           : row.status === "suspended"
             ? `<span class="badge read">정지</span><span class="cell-sub">~ ${esc(fmtDateTime(row.suspendedUntil))}</span>${row.banReason ? `<span class="cell-sub">${esc(row.banReason)}</span>` : ""}`
             : '<span class="badge new">정상</span>';
+        // 재직 인증이 ‘도메인 확인 대기’인 회원 — 여기서 한 번 누르면 확인 완료된다(2026-11-28 v=61).
+        const domainCell = row.companyDomainStatus === "pending"
+          ? `<span class="badge read">도메인 확인 대기</span><span class="cell-sub"><button type="button" class="btn btn-sm btn-ghost" data-domain-action="verified" data-id="${id}">✓ 도메인 확인</button></span>`
+          : "";
         return `
         <tr>
           <td class="pick"><input type="checkbox" class="people-check" data-id="${id}"${picked.includes(id) ? " checked" : ""} aria-label="${esc(row.email)} 선택"></td>
@@ -2763,7 +2900,7 @@
           <td>${esc(row.company || "-")}</td>
           <td>${row.verified ? '<span class="badge new">인증</span>' : '<span class="badge">미인증</span>'}</td>
           <td>${row.kakaoLinked ? `<span class="badge read">연동</span>${row.kakaoNickname ? `<span class="cell-sub">${esc(row.kakaoNickname)}</span>` : ""}` : "<span class=\"muted\">—</span>"}</td>
-          <td>${statusCell}</td>
+          <td>${statusCell}${domainCell}</td>
           <td>${esc(fmtDateTime(row.createdAt))}</td>
         </tr>`;
       }).join("")
