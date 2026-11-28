@@ -20,7 +20,7 @@
   /* 「페이지·탭별 체류시간」은 한 번에 5개씩 — 더보기·접기의 단위(2026-11-26 v=56). */
   const STATS_PAGES_STEP = 5;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=68";
+  const BUILD = "v=69";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -3731,7 +3731,7 @@
       lines.push(`네이버 블로그: ${blog.error}`);
     }
     if (ig && ig.ok && ig.insights && ig.insights.supported === false) {
-      lines.push("참고 — 조회수(인사이트)는 " + (ig.insights.reason || "권한이 없어 읽지 못합니다.") + " Meta 앱 구성에서 권한을 더한 뒤 토큰을 다시 발급하면 읽을 수 있습니다.");
+      lines.push("참고 — " + (ig.insights.reason || "인사이트 권한이 없어 조회수는 읽지 못합니다.") + " Meta 앱 구성에서 권한을 더한 뒤 토큰을 다시 발급하면 읽을 수 있습니다.");
     }
     lines.push("블로그 일 방문자·조회수는 네이버 로그인이 필요한 값이라 자동으로 읽지 않고 화면에서도 뺐습니다.");
     if (msg) msg.textContent = lines.join(" ");
