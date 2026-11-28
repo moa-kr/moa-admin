@@ -644,7 +644,6 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .social-form-actions .status-pill { margin-left: 2px; }
 .social-note-mark { display: none; margin-left: 4px; font-size: 11px; cursor: help; }
 .social-chart-empty { margin: 0; padding: 34px 10px; text-align: center; font-size: 11.5px; line-height: 1.7; color: var(--ink-soft); }
-.social-mobile-hint { display: none; margin: 6px 0 0; font-size: 11px; color: var(--ink-soft); }
 @media (max-width: 640px) {
   .social-charts { grid-template-columns: minmax(0, 1fr); }
   .social-chart-box .trend-chart { height: 116px; }

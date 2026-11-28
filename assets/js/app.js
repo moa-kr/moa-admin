@@ -20,7 +20,7 @@
   /* 「페이지·탭별 체류시간」은 한 번에 5개씩 — 더보기·접기의 단위(2026-11-26 v=56). */
   const STATS_PAGES_STEP = 5;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=66";
+  const BUILD = "v=67";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -3697,8 +3697,7 @@
       list.push(["📸 인스타 게시물", socialValue(ig.mediaCount), `최근 30일 ${socialValue(ig.posts30)}개 발행`]);
       list.push(["❤️ 최근 게시물 좋아요 · 댓글", `${socialValue(ig.likes)} · ${socialValue(ig.comments)}`,
         `최근 ${fmtCount(ig.sampleSize)}개 게시물 합`]);
-      list.push(["📸 인스타 조회수", "미지원",
-        (ig.insights && ig.insights.reason) || "인사이트 권한이 없어 읽지 못합니다"]);
+      list.push(["📸 인스타 조회수", "미지원", "인사이트(insights) 권한 없음"]);
     }
     if (blog && blog.ok) {
       list.push(["📝 블로그 전체 글", socialValue(blog.totalPosts), blog.totalSource === "rss" ? "RSS 기준" : "blog.naver.com 기준"]);
@@ -3723,11 +3722,12 @@
       lines.push(`인스타그램: ${ig.error}`);
     }
     if (blog && blog.ok) {
-      const recent = (blog.recent || []).map((item) => item.title).filter(Boolean).slice(0, 2);
+      const recent = (blog.recent || []).map((item) => String(item.title || "").slice(0, 42)).filter(Boolean).slice(0, 2);
       if (recent.length) lines.push(`최근 글 — ${recent.join(" · ")}`);
     } else if (blog && blog.error) {
       lines.push(`네이버 블로그: ${blog.error}`);
     }
+    if (ig && ig.insights && ig.insights.supported === false && ig.ok) lines.push((ig.insights.reason || "") + " 인사이트 권한은 Meta 앱 구성에서 추가한 뒤 토큰을 다시 발급하면 됩니다.");
     lines.push("블로그 일 방문자·조회수는 네이버 로그인이 필요한 값이라 자동으로 읽지 않고 화면에서도 뺐습니다.");
     if (msg) msg.textContent = lines.join(" ");
     if (box) {
