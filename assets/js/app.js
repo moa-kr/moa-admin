@@ -20,7 +20,7 @@
   /* 「페이지·탭별 체류시간」은 한 번에 5개씩 — 더보기·접기의 단위(2026-11-26 v=56). */
   const STATS_PAGES_STEP = 5;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=65";
+  const BUILD = "v=66";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -3382,9 +3382,10 @@
     const tickOf = (row) => (unit === "yearly" ? `${String(row.year).slice(2)}년` : unit === "daily" ? (row.label || socialDateLabel(row.date)) : `${row.month.slice(2).replace("-", ".")}`);
     const fullLabelOf = (row) => row.label || (unit === "yearly" ? `${row.year}년` : row.month);
     chart.setAttribute("aria-label", unit === "yearly" ? "연도별 조회수 추이" : unit === "daily" ? `${rows.length}일 일별 조회수 추이` : "월별 조회수 추이");
-    /* 일별은 90칸까지 늘어나므로 막대는 폭에 들어가는 만큼(최대 31칸)만 그리고, 표에는 전부 적는다. */
-    const cap = isDaily ? ((typeof window !== "undefined" && window.innerWidth <= 640) ? 10 : 31) : rows.length;
-    const chartRows = rows.slice(-cap);
+    /* 일별은 90칸까지 늘어나므로, 칸 최소폭을 없앤 전용 모양(.is-daily)으로 폭에 맞춰 모두 그린다.
+       (월별·연도별은 칸이 몇 개뿐이라 지금 모양 그대로 둔다.) */
+    chart.classList.toggle("is-daily", isDaily);
+    const chartRows = rows;
     const step = Math.max(1, Math.ceil(chartRows.length / Math.max(2, Math.floor((chart.clientWidth || 360) / 34))));
     chart.innerHTML = chartRows.map((row, index) => {
       const views = Number(row.views) || 0;
@@ -3397,8 +3398,7 @@
         <span class="trend-tick">${esc(tick)}</span>
       </div>`;
     }).join("");
-    if (isDaily && chartRows.length < rows.length) chart.title = `막대는 최근 ${chartRows.length}일만 그립니다 · 표에는 ${rows.length}일 전부`;
-    else chart.removeAttribute("title");
+    chart.removeAttribute("title");
 
     if (head) {
       head.innerHTML = isDaily

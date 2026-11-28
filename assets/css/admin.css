@@ -590,6 +590,16 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .trend-bar { width: 100%; max-width: 30px; min-height: 2px; border-radius: 5px 5px 2px 2px;
   background: linear-gradient(180deg, #7f9cff, #2c5bf6); }
 .trend-tick { font-size: 10px; color: var(--ink-soft); height: 14px; line-height: 14px; white-space: nowrap; }
+/* 일별 트렌드(v=66) — 30·90칸이 한 화면에 들어가야 해서 칸 최소폭을 없애고 간격을 줄인다. */
+.trend-chart.is-daily { gap: 3px; }
+.trend-chart.is-daily .trend-col { min-width: 0; }
+.trend-chart.is-daily .trend-bar { max-width: none; }
+.trend-chart.is-daily .trend-value { font-size: 9px; }
+.trend-chart.is-daily .trend-tick { font-size: 9px; }
+@media (max-width: 640px) {
+  .trend-chart.is-daily { gap: 2px; height: 132px; }
+  .trend-chart.is-daily .trend-value { display: none; }
+}
 .trend-col.is-empty .trend-bar { background: #e3e8f2; }
 .trend-col.is-empty .trend-tick { color: #b3bccd; }
 .stats-table tr.is-empty td { color: var(--ink-soft); }
