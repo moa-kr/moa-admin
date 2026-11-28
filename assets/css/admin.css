@@ -599,7 +599,24 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .social-card .card-head h3 { color: #1a3fa8; }
 .social-controls { flex-wrap: wrap; row-gap: 8px; }
 .social-card .card-head .social-refresh { padding: 4px 10px; font-size: 12px; }
+.social-card .card-head .social-hide { padding: 4px 10px; font-size: 12px; }
 .social-card .card-head .status-pill { margin-left: 0; }
+/* ① 지금 값(자동) — 서버가 Graph API·RSS에서 바로 읽은 값 (2026-11-28 v=65) */
+.social-live { border: 1px solid #cfdcff; background: #fff; border-radius: 12px; padding: 11px 13px; margin-bottom: 14px; }
+.social-live-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.social-live-head b { font-size: 13px; color: #1a3fa8; }
+.social-token { margin-top: 10px; border-top: 1px dashed #dbe3f6; padding-top: 9px; font-size: 12px; }
+.social-token summary { cursor: pointer; font-weight: 700; color: var(--ink-soft); }
+.social-token-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 8px; }
+.social-token-row label { flex: 1 1 240px; display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 700; color: var(--ink-soft); }
+.social-token-row input { width: 100%; padding: 6px 8px; font-size: 13px; }
+/* ② 기록 추이 */
+.social-history { border-top: 1px solid #e3e9f8; padding-top: 12px; }
+.social-history-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.social-history-head b { font-size: 13px; }
+.social-form-wrap { margin-top: 14px; }
+.social-form-wrap > summary { cursor: pointer; font-weight: 700; font-size: 12.5px; color: var(--ink-soft); }
+.social-form-wrap .social-form { margin-top: 10px; }
 .social-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 12px 0 10px; }
 .social-chart-box { border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px 4px; background: #fff; }
 .social-chart-box h4 { margin: 0 0 4px; font-size: 12px; font-weight: 800; color: var(--ink); }
@@ -627,13 +644,11 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
   .social-form-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
   /* 폰에서는 날짜 칸에 비고를 글로 두면 8칸 표가 좁아져 글자가 세로로 쪼개진다.
      비고는 📝 표시(누르면 말풍선)로 바꾸고, 표는 읽을 수 있는 최소 폭을 준다. */
-  /* 폰에서는 8칸을 다 넣으면 글자가 뭉개져서, 핵심 네 칸(팔로워·좋아요·방문·조회)만 남긴다.
-     게시물·댓글·이웃은 KPI 카드와 월별/PC 표에서 볼 수 있다. */
+  /* 폰에서는 8칸을 다 넣으면 글자가 뭉개져서, 핵심 칸만 남긴다(2026-11-28 v=65 — 표가 5칸으로 줄어
+     게시물·댓글만 숨긴다. 팔로워·좋아요는 그대로 보인다). */
   #social-table th, #social-table td { padding: 8px 6px; }
   #social-table th:nth-child(3), #social-table td:nth-child(3),
-  #social-table th:nth-child(5), #social-table td:nth-child(5),
-  #social-table th:nth-child(8), #social-table td:nth-child(8) { display: none; }
-  .social-mobile-hint { display: block; }
+  #social-table th:nth-child(5), #social-table td:nth-child(5) { display: none; }
   #social-table td.social-when { white-space: nowrap; }
   .stats-table .cell-sub.social-note-full { display: none; }
   .social-note-mark { display: inline-block; }
@@ -652,6 +667,12 @@ input::placeholder, textarea::placeholder { color: #a9b1c3; }
 .ga-site .ga-name { font-size: 12.5px; font-weight: 800; }
 .ga-site code { align-self: flex-start; font-size: 12px; font-weight: 700; color: #1a3fa8; background: #eef4ff; border-radius: 6px; padding: 1px 7px; }
 .ga-site .ga-host { font-size: 11px; color: var(--ink-soft); }
+
+/* 📊 통계 카드 숨기기 (2026-11-28 v=65) — 이 브라우저에서만 감추고, 위 ‘숨긴 카드’에서 되살린다. */
+.stats-card-hidden { display: none !important; }
+.stats-hidden { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.stats-hidden .muted { font-weight: 700; }
+.stats-order-bar .stats-show-btn { padding: 4px 9px; font-size: 11.5px; border: 1px dashed #b9c8ef; }
 
 /* 📊 통계 카드 순서 바꾸기 (2026-11-26 v=54) — 패널 머리의 안내·초기화와 카드 머리 끝의 ↑ ↓ */
 .stats-order-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
