@@ -1062,6 +1062,8 @@
         loadAttempts();
       });
     }
+    const attemptsClear = $("#attempts-clear");
+    if (attemptsClear) attemptsClear.addEventListener("click", () => clearAttempts(attemptsClear));
     if (peopleUsers) {
       peopleUsers.addEventListener("click", (event) => {
         const btn = event.target.closest("button[data-domain-action]");
@@ -2755,6 +2757,31 @@
     msg.textContent = `전체 ${fmtCount(d.total)}건 · 성공 ${fmtCount(c.success)} · 도메인 확인 대기 ${fmtCount(c.pending)} · 차단 ${fmtCount(c.blocked)} · 오류 ${fmtCount(c.error)}${d.lastAt ? ` · 최근 ${fmtDateTime(d.lastAt)}` : ""}`;
     if (count) count.textContent = `${fmtCount(d.total)}건`;
     renderAttempts();
+  }
+
+  /* 점검·테스트로 쌓인 가입 시도 기록을 지운다(2026-11-28 v=63 → 복지모아 v0.45.0 DELETE API).
+     표 위 ‘결과’ 필터가 고른 범위만 지우고, ‘전체 결과’면 전부 지우되 건수를 알리는 확인을 한 번 더 받는다. */
+  async function clearAttempts(button) {
+    const data = state.attempts.data;
+    if (!data) { toast("먼저 기록을 불러와 주세요."); return; }
+    const filter = state.attempts.filter || "";
+    const label = filter ? ((ATTEMPT_LABELS[filter] || {}).text || filter) : "전체";
+    const count = filter ? Number((data.counts || {})[filter]) || 0 : Number(data.total) || 0;
+    if (!count) { toast(filter ? `‘${label}’ 기록이 없습니다.` : "지울 기록이 없습니다."); return; }
+    const warn = filter
+      ? `‘${label}’ 가입 시도 기록 ${fmtCount(count)}건을 지웁니다.\n되돌릴 수 없습니다.`
+      : `가입 시도 기록 ${fmtCount(count)}건을 모두 지웁니다.\n실제 가입 시도가 섞여 있으면 함께 지워집니다. 되돌릴 수 없습니다.`;
+    if (!window.confirm(`${warn}\n\n계속할까요?`)) return;
+    const original = button ? button.textContent : "";
+    if (button) { button.disabled = true; button.textContent = "정리 중…"; }
+    const query = filter ? `?result=${encodeURIComponent(filter)}` : "?all=1";
+    const res = await apiRequest(`/api/admin/signup-attempts${query}`, { method: "DELETE" });
+    if (button) { button.disabled = false; button.textContent = original; }
+    if (!res.ok) { toast(res.error || "기록을 지우지 못했습니다.", true); return; }
+    const deleted = Number((res.data || {}).deleted) || 0;
+    const remaining = Number((res.data || {}).remaining) || 0;
+    toast(`${fmtCount(deleted)}건을 지웠습니다. 남은 기록 ${fmtCount(remaining)}건.`);
+    loadAttempts();
   }
 
   function renderAttempts() {
