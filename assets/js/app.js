@@ -20,7 +20,7 @@
   /* 「페이지·탭별 체류시간」은 한 번에 5개씩 — 더보기·접기의 단위(2026-11-26 v=56). */
   const STATS_PAGES_STEP = 5;
   /* 화면·자산 버전 — index.html 의 ?v= 와 같게 맞춘다. 빌드 배지에 보여 캐시 여부를 바로 알 수 있게 한다. */
-  const BUILD = "v=70";
+  const BUILD = "v=71";
   /* 개인 재무(여조원 님 전용) — 로그인한 운영자에게만 헤더 오른쪽 ‘💰 개인 재무’ 버튼으로 연다(v=52: 사이트별 탭 정리로 탭 줄에서는 빠짐).
      자료는 공개 정적 파일이 아니라 복지모아 서버(/api/admin/personal-finance)에만 있고,
      로그인 토큰이 있어야 읽고 쓸 수 있다. finance.js 가 표·저장을 맡는다. */
@@ -215,8 +215,8 @@
     // 📊 방문 통계 — 사이트 필터·기간별로 서버에서 집계해 온다. dailyDays 는 ‘일별 트렌드’의 기간(14/30/90).
     stats: { site: "all", days: 7, dailyDays: 30, loading: false, error: "", data: null, loadedAt: "", trend: "monthly", pagesVisible: STATS_PAGES_STEP },
     // 📱 인스타 · 네이버 블로그 성장 트렌드 — 두 사이트 공통 채널이라 사이트 필터가 없다.
-    social: { days: 30, mode: "daily", loading: false, error: "", data: null, loadedAt: "", saving: false,
-      live: { loading: false, data: null, error: "", fetchedAt: "", savingToken: false } },
+    social: { days: 30, mode: "daily", loading: false, error: "", data: null, loadedAt: "", saving: false, autoTried: false,
+      live: { loading: false, data: null, error: "", fetchedAt: "", savingToken: false, queuedRefresh: false } },
     log: []
   };
 
@@ -3650,7 +3650,11 @@
       if (msg) msg.textContent = "운영자 로그인 뒤에 인스타그램·블로그 현재값을 자동으로 읽습니다.";
       return;
     }
-    if (state.social.live.loading) return;
+    if (state.social.live.loading) {
+      /* 이미 읽는 중이면 요청을 버리지 않고, 끝난 뒤 한 번 더(자동 스냅샷용) 부른다. */
+      if (opts && opts.refresh) state.social.live.queuedRefresh = true;
+      return;
+    }
     state.social.live.loading = true;
     state.social.live.error = "";
     if (msg) msg.textContent = "인스타그램·블로그에서 지금 값을 읽는 중…";
@@ -3674,6 +3678,10 @@
       renderSocialLive();
     }
     state.social.live.loading = false;
+    if (state.social.live.queuedRefresh) {
+      state.social.live.queuedRefresh = false;
+      loadSocialLive({ refresh: true });
+    }
   }
 
   function renderSocialLive() {
@@ -3792,6 +3800,19 @@
     if (btn) btn.disabled = false;
   }
 
+  /* 오늘 스냅샷이 비어 있을 때 한 번만 자동 수집(2026-11-28 v=71).
+     ‘새로고침’을 누르지 않아도 통계 탭을 열면 그날 값이 한 칸 남아, 추이 그래프가 스스로 자란다. */
+  function maybeAutoSocialSnapshot() {
+    if (state.social.autoTried) return;
+    const data = state.social.data;
+    const latest = data && data.summary ? data.summary.latest : null;
+    if (latest && latest.date === kstDateString()) { state.social.autoTried = true; return; }
+    const live = state.social.live.data;
+    if (live && live.instagram && live.instagram.configured === false) { state.social.autoTried = true; return; }
+    state.social.autoTried = true;
+    loadSocialLive({ refresh: true });
+  }
+
   /* ② 기록 추이 — /api/admin/social-stats */
   async function loadSocialStats(opts) {
     const pill = $("#social-conn");
@@ -3830,6 +3851,9 @@
           : `${scope}에 아직 기록이 없습니다. 위 ‘새로고침’을 누르면 오늘 값이 첫 기록으로 남습니다.`;
       }
       if (!opts || !opts.keepForm) fillSocialForm();
+      /* 오늘 기록이 아직 비어 있으면 한 번만 자동으로 남긴다(통계를 열기만 해도 추이가 쌓이게).
+         인스타 토큰이 없으면 남길 값이 없으니 건너뛴다. */
+      maybeAutoSocialSnapshot();
     } catch (err) {
       state.social.data = null;
       state.social.error = err.message || "알 수 없는 오류";
