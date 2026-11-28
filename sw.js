@@ -6,7 +6,7 @@
  *  - 그 밖의 요청: 가로채지 않는다(스크립트·아이콘·복지모아 API 모두 항상 최신·실시간).
  * 캐시에는 어드민 화면 한 장만 들어간다(개인 재무 표·토큰·아이디는 서비스 워커가 저장하지 않는다).
  */
-const CACHE = "moa-admin-shell-v18";
+const CACHE = "moa-admin-shell-v19";
 const SHELL = new URL("./", self.location.href).href;
 const OFFLINE_HTML =
   "<!doctype html><html lang=\"ko\"><head><meta charset=\"utf-8\">" +
